@@ -44,9 +44,7 @@ type alias Model =
 init : Result Json.Decode.Error Flags -> Route () -> ( Model, Effect Msg )
 init flagsResult route =
     ( { smashedLikes = 0
-      , refreshToken = "nada"
-      , accessToken = "nada"
-      , timestamp = 0
+      , clientCredentials = Nothing
       }
     , Effect.none
     )
@@ -68,8 +66,12 @@ update route msg model =
             , Effect.none
             )
 
-        Shared.Msg.GotNewClientCredentials creds ->
-            ( { model | refreshToken = creds.refreshToken, accessToken = creds.accessToken }
+        Shared.Msg.GotNewClientCredentials clientCredentials ->
+            let
+                newModel =
+                    { model | clientCredentials = Just clientCredentials }
+            in
+            ( newModel
             , Effect.none
             )
 

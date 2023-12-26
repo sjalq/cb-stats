@@ -59,3 +59,11 @@ updateFromFrontend sessionId clientId msg model =
                     model.smashedLikes + 1
             in
             ( { model | smashedLikes = newSmashedLikes }, Lamdera.broadcast <| NewSmashedLikes newSmashedLikes )
+
+        GetClientCredentials ->
+            case model.clientCredentials of
+                Just clientCredentials ->
+                    ( model, Lamdera.sendToFrontend clientId <| NewClientCredentials clientCredentials )
+
+                Nothing ->
+                    ( model, Cmd.none )

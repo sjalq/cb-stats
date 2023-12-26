@@ -1,6 +1,7 @@
 module Shared.Model exposing (Model)
 
 {-| -}
+import Api.ClientCredentials exposing (ClientCredentials)
 
 
 {-| Normally, this value would live in "Shared.elm"
@@ -12,7 +13,5 @@ own file, so they can be imported by `Effect.elm`
 -}
 type alias Model =
     { smashedLikes : Int
-    , refreshToken : String
-    , accessToken : String
-    , timestamp : Int
+    , clientCredentials : Maybe ClientCredentials
     }
