@@ -6,3 +6,6 @@ module Env exposing (..)
 
 dummyConfigItem =
   ""
+
+googleOauthUrl = 
+  "http://localhost:3001/api/auth/google"

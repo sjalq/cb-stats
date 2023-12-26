@@ -37,6 +37,9 @@ updateFromBackend msg model =
         NewSmashedLikes smashedLikes ->
             ( model, sendSharedMsg <| Shared.Msg.GotNewSmashedLikes smashedLikes )
 
+        NewClientCredentials clientCredentials ->
+            ( model, sendSharedMsg <| Shared.Msg.GotNewClientCredentials clientCredentials )
+
 
 sendSharedMsg : Shared.Msg.Msg -> Cmd FrontendMsg
 sendSharedMsg msg =

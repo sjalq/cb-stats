@@ -1,6 +1,7 @@
 module Shared.Msg exposing (Msg(..))
 
 {-| -}
+import Api.ClientCredentials exposing (ClientCredentials)
 
 
 {-| Normally, this value would live in "Shared.elm"
@@ -12,3 +13,4 @@ own file, so they can be imported by `Effect.elm`
 -}
 type Msg
     = GotNewSmashedLikes Int
+    | GotNewClientCredentials ClientCredentials
