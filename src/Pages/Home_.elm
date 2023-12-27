@@ -1,25 +1,25 @@
 module Pages.Home_ exposing (Model, Msg(..), page)
 
-import Api.ClientCredentials exposing (ClientCredentials)
+import Api.User exposing (isEditor)
 import Bridge exposing (..)
-import Effect exposing (..)
-import Element exposing (..)
-import Env
+import Effect
+import Element
+import Element.Font as Font
+import Element.Region as Region
+import Gen.Route as Route
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
-import Lamdera
-import Page exposing (Page)
-import Route exposing (Route)
+import Page
+import Request exposing (Request)
 import Shared
+import Utils.Route
 import View exposing (View)
 
 
-page : Shared.Model -> Route () -> Page Model Msg
-page shared route =
-    Page.new
-        { init = init
-        , update = update
+page : Shared.Model -> Request -> Page.With Model Msg
+page shared req =
+    Page.element
+        { init = init shared req
+        , update = update shared
         , subscriptions = subscriptions
         , view = view shared
         }
@@ -33,10 +33,18 @@ type alias Model =
     {}
 
 
-init : () -> ( Model, Effect Msg )
-init _ =
+init : Shared.Model -> Request -> ( Model, Cmd Msg )
+init shared req =
+    let
+        navMsg =
+            if shared.user |> isEditor then
+                Utils.Route.navigate req.key Route.Example
+
+            else
+                Utils.Route.navigate req.key Route.Login
+    in
     ( {}
-    , Lamdera.sendToBackend GetClientCredentials |> Effect.sendCmd
+    , navMsg
     )
 
 
@@ -45,28 +53,18 @@ init _ =
 
 
 type Msg
-    = SmashedLikeButton
-    | GotClientCredentials ClientCredentials
+    = Noop
 
 
-update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
+update : Shared.Model -> Msg -> Model -> ( Model, Cmd Msg )
+update shared msg model =
     case msg of
-        SmashedLikeButton ->
-            ( model
-            , Effect.sendCmd <| Lamdera.sendToBackend Bridge.SmashedLikeButton
-            )
-
-        GotClientCredentials clientCredentials ->
-            ( model, Effect.none )
-
-
-
--- SUBSCRIPTIONS
+        Noop ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -76,101 +74,7 @@ subscriptions model =
 
 view : Shared.Model -> Model -> View Msg
 view shared model =
-    { title = "Elm Land ❤️ Lamdera"
-    , attributes = []
-    , element =
-        let
-            credEl =
-                case shared.clientCredentials of
-                    Nothing ->
-                        [ Element.text "Loading..." ]
-
-                    Just clientCredentials ->
-                        [ Element.text <| "Refresh token: " ++ clientCredentials.refreshToken
-                        , Element.text <| "Access token: " ++ clientCredentials.accessToken
-                        , Element.text <| "Timestamp:" ++ String.fromInt clientCredentials.timestamp
-                        ] |> List.map (el [ centerX, centerY ])
-        in
-        el
-            [ centerX
-            , centerY
-            ]
-            (Element.column
-                []
-                ([ Element.link
-                    [ centerX, centerY ]
-                    { url = Env.googleOauthUrl
-                    , label = Element.text "Hello, Elm UI! ✨"
-                    }
-                 ]
-                    ++ credEl
-                )
-            )
+    { title = "Home"
+    , body =
+        Element.none
     }
-
-
-
--- [ node "style" [] [ text """
---     @import url('https://fonts.googleapis.com/css2?family=Lora:wght@600&family=Nunito+Sans&display=swap');
---     html {
---         height: 100%;
---         color: white;
---         background: linear-gradient(dodgerblue, #339);
---     }
---     body {
---         display: flex;
---         flex-direction: column;
---         margin: 0;
---         justify-content: center;
---         align-items: center;
---         height: 90vh;
---         font-family: 'Lora';
---     }
---     h1 {
---         margin: 0;
---         font-weight: 600 !important;
---     }
---     """ ]
--- , div [ style "display" "flex", style "gap" "1rem" ]
---     [ img
---         [ alt "Lando, the Elm Land Rainbow"
---         , src "https://elm.land/images/logo-480.png"
---         , style "width" "128px"
---         , style "margin-right" "2.5rem"
---         ]
---         []
---     , img
---         [ alt "Laurie, the Lamdera Lambda Llamba"
---         , src "https://lamdera.com/images/llama/floaty.png"
---         , style "width" "81.4px"
---         , style "margin-right" "1.5rem"
---         , style "height" "108.4px"
---         ]
---         []
---     ]
--- , h1 [] [ text "Elm Land ❤️ Lamdera" ]
--- , p
---     [ style "font-family" "Nunito Sans"
---     , style "opacity" "0.75"
---     ]
---     [ text "It's working, Mario!!" ]
--- , p
---     [ style "font-family" "Nunito Sans"
---     , style "cursor" "pointer"
---     , style "background-color" "#ffffff40"
---     , style "padding" "5px"
---     , style "border-radius" "5px"
---     , style "user-select" "none"
---     , onClick SmashedLikeButton
---     ]
---     [ text <| "👍 " ++ String.fromInt shared.smashedLikes ]
--- , a [ href "http://localhost:3001/api/auth/google" ]
---     [ img
---         [ alt "Lamdera Logo"
---         , src "https://lamdera.com/images/lamdera-logo.svg"
---         , style "width" "128px"
---         ]
---         []
---     ]
--- ]
--- }

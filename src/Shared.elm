@@ -1,52 +1,48 @@
 module Shared exposing
-    ( Flags, decoder
-    , Model, Msg
-    , init, update, subscriptions
+    ( Flags
+    , Model
+    , Msg(..)
+    , init
+    , subscriptions
+    , update
+    , view
     )
 
-{-|
-
-@docs Flags, decoder
-@docs Model, Msg
-@docs init, update, subscriptions
-
--}
-
-import Effect exposing (Effect)
-import Json.Decode
-import Route exposing (Route)
-import Route.Path
-import Shared.Model
-import Shared.Msg
-
-
-
--- FLAGS
-
-
-type alias Flags =
-    {}
-
-
-decoder : Json.Decode.Decoder Flags
-decoder =
-    Json.Decode.succeed {}
+import Api.User exposing (User)
+import Bridge exposing (..)
+import Browser.Dom
+import Browser.Events
+import Components.Navbar
+import Element
+import Element.Region as Region
+import Html exposing (..)
+import Html.Attributes
+import Process
+import Request exposing (Request)
+import Task
+import Time
+import View exposing (View)
 
 
 
 -- INIT
 
 
+type alias Flags =
+    ()
+
+
 type alias Model =
-    Shared.Model.Model
+    { viewWidth : Float
+    , user : Maybe User
+    , toastMessage : Maybe String
+    }
 
 
-init : Result Json.Decode.Error Flags -> Route () -> ( Model, Effect Msg )
-init flagsResult route =
-    ( { smashedLikes = 0
-      , clientCredentials = Nothing
-      }
-    , Effect.none
+init : Request -> Flags -> ( Model, Cmd Msg )
+init _ json =
+    ( Model 0 Nothing Nothing
+    , Browser.Dom.getViewport |> Task.perform (\vp -> GotViewWidth vp.viewport.width)
     )
 
 
@@ -54,32 +50,86 @@ init flagsResult route =
 -- UPDATE
 
 
-type alias Msg =
-    Shared.Msg.Msg
+type Msg
+    = GotViewWidth Float
+    | Noop
+    | SignInUser User
+    | SignOutUser
+    | ShowToastMessage String
+    | HideToastMessage Time.Posix
 
 
-update : Route () -> Msg -> Model -> ( Model, Effect Msg )
-update route msg model =
+update : Request -> Msg -> Model -> ( Model, Cmd Msg )
+update _ msg model =
     case msg of
-        Shared.Msg.GotNewSmashedLikes count ->
-            ( { model | smashedLikes = count }
-            , Effect.none
+        Noop ->
+            ( model
+            , Cmd.none
             )
 
-        Shared.Msg.GotNewClientCredentials clientCredentials ->
-            let
-                newModel =
-                    { model | clientCredentials = Just clientCredentials }
-            in
-            ( newModel
-            , Effect.none
-            )
+        GotViewWidth viewWidth ->
+            ( { model | viewWidth = viewWidth }, Cmd.none )
+
+        SignInUser user ->
+            ( { model | user = Just user }, Cmd.none )
+
+        SignOutUser ->
+            ( { model | user = Nothing }, Cmd.none )
+
+        ShowToastMessage message ->
+            ( { model | toastMessage = Just message }, Cmd.none )
+
+        HideToastMessage _ ->
+            ( { model | toastMessage = Nothing }, Cmd.none )
+
+
+subscriptions : Request -> Model -> Sub Msg
+subscriptions _ model =
+    let
+        toastMessageTimeout =
+            case model.toastMessage of
+                Nothing ->
+                    Sub.none
+
+                Just _ ->
+                    Time.every 3000 HideToastMessage
+    in
+    Sub.batch
+        [ Browser.Events.onResize (\w _ -> w |> toFloat |> GotViewWidth)
+        , toastMessageTimeout
+        ]
 
 
 
--- SUBSCRIPTIONS
+-- VIEW
 
 
-subscriptions : Route () -> Model -> Sub Msg
-subscriptions route model =
-    Sub.none
+view :
+    Request
+    -> { page : View msg, toMsg : Msg -> msg }
+    -> Model
+    -> View msg
+view req { page, toMsg } model =
+    { title = page.title
+    , body =
+        let
+            ( toastMessage, toastMessageClass ) =
+                case model.toastMessage of
+                    Nothing ->
+                        ( "", "" )
+
+                    Just message ->
+                        ( message, "show" )
+        in
+        Element.column
+            [ Element.width (Element.fill |> Element.maximum 1280), Element.centerX, Element.paddingXY 30 30 ]
+            [ Components.Navbar.view
+            , Element.el [ Region.mainContent, Element.width Element.fill ] page.body
+            , Element.html <|
+                Html.div
+                    [ Html.Attributes.id "snackbar"
+                    , Html.Attributes.class toastMessageClass
+                    ]
+                    [ Html.text toastMessage ]
+            ]
+    }

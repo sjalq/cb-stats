@@ -1,35 +1,41 @@
-# @elm-land/lamdera
-> How to use [Lamdera](https://lamdera.com/) and [Elm Land](https://elm.land) together!
+# ![RealWorld Example App](logo.png)
 
-![A screenshot of the app running](./screenshot.png)
+> ### Lamdera port of [elm-spa realworld frontend](https://github.com/ryannhg/elm-spa-realworld), adding a full backend implementation.
 
-Live demo: https://elm-land.lamdera.app
 
-## Local development
+### [Demo](https://realworld.lamdera.app/)&nbsp;&nbsp;&nbsp;&nbsp;[RealWorld Spec](https://github.com/gothinkster/realworld)
 
-Once you have the latest Lamdera and Elm Land v0.19.0 on your local machine, you can run this project with two separate commands:
 
-```sh
-elm-land server
+You can take a look at how the conversion progressed in two PRs:
+
+- [#1](https://github.com/supermario/lamdera-realworld/pull/1) Porting all HTTP API calls to `Lamdera.sendToBackend` and removing all JSON encoders/decoders
+- [#2](https://github.com/supermario/lamdera-realworld/pull/2) Implementing the full Realworld backend functionality in Elm
+
+
+# How it works
+
+This application was built with
+
+- [Lamdera](https://lamdera.com), a delightful platform
+for full-stack web apps
+- [elm-spa](https://elm-spa.dev), a friendly tool for building SPAs with Elm!
+
+Check out the [the source code](./src) to get a feel for the project structure!
+
+
+# Getting started
+
+Clone the project and boot the Lamdera local dev environment:
+
 ```
-
-```sh
+git clone git@github.com:supermario/lamdera-realworld.git
+cd lamdera-realworld
+lamdera reset
 lamdera live
 ```
 
-And open up the running project at `http://0.0.0.0:8000`
+For any `elm-spa` changes, such as vendoring one of the `.elm-spa` defaults, re-run `elm-spa make`.
 
+Note: the `.elm-spa` folder currently needs to be committed to successfully deploy, as Lamdera doesn't run elm-spa build commands.
 
-( __Note:__ There's no special `elm-land watch` command for now, so please excuse the extra unused dev server! )
-
-
-## Deploying
-
-Lamdera doesn't currently build `elm-land` remotely, so to deploy we'll need to commit all the gen files.
-
-```
-elm-land build
-git add -f .elm-land/src
-lamdera check
-lamdera deploy
-```
+See [Getting Started](https://lamdera.com/start) if you're new to Lamdera.

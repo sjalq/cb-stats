@@ -12,13 +12,14 @@ import Lamdera exposing (..)
 import LamderaRPC exposing (..)
 import Types exposing (..)
 import Api.ClientCredentials exposing (..)
-import Shared.Msg exposing (Msg(..))
 
 -- move this to decoder folder
 
 clientCredentialsDecoder : D.Decoder ClientCredentials
 clientCredentialsDecoder =
-    D.map3 ClientCredentials
+    D.map5 ClientCredentials
+        (D.field "displayName" D.string)
+        (D.field "email" D.string)
         (D.field "accessToken" D.string)
         (D.field "refreshToken" D.string)
         (D.field "timestamp" D.int)
@@ -41,10 +42,10 @@ storeClientCredentialsEndpoint rawReq _ model headers jsonArg =
             -- Placeholder for processing and updating model:
             let
                 _ = Debug.log "Credentials" credentials
-                updatedModel = { model | clientCredentials = Just credentials}
+                updatedModel = { model | clientCredentials = credentials :: model.clientCredentials}
                 responseMsg = "Stored credentials"
             in
-            ( Ok <| E.string responseMsg, updatedModel, Lamdera.broadcast (NewClientCredentials credentials ))
+            ( Ok <| E.string responseMsg, updatedModel, Cmd.none)
 
         Err err ->
             -- Handle decoding error

@@ -1,7 +1,9 @@
 module Api.ClientCredentials exposing (..)
 
 type alias ClientCredentials =
-    { accessToken : String
+    { displayName : String
+    , email : String
+    , accessToken : String
     , refreshToken : String
     , timestamp : Int
     }

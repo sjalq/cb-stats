@@ -1,35 +1,26 @@
-module Frontend exposing (..)
+module Main exposing (main)
 
 import Browser
-import Browser.Dom
 import Browser.Navigation as Nav exposing (Key)
 import Effect
-import Element
 import Gen.Model
 import Gen.Pages as Pages
 import Gen.Route as Route
-import Lamdera
 import Request
 import Shared
-import Task
-import Types exposing (FrontendModel, FrontendMsg(..), ToFrontend(..))
 import Url exposing (Url)
 import View
 
 
-type alias Model =
-    FrontendModel
-
-
-app =
-    Lamdera.frontend
+main : Program Shared.Flags Model Msg
+main =
+    Browser.application
         { init = init
-        , onUrlRequest = ClickedLink
-        , onUrlChange = ChangedUrl
         , update = update
-        , updateFromBackend = updateFromBackend
-        , subscriptions = subscriptions
         , view = view
+        , subscriptions = subscriptions
+        , onUrlChange = ChangedUrl
+        , onUrlRequest = ClickedLink
         }
 
 
@@ -37,16 +28,24 @@ app =
 -- INIT
 
 
-init : Url -> Key -> ( Model, Cmd Msg )
-init url key =
+type alias Model =
+    { url : Url
+    , key : Key
+    , shared : Shared.Model
+    , page : Pages.Model
+    }
+
+
+init : Shared.Flags -> Url -> Key -> ( Model, Cmd Msg )
+init flags url key =
     let
         ( shared, sharedCmd ) =
-            Shared.init (Request.create () url key) ()
+            Shared.init (Request.create () url key) flags
 
         ( page, effect ) =
             Pages.init (Route.fromUrl url) shared url key
     in
-    ( FrontendModel url key shared page
+    ( Model url key shared page
     , Cmd.batch
         [ Cmd.map Shared sharedCmd
         , Effect.toCmd ( Shared, Page ) effect
@@ -58,12 +57,11 @@ init url key =
 -- UPDATE
 
 
-scrollPageToTop =
-    Task.perform (\_ -> Noop) (Browser.Dom.setViewport 0 0)
-
-
-type alias Msg =
-    FrontendMsg
+type Msg
+    = ChangedUrl Url
+    | ClickedLink Browser.UrlRequest
+    | Shared Shared.Msg
+    | Page Pages.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -86,7 +84,7 @@ update msg model =
                         Pages.init (Route.fromUrl url) model.shared url model.key
                 in
                 ( { model | url = url, page = page }
-                , Cmd.batch [ Effect.toCmd ( Shared, Page ) effect, scrollPageToTop ]
+                , Effect.toCmd ( Shared, Page ) effect
                 )
 
             else
@@ -122,22 +120,6 @@ update msg model =
             , Effect.toCmd ( Shared, Page ) effect
             )
 
-        Noop ->
-            ( model, Cmd.none )
-
-
-updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
-updateFromBackend msg model =
-    case msg of
-        PageMsg pageMsg ->
-            update (Page pageMsg) model
-
-        SharedMsg sharedMsg ->
-            update (Shared sharedMsg) model
-
-        NoOpToFrontend ->
-            ( model, Cmd.none )
-
 
 
 -- VIEW
@@ -145,20 +127,9 @@ updateFromBackend msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-    let
-        sharedView =
-            Shared.view (Request.create () model.url model.key)
-                { page =
-                    Pages.view model.page model.shared model.url model.key
-                        |> View.map Page
-                , toMsg = Shared
-                }
-                model.shared
-    in
-    { title = sharedView.title
-    , body =
-        [ Element.layout [] sharedView.body ]
-    }
+    Pages.view model.page model.shared model.url model.key
+        |> View.map Page
+        |> View.toBrowserDocument
 
 
 

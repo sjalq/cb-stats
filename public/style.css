@@ -1,0 +1,31 @@
+main {
+    font-family: Helvetica !important;
+}
+
+.tag-default {
+    border: 0
+}
+
+#snackbar {
+    visibility: hidden;
+    bottom: 0;
+    font-family: "Open Sans", Helvetica, Verdana, sans-serif;
+    opacity: 0;
+    transition: all 0.3s ease-out;
+    min-width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 2px;
+    padding: 16px;
+    position: fixed;
+    z-index: 1;
+    left: calc(50% - 125px);
+    box-sizing: border-box;
+}
+
+#snackbar.show {
+    visibility: visible;
+    bottom: 30px;
+    opacity: 1;
+}

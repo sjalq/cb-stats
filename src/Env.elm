@@ -4,8 +4,13 @@ module Env exposing (..)
 -- See https://dashboard.lamdera.app/docs/environment for more info.
 
 
-dummyConfigItem =
-  ""
+adminUsers =
+    "abel@swiftcom.app"
+
+
+editorUsers =
+    "abeljansenbf@gmail.com"
+
 
 googleOauthUrl = 
-  "http://localhost:3001/api/auth/google"
+  "https://clownfish-app-dwrp2.ondigitalocean.app/api/auth/google"
