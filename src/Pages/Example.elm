@@ -94,7 +94,7 @@ view model =
                 ([ Element.link
                     [ centerX, centerY ]
                     { url = Env.googleOauthUrl
-                    , label = Element.text "Hello, Elm UI! ✨"
+                    , label = Element.text "🦄 Google Auth Yerself! ✨"
                     }
                 ]
                 ++ drawCredRows model.clientCredentials)

@@ -13,4 +13,4 @@ editorUsers =
 
 
 googleOauthUrl = 
-  "https://clownfish-app-dwrp2.ondigitalocean.app/api/auth/google"
+    "https://clownfish-app-dwrp2.ondigitalocean.app/api/auth/google"
