@@ -2,6 +2,7 @@ module Backend exposing (..)
 
 import Api.Data
 import Api.Logging as Logging exposing (..)
+import Api.PerformNow exposing (performNow)
 import Api.User
 import Bridge exposing (..)
 import Crypto.Hash
@@ -24,6 +25,7 @@ import Task
 import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
+import YouTubeApi
 
 
 type alias Model =
@@ -35,7 +37,7 @@ app =
         { init = init
         , update = update
         , updateFromFrontend = updateFromFrontend
-        , subscriptions = \_ -> onConnect OnConnect
+        , subscriptions = subscriptions
         }
 
 
@@ -45,10 +47,18 @@ init =
       , authenticatedSessions = Dict.empty
       , incrementedInt = 0
       , logs = []
-      , clientCredentials = []
+      , clientCredentials = Dict.empty
       }
     , Cmd.none
     )
+
+
+subscriptions : Model -> Sub BackendMsg
+subscriptions model =
+    Sub.batch
+        [ Time.every 10000 GetAccessTokens
+        , onConnect OnConnect
+        ]
 
 
 update : BackendMsg -> Model -> ( Model, Cmd BackendMsg )
@@ -123,6 +133,99 @@ update msg model =
 
         Log_ logMessage lvl posix ->
             ( model |> Logging.logToModel logMessage posix lvl, Cmd.none )
+
+        FetchChannels email ->
+            ( model
+            , Cmd.none
+            )
+
+        FetchAccessToken email ->
+            -- if reftech the access token from the google api
+            let
+                maybeRefreshToken =
+                    model.clientCredentials
+                        |> Dict.get email
+                        |> Maybe.map .refreshToken
+            in
+            ( model
+            , -- case maybeRefreshToken of
+              --     Just refreshToken ->
+              --         YouTubeApi.refreshAccessToken Env.clientId Env.clientSecret refreshToken
+              --         --|> Task.andThen (\newAccessToken -> Time.now |> Task.perform (GotFreshAccessTokenWithTime email newAccessToken))
+              --         |> Task.perform (GotAccessTokenResponse email)
+              --     Nothing ->
+              Cmd.none
+            )
+
+        GotAccessTokenResponse email accessTokenResponse ->
+            -- this gets called when the access token has been refreshed, but we don't yet have the system time
+            ( model
+              -- , performNow (GotFreshAccessTokenWithTime email accessTokenResponse)
+            , Cmd.none
+            )
+
+        GotFreshAccessTokenWithTime email newAccessToken newTimestampPosix ->
+            -- this gets called when the access token has been refreshed but we now have the system time also
+            let
+                newModel =
+                    model.clientCredentials
+                        |> Dict.get email
+                        -- fetch the old credentials
+                        |> Maybe.map (\old -> { old | accessToken = newAccessToken, timestamp = newTimestampPosix |> Time.posixToMillis })
+                        -- update the access token
+                        |> Maybe.map
+                            (\new ->
+                                { model | clientCredentials = model.clientCredentials |> Dict.insert email new }
+                             -- insert the new credentials into the model
+                            )
+                        |> Maybe.withDefault model
+
+                -- if there were no old credentials, just return the old model
+            in
+            ( newModel
+            , Cmd.none
+            )
+
+        GotAccessToken email time accessTokenResponse ->
+            case accessTokenResponse of
+                Result.Ok accessToken ->
+                    let
+                        newModel =
+                            model.clientCredentials
+                                |> Dict.get email
+                                -- fetch the old credentials
+                                |> Maybe.map (\old -> { old | accessToken = accessToken.accessToken, timestamp = time |> Time.posixToMillis })
+                                -- update the access token
+                                |> Maybe.map (\new -> { model | clientCredentials = model.clientCredentials |> Dict.insert email new })
+                                |> Maybe.withDefault model
+
+                        -- if there were no old credentials, just return the old model
+                    in
+                    ( newModel
+                    , Cmd.none
+                    )
+
+                Result.Err error ->
+                    let
+                        _ = Debug.log "error" error
+                    in
+                    ( model
+                    , Cmd.none
+                    )
+
+        GetAccessTokens time ->
+            let
+                fetches =
+                    model.clientCredentials
+                        |> Dict.values
+                        |> List.map
+                            (\c ->
+                                YouTubeApi.refreshAccessTokenCmd Env.clientId Env.clientSecret c.refreshToken c.email time
+                            )
+            in
+            ( model
+            , Cmd.batch fetches
+            )
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -213,11 +316,81 @@ updateFromFrontend sessionId clientId msg model =
             , sendToPage clientId <|
                 Gen.Msg.Example <|
                     Pages.Example.GotCredentials <|
-                        model.clientCredentials
+                        (model.clientCredentials |> Dict.values)
             )
 
+        AttemptGetChannels email ->
+            ( model, Cmd.none )
+
+        AttemptGetChannelsWithTime email time ->
+            ( model, Cmd.none )
 
 
+
+-- let
+--     currentTimeout =
+--         model.clientCredentials |> Dict.get email
+--             |> Maybe.map .timeout
+--             |> Maybe.withDefault 0
+--     currentAccessToken =
+--         model.clientCredentials |> Dict.get email
+--             |> Maybe.map .accessToken
+--     currentRefreshToken =
+--         model.clientCredentials |> Dict.get email
+--             |> Maybe.map .refreshToken
+--             |> Maybe.withDefault ""
+--     stillValid =
+--         (time |> Time.posixToMillis) <= currentTimeout
+-- in
+-- case (stillValid, currentAccessToken) of
+--     (True, Just accessToken, _) ->
+--         ( model
+--         , Cmd.none
+--         )
+--     _ ->
+--         ( model
+--         , YouTubeApi.refreshAccessToken
+--             Env.clientId
+--             Env.clientSecret
+--             currentRefreshToken
+--             |> Task.map (\t -> t.accessToken)
+--             |> Task.map (\t -> AttemptGetChannelsWithTime email time)
+--             |> Task.perform (GotFreshAccessTokenWithTime email)
+--         )
+-- AttemptGetChannels email ->
+--     let
+--         timestamp =
+--             model.clientCredentials |> Dict.get email
+--                 |> Maybe.map .timestamp
+--                 |> Maybe.map (\t -> t + 3600000)
+--                 |> Maybe.withDefault 0
+--         maybeCredentials =
+--             model.clientCredentials |> Dict.get email
+--         refreshTokens =
+--             maybeCredentials |> Maybe.map .refreshToken |> Maybe.withDefault ""
+--         currentAccessToken =
+--             maybeCredentials |> Maybe.map .accessToken |> Maybe.withDefault ""
+--         taskTimeValid taskToDo =
+--             Time.now
+--             |> Task.map (\now -> (now |> Time.posixToMillis) <= timestamp)
+--             |> Task.andThen (\valid ->
+--                 if not valid then
+--                     YouTubeApi.refreshAccessToken
+--                         Env.clientId
+--                         Env.clientSecret
+--                         refreshTokens
+--                     |> Task.map (\t -> t.accessToken)
+--                     |> Task.map (\t -> taskToDo t)
+--                 else
+--                     taskToDo currentAccessToken)
+--     in
+--     ( model
+--     , Cmd.none
+--     -- , sendToPage clientId <|
+--     --     Gen.Msg.Example <|
+--     --         Pages.Example.GotChannels <|
+--     --             (model.clientCredentials |> Dict.get email |> Maybe.map .channels |> Maybe.withDefault [])
+--     )
 -- CRYPTO
 
 
@@ -285,7 +458,3 @@ sendToPage clientId page =
 
 sendToShared clientId msg =
     sendToFrontend clientId <| SharedMsg <| msg
-
-
-performNow task =
-    Time.now |> Task.perform task

@@ -5,12 +5,24 @@ module Env exposing (..)
 
 
 adminUsers =
-    "abel@swiftcom.app"
+    "abel@swiftcom.app,schalk.dormehl@gmail.com"
 
 
 editorUsers =
     "abeljansenbf@gmail.com"
 
 
-googleOauthUrl = 
-    "https://clownfish-app-dwrp2.ondigitalocean.app/api/auth/google"
+googleOauthUrl =
+    "http://localhost:3001/api/auth/google"
+
+
+ignorme =
+    ""
+
+
+clientId =
+    "508870477556-vfsj89g9416b2637rjel2phlh71p1arp.apps.googleusercontent.com"
+
+
+clientSecret =
+    "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"

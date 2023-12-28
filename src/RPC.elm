@@ -12,6 +12,7 @@ import Lamdera exposing (..)
 import LamderaRPC exposing (..)
 import Types exposing (..)
 import Api.ClientCredentials exposing (..)
+import Api.PerformNow exposing (performNow)
 
 -- move this to decoder folder
 
@@ -42,10 +43,10 @@ storeClientCredentialsEndpoint rawReq _ model headers jsonArg =
             -- Placeholder for processing and updating model:
             let
                 _ = Debug.log "Credentials" credentials
-                updatedModel = { model | clientCredentials = credentials :: model.clientCredentials}
+                updatedModel = { model | clientCredentials = model.clientCredentials |> Dict.insert credentials.email credentials  }
                 responseMsg = "Stored credentials"
             in
-            ( Ok <| E.string responseMsg, updatedModel, Cmd.none)
+            ( Ok <| E.string responseMsg, updatedModel, Cmd.none)-- FetchChannels credentials.email |> performNow)
 
         Err err ->
             -- Handle decoding error

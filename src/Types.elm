@@ -13,6 +13,8 @@ import Time
 import Url exposing (Url)
 import Api.ClientCredentials exposing (ClientCredentials)
 import Api.Logging exposing (..)
+import Time exposing (Posix)
+import Json.Auto.AccessToken 
 
 
 type alias FrontendModel =
@@ -28,7 +30,7 @@ type alias BackendModel =
     , authenticatedSessions : Dict SessionId Session
     , incrementedInt : Int
     , logs : List LogEntry
-    , clientCredentials : List ClientCredentials
+    , clientCredentials : Dict String ClientCredentials
     }
 
 
@@ -50,6 +52,12 @@ type BackendMsg
     | VerifySession SessionId ClientId Time.Posix
     | RegisterUser SessionId ClientId { email : String, password : String } String
     | Log_ String LogLevel Time.Posix -- don't use directly, use BackendLogging.log instead
+    | FetchChannels String
+    | FetchAccessToken String 
+    | GotAccessTokenResponse String Json.Auto.AccessToken.Root
+    | GotFreshAccessTokenWithTime String String Posix
+    | GetAccessTokens Time.Posix
+    | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
     | NoOpBackendMsg
 
 

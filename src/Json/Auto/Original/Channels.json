@@ -1,0 +1,42 @@
+{
+    "kind": "youtube#channelListResponse",
+    "etag": "k53PdK-hcQFcckOE8g3IUQH01jA",
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 5
+    },
+    "items": [
+        {
+            "kind": "youtube#channel",
+            "etag": "fIauCcSTMgRhttNIqZNeM7-7MQU",
+            "id": "UCi1BlQaTk-Y9eGGh97z_qLg",
+            "snippet": {
+                "title": "Schalk Dormehl",
+                "description": "",
+                "customUrl": "@schalkdormehl3057",
+                "publishedAt": "2013-10-02T10:18:16Z",
+                "thumbnails": {
+                    "default": {
+                        "url": "https://yt3.ggpht.com/ytc/AIf8zZRrRSRBEYxZTKDkTP7Gs_1WLn6Vn2L3ggiCJDhWWA=s88-c-k-c0x00ffffff-no-rj",
+                        "width": 88,
+                        "height": 88
+                    },
+                    "medium": {
+                        "url": "https://yt3.ggpht.com/ytc/AIf8zZRrRSRBEYxZTKDkTP7Gs_1WLn6Vn2L3ggiCJDhWWA=s240-c-k-c0x00ffffff-no-rj",
+                        "width": 240,
+                        "height": 240
+                    },
+                    "high": {
+                        "url": "https://yt3.ggpht.com/ytc/AIf8zZRrRSRBEYxZTKDkTP7Gs_1WLn6Vn2L3ggiCJDhWWA=s800-c-k-c0x00ffffff-no-rj",
+                        "width": 800,
+                        "height": 800
+                    }
+                },
+                "localized": {
+                    "title": "Schalk Dormehl",
+                    "description": ""
+                }
+            }
+        }
+    ]
+}
