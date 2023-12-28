@@ -193,17 +193,6 @@ migrate_Bridge_ToBackend old =
         Evergreen.V1.Bridge.NoOpToBackend ->
             Evergreen.V4.Bridge.NoOpToBackend
 
-        notices ->
-            {- @NOTICE `AttemptGetChannels String` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `AttemptGetChannelsWithTime String elm/time:Time.Posix` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            (Unimplemented {- New constructors were added. I need you to resolve the above notices and then remove this case. -})
-
 
 migrate_Gen_Model_Model : Evergreen.V1.Gen.Model.Model -> Evergreen.V4.Gen.Model.Model
 migrate_Gen_Model_Model old =
@@ -301,17 +290,6 @@ migrate_Pages_Example_Msg old =
     case old of
         Evergreen.V1.Pages.Example.GotCredentials p0 ->
             Evergreen.V4.Pages.Example.GotCredentials p0
-
-        notices ->
-            {- @NOTICE `GetChannels String` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `Tick elm/time:Time.Posix` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            (Unimplemented {- New constructors were added. I need you to resolve the above notices and then remove this case. -})
 
 
 migrate_Pages_Home__Model : Evergreen.V1.Pages.Home_.Model -> Evergreen.V4.Pages.Home_.Model
@@ -438,33 +416,6 @@ migrate_Types_BackendMsg old =
 
         Evergreen.V1.Types.NoOpBackendMsg ->
             Evergreen.V4.Types.NoOpBackendMsg
-
-        notices ->
-            {- @NOTICE `FetchChannels String` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `FetchAccessToken String` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `GotAccessTokenResponse String Evergreen.V4.Json.Auto.AccessToken.Root` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `GotFreshAccessTokenWithTime String String elm/time:Time.Posix` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `GetAccessTokens elm/time:Time.Posix` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            {- @NOTICE `GotAccessToken String elm/time:Time.Posix Result` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://lamdera.com/tips/modified-custom-type for more info.
-            -}
-            (Unimplemented {- New constructors were added. I need you to resolve the above notices and then remove this case. -})
 
 
 migrate_Types_FrontendMsg : Evergreen.V1.Types.FrontendMsg -> Evergreen.V4.Types.FrontendMsg
