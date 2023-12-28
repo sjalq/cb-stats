@@ -53,6 +53,7 @@ import Evergreen.V4.Types
 import Lamdera.Migrations exposing (..)
 import List
 import Maybe
+import Time
 
 
 frontendModel : Evergreen.V1.Types.FrontendModel -> ModelMigration Evergreen.V4.Types.FrontendModel Evergreen.V4.Types.FrontendMsg
@@ -91,7 +92,9 @@ migrate_Types_BackendModel old =
     , authenticatedSessions = old.authenticatedSessions
     , incrementedInt = old.incrementedInt
     , logs = old.logs |> List.map migrate_Api_Logging_LogEntry
-    , clientCredentials = old.clientCredentials |> (Unimplemented {- Type changed from `List (Evergreen.V1.Api.ClientCredentials.ClientCredentials)` to `Dict (String) (Evergreen.V4.Api.ClientCredentials.ClientCredentials)`. I need you to write this migration. -})
+    , clientCredentials = old.clientCredentials |> 
+        List.map (\c -> (c.email,  c))
+        |> Dict.fromList
     }
 
 
@@ -281,7 +284,7 @@ migrate_Pages_End_Msg old =
 migrate_Pages_Example_Model : Evergreen.V1.Pages.Example.Model -> Evergreen.V4.Pages.Example.Model
 migrate_Pages_Example_Model old =
     { clientCredentials = old.clientCredentials
-    , currentTime = (Unimplemented {- Type `elm/time:Time.Posix` was added in V4. I need you to set a default value. -})
+    , currentTime = Time.millisToPosix 0
     }
 
 
