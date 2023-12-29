@@ -11,10 +11,14 @@ import Lamdera exposing (ClientId, SessionId)
 import Shared
 import Time
 import Url exposing (Url)
-import Api.ClientCredentials exposing (ClientCredentials)
+import Api.YoutubeModel exposing (ClientCredentials)
 import Api.Logging exposing (..)
 import Time exposing (Posix)
 import Json.Auto.AccessToken 
+import Api.YoutubeModel exposing (..)
+import Json.Auto.Playlists
+import Json.Auto.Channels
+import Set exposing (..)
 
 
 type alias FrontendModel =
@@ -31,6 +35,9 @@ type alias BackendModel =
     , incrementedInt : Int
     , logs : List LogEntry
     , clientCredentials : Dict String ClientCredentials
+    , channels : Dict String Channel
+    , channelAssociations : List ChannelAssociation
+    , playlists : Dict String Playlist
     }
 
 
@@ -56,8 +63,14 @@ type BackendMsg
     | FetchAccessToken String 
     | GotAccessTokenResponse String Json.Auto.AccessToken.Root
     | GotFreshAccessTokenWithTime String String Posix
-    | GetAccessTokens Time.Posix
+    | RefreshAccessTokens Time.Posix
+    | RefreshChannels Time.Posix
+    | RefreshPlaylists Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
+    | GetChannels String
+    | GotChannels String (Result Http.Error Json.Auto.Channels.Root)
+    | GetPlaylists String
+    | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
     | NoOpBackendMsg
 
 

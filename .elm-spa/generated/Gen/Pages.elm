@@ -10,6 +10,7 @@ import Gen.Params.Home_
 import Gen.Params.Login
 import Gen.Params.NotFound
 import Gen.Params.Register
+import Gen.Params.Ga.Email_
 import Gen.Model as Model
 import Gen.Msg as Msg
 import Gen.Route as Route exposing (Route)
@@ -21,6 +22,7 @@ import Pages.Home_
 import Pages.Login
 import Pages.NotFound
 import Pages.Register
+import Pages.Ga.Email_
 import Request exposing (Request)
 import Shared
 import Task
@@ -59,6 +61,9 @@ init route =
     
         Route.Register ->
             pages.register.init ()
+    
+        Route.Ga__Email_ params ->
+            pages.ga__email_.init params
 
 
 update : Msg -> Model -> Shared.Model -> Url -> Key -> ( Model, Effect Msg )
@@ -81,6 +86,9 @@ update msg_ model_ =
     
         ( Msg.Register msg, Model.Register params model ) ->
             pages.register.update params msg model
+    
+        ( Msg.Ga__Email_ msg, Model.Ga__Email_ params model ) ->
+            pages.ga__email_.update params msg model
 
         _ ->
             \_ _ _ -> ( model_, Effect.none )
@@ -112,6 +120,9 @@ view model_ =
     
         Model.Register params model ->
             pages.register.view params model
+    
+        Model.Ga__Email_ params model ->
+            pages.ga__email_.view params model
 
 
 subscriptions : Model -> Shared.Model -> Url -> Key -> Sub Msg
@@ -140,6 +151,9 @@ subscriptions model_ =
     
         Model.Register params model ->
             pages.register.subscriptions params model
+    
+        Model.Ga__Email_ params model ->
+            pages.ga__email_.subscriptions params model
 
 
 
@@ -154,6 +168,7 @@ pages :
     , login : Bundle Gen.Params.Login.Params Pages.Login.Model Pages.Login.Msg
     , notFound : Static Gen.Params.NotFound.Params
     , register : Bundle Gen.Params.Register.Params Pages.Register.Model Pages.Register.Msg
+    , ga__email_ : Bundle Gen.Params.Ga.Email_.Params Pages.Ga.Email_.Model Pages.Ga.Email_.Msg
     }
 pages =
     { admin = bundle Pages.Admin.page Model.Admin Msg.Admin
@@ -163,6 +178,7 @@ pages =
     , login = bundle Pages.Login.page Model.Login Msg.Login
     , notFound = static Pages.NotFound.view Model.NotFound
     , register = bundle Pages.Register.page Model.Register Msg.Register
+    , ga__email_ = bundle Pages.Ga.Email_.page Model.Ga__Email_ Msg.Ga__Email_
     }
 
 

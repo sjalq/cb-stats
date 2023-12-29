@@ -16,5 +16,5 @@ type ToBackend
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
-    | AttemptGetChannelsWithTime String Time.Posix
+    | AttemptGetPlaylists String
     | NoOpToBackend

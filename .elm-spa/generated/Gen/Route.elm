@@ -11,6 +11,7 @@ import Gen.Params.Home_
 import Gen.Params.Login
 import Gen.Params.NotFound
 import Gen.Params.Register
+import Gen.Params.Ga.Email_
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser)
 
@@ -23,6 +24,7 @@ type Route
     | Login
     | NotFound
     | Register
+    | Ga__Email_ { email : String }
 
 
 fromUrl : Url -> Route
@@ -39,6 +41,7 @@ routes =
     , Parser.map Login Gen.Params.Login.parser
     , Parser.map NotFound Gen.Params.NotFound.parser
     , Parser.map Register Gen.Params.Register.parser
+    , Parser.map Ga__Email_ Gen.Params.Ga.Email_.parser
     ]
 
 
@@ -70,4 +73,7 @@ toHref route =
     
         Register ->
             joinAsHref [ "register" ]
+    
+        Ga__Email_ params ->
+            joinAsHref [ "ga", params.email ]
 

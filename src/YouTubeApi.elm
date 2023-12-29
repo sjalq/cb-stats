@@ -1,5 +1,7 @@
 module YouTubeApi exposing (..)
 
+import Json.Auto.Playlists
+import Json.Auto.Channels
 import Http
 import Json.Auto.AccessToken
 import Json.Decode as Decode
@@ -50,21 +52,6 @@ oauthEndpoint =
 
 
 
--- -- Function to check if the access token has expired
-
-
--- accessTokenValid : Token_ -> Task Http.Error Bool
--- accessTokenValid token =
---     Task.perform Time.now
---         |> Task.andThen
---             (\currentTime ->
---                 Task.succeed (currentTime < token.timeout)
---             )
-
-
-
--- Function to fetch a new access token using the refresh token
-
 
 refreshAccessToken : String -> String -> String -> Task Http.Error Json.Auto.AccessToken.Root
 refreshAccessToken clientId clientSecret refreshToken =
@@ -108,30 +95,34 @@ refreshAccessTokenCmd clientId clientSecret refreshToken email time  =
             }
 
 
+getChannelsCmd : String -> String -> Cmd BackendMsg
+getChannelsCmd email accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true"
+    in
+        Http.request
+            { method = "GET"
+            , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+            , url = url
+            , body = Http.emptyBody
+            , expect = Http.expectJson (GotChannels email) Json.Auto.Channels.rootDecoder
+            , timeout = Nothing
+            , tracker = Nothing
+            }
 
--- Function to fetch YouTube channel names using the access token
-
-
--- fetchYoutubeChannels : Task Http.Error Json.Auto.AccessToken.Root -> Task Http.Error (List String)
--- fetchYoutubeChannels accessToken =
---     -- Implement the HTTP request to YouTube API to fetch channels
---     -- This is a placeholder for the actual HTTP task
---     Task.succeed [ "Channel 1", "Channel 2" ]
-
-
-
--- -- Main Task chain to validate token and fetch YouTube channel names
-
-
--- mainTask : Token_ -> Task Http.Error (List String)
--- mainTask token_ =
---     accessTokenValid token_
---         |> Task.andThen
---             (\isValid ->
---                 if isValid then
---                     fetchYoutubeChannels token_.accessToken
-
---                 else
---                     refreshAccessToken token_.refreshToken
---                         |> Task.andThen fetchYoutubeChannels
---             )
+getPlaylistsCmd : String -> String -> Cmd BackendMsg
+getPlaylistsCmd channelId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true&maxResults=5000"
+    in
+        Http.request
+            { method = "GET"
+            , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+            , url = url
+            , body = Http.emptyBody
+            , expect = Http.expectJson (GotPlaylists channelId) Json.Auto.Playlists.rootDecoder
+            , timeout = Nothing
+            , tracker = Nothing
+            }

@@ -1,0 +1,21 @@
+{
+    "kind": "youtube#playlistListResponse",
+    "etag": "ZdI-Vli7Gy6nFBaAiVwA1_r66hg",
+    "pageInfo": {
+        "totalResults": 3,
+        "resultsPerPage": 50
+    },
+    "items": [
+        {
+            "kind": "youtube#playlist",
+            "etag": "6a8ypQqfqYIYFtHBPPoxYsgK9-E",
+            "id": "PLfeklkYnO-es2GJvL7bDct0EFf2EjJaTv",
+            "snippet": {
+                "publishedAt": "2020-12-23T18:18:02Z",
+                "channelId": "UC9OksX4JhXSLtFDvkE1I9ug",
+                "title": "Snaaks",
+                "description": ""
+            }
+        }
+    ]
+}

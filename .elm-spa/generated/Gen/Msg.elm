@@ -7,6 +7,7 @@ import Gen.Params.Home_
 import Gen.Params.Login
 import Gen.Params.NotFound
 import Gen.Params.Register
+import Gen.Params.Ga.Email_
 import Pages.Admin
 import Pages.End
 import Pages.Example
@@ -14,6 +15,7 @@ import Pages.Home_
 import Pages.Login
 import Pages.NotFound
 import Pages.Register
+import Pages.Ga.Email_
 
 
 type Msg
@@ -23,4 +25,5 @@ type Msg
     | Home_ Pages.Home_.Msg
     | Login Pages.Login.Msg
     | Register Pages.Register.Msg
+    | Ga__Email_ Pages.Ga.Email_.Msg
 

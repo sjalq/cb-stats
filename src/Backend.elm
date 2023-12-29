@@ -2,7 +2,7 @@ module Backend exposing (..)
 
 import Api.Data
 import Api.Logging as Logging exposing (..)
-import Api.PerformNow exposing (performNow)
+import Api.PerformNow exposing (performNowWithTime, performNow)
 import Api.User
 import Bridge exposing (..)
 import Crypto.Hash
@@ -10,12 +10,18 @@ import Dict
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
+import Html.Attributes exposing (accesskey)
 import Http
+import Json.Auto.AccessToken
+import Json.Auto.Channels
+import Json.Auto.Playlists
 import Json.Encode
 import Lamdera exposing (..)
+import List.Extra
 import Pages.Example
 import Pages.Login
 import Pages.Register
+import Pages.Ga.Email_
 import Random
 import Random.Char
 import Random.String
@@ -48,15 +54,23 @@ init =
       , incrementedInt = 0
       , logs = []
       , clientCredentials = Dict.empty
+      , channels = Dict.empty
+      , channelAssociations = []
+      , playlists = Dict.empty
       }
-    , Cmd.none
+    , Cmd.batch <| [ performNowWithTime RefreshAccessTokens
+        , performNowWithTime RefreshChannels
+        , performNowWithTime RefreshPlaylists
+    ]
     )
 
 
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
-        [ Time.every 10000 GetAccessTokens
+        [ Time.every 1800000 RefreshAccessTokens -- 30 minutes
+        , Time.every 10000 RefreshChannels -- 1 minute
+        , Time.every 10000 RefreshPlaylists -- 1 minute
         , onConnect OnConnect
         ]
 
@@ -207,13 +221,14 @@ update msg model =
 
                 Result.Err error ->
                     let
-                        _ = Debug.log "error" error
+                        _ =
+                            Debug.log "error" error
                     in
                     ( model
                     , Cmd.none
                     )
 
-        GetAccessTokens time ->
+        RefreshAccessTokens time ->
             let
                 fetches =
                     model.clientCredentials
@@ -226,6 +241,152 @@ update msg model =
             ( model
             , Cmd.batch fetches
             )
+
+        GetChannels email ->
+            let
+                maybeAccessToken =
+                    model.clientCredentials
+                        |> Dict.get email
+                        |> Maybe.map .accessToken
+
+                fetch =
+                    maybeAccessToken
+                        |> Maybe.map
+                            (\accessToken ->
+                                YouTubeApi.getChannelsCmd email accessToken
+                            )
+                        |> Maybe.withDefault Cmd.none
+            in
+            ( model
+            , fetch
+            )
+
+        GotChannels email channelResponse ->
+            case channelResponse of
+                Result.Ok channels ->
+                    let
+                        retrievedChannels =
+                            channels.items
+                                |> List.map
+                                    (\c ->
+                                        ( c.id
+                                        , { id = c.id
+                                          , title = c.snippet.title
+                                          , description = c.snippet.description
+                                          , customUrl = c.snippet.customUrl
+                                          }
+                                        )
+                                    )
+                                |> Dict.fromList
+
+                        newChannels =
+                            Dict.union retrievedChannels model.channels
+
+                        newChannelAssociations =
+                            retrievedChannels
+                                |> Dict.keys
+                                |> List.map (\channelId -> { email = email, channelId = channelId })
+                                |> (++) model.channelAssociations
+                                |> List.Extra.uniqueBy (\c -> c.email ++ ", " ++ c.channelId)
+
+                        newModel =
+                            { model
+                                | channels = newChannels
+                                , channelAssociations = newChannelAssociations
+                            }
+                    in
+                    ( newModel
+                    , Cmd.none
+                    )
+
+                Result.Err error ->
+                    let
+                        _ =
+                            Debug.log "error" error
+                    in
+                    ( model
+                    , Cmd.none
+                    )
+
+        GetPlaylists channelId ->
+            let
+                maybeAccessToken =
+                    model.channelAssociations
+                        |> List.filter (\c -> c.channelId == channelId)
+                        |> List.head
+                        |> Maybe.map .email
+                        |> Maybe.andThen (\email -> model.clientCredentials |> Dict.get email |> Maybe.map .accessToken)
+
+                fetch =
+                    maybeAccessToken
+                        |> Maybe.map
+                            (\accessToken ->
+                                YouTubeApi.getPlaylistsCmd channelId accessToken
+                            )
+                        |> Maybe.withDefault Cmd.none
+            in
+            ( model
+            , fetch
+            )
+
+        GotPlaylists channelId playlistResponse ->
+            case playlistResponse of
+                Result.Ok playlists ->
+                    let
+                        retrievedPlaylists =
+                            playlists.items
+                                |> List.map
+                                    (\p ->
+                                        ( p.id
+                                        , { id = p.id
+                                          , title = p.snippet.title
+                                          , description = p.snippet.description
+                                          , channelId = p.snippet.channelId
+                                          }
+                                        )
+                                    )
+                                |> Dict.fromList
+
+                        newPlaylists =
+                            Dict.union retrievedPlaylists model.playlists
+
+                        newModel =
+                            { model
+                                | playlists = newPlaylists
+                            }
+                    in
+                    ( newModel
+                    , Cmd.none
+                    )
+
+                Result.Err error ->
+                    let
+                        _ =
+                            Debug.log "error" error
+                    in
+                    ( model
+                    , Cmd.none
+                    )
+
+        RefreshChannels _ ->
+            let
+                fetches =
+                    model.clientCredentials
+                        |> Dict.keys
+                        |> List.map GetChannels
+                        |> List.map performNow
+            in
+            ( model, fetches |> Cmd.batch )
+
+        RefreshPlaylists _ ->
+            let
+                fetches =
+                    model.channels
+                        |> Dict.keys
+                        |> List.map GetPlaylists
+                        |> List.map performNow
+            in
+            ( model, fetches |> Cmd.batch )
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -251,7 +412,7 @@ updateFromFrontend sessionId clientId msg model =
                                     Pages.Login.GotUser <|
                                         Api.Data.Success <|
                                             Api.User.toUser existingUser
-                            , performNow (AuthenticateSession sessionId clientId <| Api.User.toUser existingUser)
+                            , performNowWithTime (AuthenticateSession sessionId clientId <| Api.User.toUser existingUser)
                             ]
                         )
 
@@ -320,10 +481,27 @@ updateFromFrontend sessionId clientId msg model =
             )
 
         AttemptGetChannels email ->
+            let
+                channelAssociations = 
+                    model.channelAssociations
+                        |> List.filter (\c -> c.email == email)
+                        |> List.map .channelId
+                
+                channels =
+                    model.channels
+                        |> Dict.filter (\k _ -> List.member k channelAssociations)
+                        |> Dict.values
+            in
+            (model, 
+                sendToPage clientId <|
+                    Gen.Msg.Ga__Email_ <|
+                        Pages.Ga.Email_.GotChannels <|
+                            channels)
+
+        AttemptGetPlaylists channelId ->
             ( model, Cmd.none )
 
-        AttemptGetChannelsWithTime email time ->
-            ( model, Cmd.none )
+
 
 
 

@@ -1,22 +1,24 @@
-module Pages.Example exposing (Model, Msg(..), page)
+module Pages.Example exposing (..)
 
-import Api.ClientCredentials exposing (ClientCredentials)
-import Api.PerformNow exposing (performNow)
+import Api.PerformNow exposing (performNowWithTime)
+import Api.YoutubeModel exposing (ClientCredentials)
 import Bridge exposing (ToBackend(..))
+import Bytes.Encode
 import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Border
 import Element.Input
 import Env
 import Gen.Params.Example exposing (Params)
-import Html.Attributes
+import Gen.Route as Route
+import Html.Attributes 
 import Lamdera exposing (sendToBackend)
 import Page
 import Request
 import Shared
 import Time
 import View exposing (View)
-
+import Base64 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -46,7 +48,7 @@ init =
     , Effect.fromCmd <|
         Cmd.batch
             [ sendToBackend <| AttemptGetCredentials
-            , performNow <| Tick
+            , performNowWithTime <| Tick
             ]
     )
 
@@ -66,11 +68,12 @@ update msg model =
     case msg of
         GotCredentials clientCredentials ->
             ( { model | clientCredentials = clientCredentials }, Effect.none )
-        
+
         GetChannels email ->
             ( model
             , Effect.fromCmd <|
-                sendToBackend <| AttemptGetChannels email
+                sendToBackend <|
+                    AttemptGetChannels email
             )
 
         Tick posixTime ->
@@ -97,19 +100,6 @@ view model =
     { title = "Elm Land ❤️ Lamdera"
     , body =
         let
-            drawCred : ClientCredentials -> Element Msg
-            drawCred clientCredentials =
-                row
-                    [ centerX, centerY ]
-                    [ Element.text <| "Refresh token: " ++ clientCredentials.refreshToken
-                    , Element.text <| "Access token: " ++ clientCredentials.accessToken
-                    , Element.text <| "Timestamp:" ++ String.fromInt clientCredentials.timestamp
-                    ]
-
-            drawCredRows : List ClientCredentials -> List (Element Msg)
-            drawCredRows clientCredentials =
-                List.map drawCred clientCredentials
-
             wrappedCell text =
                 Element.paragraph
                     [ Element.width <| Element.px 200
@@ -180,6 +170,11 @@ view model =
 
                                             else
                                                 String.fromInt remainingTime
+
+                                        -- ++ " "
+                                        -- ++ String.fromInt cred.timestamp
+                                        -- ++ " "
+                                        -- ++ String.fromInt currentTime_
                                     in
                                     wrappedCell label
                           }
@@ -187,11 +182,21 @@ view model =
                           , width = px 200
                           , view =
                                 \cred ->
-                                    Element.Input.button
-                                        []
-                                        { onPress = GetChannels cred.email |> Just
+                                    Element.link [ centerX, centerY ]
+                                        { url =
+                                            Route.toHref
+                                                (Route.Ga__Email_
+                                                    { email = cred.email |> Base64.encode
+                                                    }
+                                                )
                                         , label = Element.text "Fetch Channels"
                                         }
+
+                          -- Element.Input.button
+                          --     []
+                          --     { onPress = GetChannels cred.email |> Just
+                          --     , label = Element.text "Fetch Channels"
+                          --     }
                           }
                         ]
                     }

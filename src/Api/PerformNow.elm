@@ -4,5 +4,8 @@ import Task
 import Time
 
 
-performNow task =
+performNowWithTime task =
     Time.now |> Task.perform task 
+
+performNow task =
+    Time.now |> Task.perform (\_ -> task)
