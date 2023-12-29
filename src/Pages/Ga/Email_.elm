@@ -12,6 +12,10 @@ import Url
 import View exposing (View)
 import Base64
 
+import Element.Border
+import Element exposing (..)
+import Html.Attributes
+
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -81,4 +85,74 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    View.placeholder model.email
+    { title = "Elm Land ❤️ Lamdera"
+    , body =
+        let
+            wrappedCell text =
+                Element.paragraph
+                    [ Element.width <| Element.px 200
+                    , Element.Border.width 1
+                    , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
+                    , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
+                    ]
+                    [ Element.text text ]
+        in
+            el
+                [ centerX
+                , centerY
+                ]
+                (Element.column
+                    []
+                    [ Element.text model.email
+                    , Element.table
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.spacing 5
+                        , Element.padding 10
+                        , Element.Border.width 1
+                        ]
+                        { data = model.channels
+                        , columns =
+                            [ { header = Element.text "Id"
+                            , width = px 200
+                            , view =
+                                    \c ->
+                                        wrappedCell c.id
+                            }
+                            , { header = Element.text "Title"
+                            , width = px 275
+                            , view =
+                                    \c ->
+                                        wrappedCell c.title
+                            }
+                            , { header = Element.text "Description"
+                            , width = px 300 |> maximum 100
+                            , view =
+                                    \c ->
+                                        wrappedCell c.description
+                            }
+                            , { header = Element.text "Custom Url"
+                            , width = px 500
+                            , view =
+                                    \c ->
+                                        wrappedCell c.customUrl
+                            }
+                            , { header = Element.text "Playlists"
+                            , width = px 200
+                            , view =
+                                    \c -> wrappedCell c.id
+                                        -- Element.link [ centerX, centerY, underline ]
+                                        --     { url =
+                                        --         Route.toHref
+                                        --             (Route.Ga__Email_
+                                        --                 { email = cred.email |> Base64.encode
+                                        --                 }
+                                        --             )
+                                        --     , label = Element.text "Channels"
+                                        --     }
+                            }
+                            ]
+                        }
+                    ]
+            )
+    }

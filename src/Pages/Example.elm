@@ -19,6 +19,7 @@ import Shared
 import Time
 import View exposing (View)
 import Base64 
+import Element.Font exposing (underline)
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -182,21 +183,15 @@ view model =
                           , width = px 200
                           , view =
                                 \cred ->
-                                    Element.link [ centerX, centerY ]
+                                    Element.link [ centerX, centerY, underline ]
                                         { url =
                                             Route.toHref
                                                 (Route.Ga__Email_
                                                     { email = cred.email |> Base64.encode
                                                     }
                                                 )
-                                        , label = Element.text "Fetch Channels"
+                                        , label = Element.text "Channels"
                                         }
-
-                          -- Element.Input.button
-                          --     []
-                          --     { onPress = GetChannels cred.email |> Just
-                          --     , label = Element.text "Fetch Channels"
-                          --     }
                           }
                         ]
                     }
