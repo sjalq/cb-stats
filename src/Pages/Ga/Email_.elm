@@ -14,7 +14,9 @@ import Base64
 
 import Element.Border
 import Element exposing (..)
+import Element.Font exposing (underline)
 import Html.Attributes
+import Gen.Route as Route
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -140,16 +142,16 @@ view model =
                             , { header = Element.text "Playlists"
                             , width = px 200
                             , view =
-                                    \c -> wrappedCell c.id
-                                        -- Element.link [ centerX, centerY, underline ]
-                                        --     { url =
-                                        --         Route.toHref
-                                        --             (Route.Ga__Email_
-                                        --                 { email = cred.email |> Base64.encode
-                                        --                 }
-                                        --             )
-                                        --     , label = Element.text "Channels"
-                                        --     }
+                                    \c ->
+                                        Element.link [ centerX, centerY, underline ]
+                                            { url =
+                                                Route.toHref
+                                                    (Route.Channel__Id_
+                                                        { id = c.id 
+                                                        }
+                                                    )
+                                            , label = Element.text "Channels"
+                                            }
                             }
                             ]
                         }

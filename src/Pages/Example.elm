@@ -1,4 +1,4 @@
-module Pages.Example exposing (..)
+module Pages.Example exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
 import Api.YoutubeModel exposing (ClientCredentials)
