@@ -29,6 +29,6 @@ type Model
     | Login Gen.Params.Login.Params Pages.Login.Model
     | NotFound Gen.Params.NotFound.Params
     | Register Gen.Params.Register.Params Pages.Register.Model
-    | Channel__Id_ Gen.Params.Channel.Id_.Params
+    | Channel__Id_ Gen.Params.Channel.Id_.Params Pages.Channel.Id_.Model
     | Ga__Email_ Gen.Params.Ga.Email_.Params Pages.Ga.Email_.Model
 

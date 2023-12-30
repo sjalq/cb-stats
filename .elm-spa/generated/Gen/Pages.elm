@@ -92,6 +92,9 @@ update msg_ model_ =
         ( Msg.Register msg, Model.Register params model ) ->
             pages.register.update params msg model
     
+        ( Msg.Channel__Id_ msg, Model.Channel__Id_ params model ) ->
+            pages.channel__id_.update params msg model
+    
         ( Msg.Ga__Email_ msg, Model.Ga__Email_ params model ) ->
             pages.ga__email_.update params msg model
 
@@ -126,8 +129,8 @@ view model_ =
         Model.Register params model ->
             pages.register.view params model
     
-        Model.Channel__Id_ params ->
-            pages.channel__id_.view params ()
+        Model.Channel__Id_ params model ->
+            pages.channel__id_.view params model
     
         Model.Ga__Email_ params model ->
             pages.ga__email_.view params model
@@ -160,8 +163,8 @@ subscriptions model_ =
         Model.Register params model ->
             pages.register.subscriptions params model
     
-        Model.Channel__Id_ params ->
-            pages.channel__id_.subscriptions params ()
+        Model.Channel__Id_ params model ->
+            pages.channel__id_.subscriptions params model
     
         Model.Ga__Email_ params model ->
             pages.ga__email_.subscriptions params model
@@ -179,7 +182,7 @@ pages :
     , login : Bundle Gen.Params.Login.Params Pages.Login.Model Pages.Login.Msg
     , notFound : Static Gen.Params.NotFound.Params
     , register : Bundle Gen.Params.Register.Params Pages.Register.Model Pages.Register.Msg
-    , channel__id_ : Static Gen.Params.Channel.Id_.Params
+    , channel__id_ : Bundle Gen.Params.Channel.Id_.Params Pages.Channel.Id_.Model Pages.Channel.Id_.Msg
     , ga__email_ : Bundle Gen.Params.Ga.Email_.Params Pages.Ga.Email_.Model Pages.Ga.Email_.Msg
     }
 pages =
@@ -190,7 +193,7 @@ pages =
     , login = bundle Pages.Login.page Model.Login Msg.Login
     , notFound = static Pages.NotFound.view Model.NotFound
     , register = bundle Pages.Register.page Model.Register Msg.Register
-    , channel__id_ = static Pages.Channel.Id_.view Model.Channel__Id_
+    , channel__id_ = bundle Pages.Channel.Id_.page Model.Channel__Id_ Msg.Channel__Id_
     , ga__email_ = bundle Pages.Ga.Email_.page Model.Ga__Email_ Msg.Ga__Email_
     }
 

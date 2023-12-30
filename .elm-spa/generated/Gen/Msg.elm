@@ -27,5 +27,6 @@ type Msg
     | Home_ Pages.Home_.Msg
     | Login Pages.Login.Msg
     | Register Pages.Register.Msg
+    | Channel__Id_ Pages.Channel.Id_.Msg
     | Ga__Email_ Pages.Ga.Email_.Msg
 
