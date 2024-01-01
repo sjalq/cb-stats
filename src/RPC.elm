@@ -42,7 +42,6 @@ storeClientCredentialsEndpoint rawReq _ model headers jsonArg =
             -- Process and store credentials here, possibly updating the model and logging
             -- Placeholder for processing and updating model:
             let
-                _ = Debug.log "Credentials" credentials
                 updatedModel = { model | clientCredentials = model.clientCredentials |> Dict.insert credentials.email credentials  }
                 responseMsg = "Stored credentials"
             in

@@ -2,26 +2,24 @@ module Backend exposing (..)
 
 import Api.Data
 import Api.Logging as Logging exposing (..)
-import Api.PerformNow exposing (performNowWithTime, performNow)
+import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
+import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
 import Dict
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
-import Html.Attributes exposing (accesskey)
-import Http
-import Json.Auto.AccessToken
-import Json.Auto.Channels
-import Json.Auto.Playlists
-import Json.Encode
+import Http exposing (Error(..))
 import Lamdera exposing (..)
 import List.Extra
+import Pages.Channel.Id_
 import Pages.Example
+import Pages.Ga.Email_
+import Pages.Log
 import Pages.Login
 import Pages.Register
-import Pages.Ga.Email_
 import Random
 import Random.Char
 import Random.String
@@ -32,6 +30,11 @@ import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
+
+
+
+-- todo:
+-- * add error logging for any and all external calls
 
 
 type alias Model =
@@ -58,10 +61,11 @@ init =
       , channelAssociations = []
       , playlists = Dict.empty
       }
-    , Cmd.batch <| [ performNowWithTime RefreshAccessTokens
-        , performNowWithTime RefreshChannels
-        , performNowWithTime RefreshPlaylists
-    ]
+    , Cmd.batch <|
+        [ performNowWithTime RefreshAccessTokens
+        , performNowWithTime RefreshAllChannels
+        , performNowWithTime RefreshAllPlaylists
+        ]
     )
 
 
@@ -69,8 +73,8 @@ subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
         [ Time.every 1800000 RefreshAccessTokens -- 30 minutes
-        , Time.every 10000 RefreshChannels -- 1 minute
-        , Time.every 10000 RefreshPlaylists -- 1 minute
+        , Time.every 10000 RefreshAllChannels -- 1 minute
+        , Time.every 10000 RefreshAllPlaylists -- 1 minute
         , onConnect OnConnect
         ]
 
@@ -148,36 +152,6 @@ update msg model =
         Log_ logMessage lvl posix ->
             ( model |> Logging.logToModel logMessage posix lvl, Cmd.none )
 
-        FetchChannels email ->
-            ( model
-            , Cmd.none
-            )
-
-        FetchAccessToken email ->
-            -- if reftech the access token from the google api
-            let
-                maybeRefreshToken =
-                    model.clientCredentials
-                        |> Dict.get email
-                        |> Maybe.map .refreshToken
-            in
-            ( model
-            , -- case maybeRefreshToken of
-              --     Just refreshToken ->
-              --         YouTubeApi.refreshAccessToken Env.clientId Env.clientSecret refreshToken
-              --         --|> Task.andThen (\newAccessToken -> Time.now |> Task.perform (GotFreshAccessTokenWithTime email newAccessToken))
-              --         |> Task.perform (GotAccessTokenResponse email)
-              --     Nothing ->
-              Cmd.none
-            )
-
-        GotAccessTokenResponse email accessTokenResponse ->
-            -- this gets called when the access token has been refreshed, but we don't yet have the system time
-            ( model
-              -- , performNow (GotFreshAccessTokenWithTime email accessTokenResponse)
-            , Cmd.none
-            )
-
         GotFreshAccessTokenWithTime email newAccessToken newTimestampPosix ->
             -- this gets called when the access token has been refreshed but we now have the system time also
             let
@@ -220,13 +194,10 @@ update msg model =
                     )
 
                 Result.Err error ->
-                    let
-                        _ =
-                            Debug.log "error" error
-                    in
                     ( model
                     , Cmd.none
                     )
+                        |> log ("Failed to fetch access token for " ++ email ++ "\n" ++ httpErrToString error) Error
 
         RefreshAccessTokens time ->
             let
@@ -300,13 +271,10 @@ update msg model =
                     )
 
                 Result.Err error ->
-                    let
-                        _ =
-                            Debug.log "error" error
-                    in
                     ( model
                     , Cmd.none
                     )
+                        |> log ("Failed to fetch channels for : " ++ email ++ "\n" ++ httpErrToString error) Error
 
         GetPlaylists channelId ->
             let
@@ -346,9 +314,11 @@ update msg model =
                                         )
                                     )
                                 |> Dict.fromList
+                            |> Debug.log "retrieved playlists"
 
                         newPlaylists =
                             Dict.union retrievedPlaylists model.playlists
+                            |> Debug.log "new playlists"
 
                         newModel =
                             { model
@@ -360,15 +330,12 @@ update msg model =
                     )
 
                 Result.Err error ->
-                    let
-                        _ =
-                            Debug.log "error" error
-                    in
                     ( model
                     , Cmd.none
                     )
+                        |> log ("Failed to fetch playlists for channel : " ++ channelId ++ "\n" ++ httpErrToString error) Error
 
-        RefreshChannels _ ->
+        RefreshAllChannels _ ->
             let
                 fetches =
                     model.clientCredentials
@@ -378,7 +345,7 @@ update msg model =
             in
             ( model, fetches |> Cmd.batch )
 
-        RefreshPlaylists _ ->
+        RefreshAllPlaylists _ ->
             let
                 fetches =
                     model.channels
@@ -482,94 +449,56 @@ updateFromFrontend sessionId clientId msg model =
 
         AttemptGetChannels email ->
             let
-                channelAssociations = 
+                channelAssociations =
                     model.channelAssociations
                         |> List.filter (\c -> c.email == email)
                         |> List.map .channelId
-                
+
                 channels =
                     model.channels
                         |> Dict.filter (\k _ -> List.member k channelAssociations)
                         |> Dict.values
             in
-            (model, 
-                sendToPage clientId <|
-                    Gen.Msg.Ga__Email_ <|
-                        Pages.Ga.Email_.GotChannels <|
-                            channels)
+            ( model
+            , sendToPage clientId <|
+                Gen.Msg.Ga__Email_ <|
+                    Pages.Ga.Email_.GotChannels <|
+                        channels
+            )
 
-        AttemptGetPlaylists channelId ->
-            ( model, Cmd.none )
+        AttemptGetChannelAndPlaylists channelId ->
+            let
+                channel =
+                    model.channels
+                        |> Dict.get channelId
+                        |> Debug.log "channel"
 
+                _ = Debug.log "all playlists" model.playlists
 
+                playlists =
+                    model.playlists
+                        |> Dict.filter (\_ v -> v.channelId == channelId)
+                        |> Dict.values
+                        |> Debug.log "playlists" 
+            in
+            case channel of
+                Just channel_ ->
+                    ( model
+                    , sendToPage clientId <|
+                        Gen.Msg.Channel__Id_ <|
+                            Pages.Channel.Id_.GotChannelAndPlaylists channel_ playlists
+                    ) |> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ ( playlists |> List.length |> String.fromInt)) Info
 
+                Nothing ->
+                    ( model, Cmd.none ) |> log ("Failed to find channel with id: " ++ channelId) Error
 
-
--- let
---     currentTimeout =
---         model.clientCredentials |> Dict.get email
---             |> Maybe.map .timeout
---             |> Maybe.withDefault 0
---     currentAccessToken =
---         model.clientCredentials |> Dict.get email
---             |> Maybe.map .accessToken
---     currentRefreshToken =
---         model.clientCredentials |> Dict.get email
---             |> Maybe.map .refreshToken
---             |> Maybe.withDefault ""
---     stillValid =
---         (time |> Time.posixToMillis) <= currentTimeout
--- in
--- case (stillValid, currentAccessToken) of
---     (True, Just accessToken, _) ->
---         ( model
---         , Cmd.none
---         )
---     _ ->
---         ( model
---         , YouTubeApi.refreshAccessToken
---             Env.clientId
---             Env.clientSecret
---             currentRefreshToken
---             |> Task.map (\t -> t.accessToken)
---             |> Task.map (\t -> AttemptGetChannelsWithTime email time)
---             |> Task.perform (GotFreshAccessTokenWithTime email)
---         )
--- AttemptGetChannels email ->
---     let
---         timestamp =
---             model.clientCredentials |> Dict.get email
---                 |> Maybe.map .timestamp
---                 |> Maybe.map (\t -> t + 3600000)
---                 |> Maybe.withDefault 0
---         maybeCredentials =
---             model.clientCredentials |> Dict.get email
---         refreshTokens =
---             maybeCredentials |> Maybe.map .refreshToken |> Maybe.withDefault ""
---         currentAccessToken =
---             maybeCredentials |> Maybe.map .accessToken |> Maybe.withDefault ""
---         taskTimeValid taskToDo =
---             Time.now
---             |> Task.map (\now -> (now |> Time.posixToMillis) <= timestamp)
---             |> Task.andThen (\valid ->
---                 if not valid then
---                     YouTubeApi.refreshAccessToken
---                         Env.clientId
---                         Env.clientSecret
---                         refreshTokens
---                     |> Task.map (\t -> t.accessToken)
---                     |> Task.map (\t -> taskToDo t)
---                 else
---                     taskToDo currentAccessToken)
---     in
---     ( model
---     , Cmd.none
---     -- , sendToPage clientId <|
---     --     Gen.Msg.Example <|
---     --         Pages.Example.GotChannels <|
---     --             (model.clientCredentials |> Dict.get email |> Maybe.map .channels |> Maybe.withDefault [])
---     )
--- CRYPTO
+        AttemptGetLogs ->
+            ( model
+            , sendToPage clientId <|
+                Gen.Msg.Log <|
+                    Pages.Log.GotLogs <|
+                        model.logs
+            )
 
 
 randomSalt : Random.Generator String
@@ -636,3 +565,24 @@ sendToPage clientId page =
 
 sendToShared clientId msg =
     sendToFrontend clientId <| SharedMsg <| msg
+
+
+httpErrToString : Error -> String
+httpErrToString error =
+    "HTTP Error - "
+        ++ (case error of
+                BadUrl url ->
+                    "Bad URL: " ++ url
+
+                Timeout ->
+                    "Timeout occurred"
+
+                NetworkError ->
+                    "Network error occurred"
+
+                BadStatus statusCode ->
+                    "Bad status code: " ++ String.fromInt statusCode
+
+                BadBody message ->
+                    "Bad body: " ++ message
+           )

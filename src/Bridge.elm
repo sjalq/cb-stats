@@ -3,7 +3,8 @@ module Bridge exposing (..)
 import Api.User exposing (Email)
 import Dict exposing (Dict)
 import Lamdera
-import Time
+import Api.YoutubeModel exposing (Channel)
+import Api.YoutubeModel exposing (Playlist)
 
 
 sendToBackend =
@@ -16,5 +17,6 @@ type ToBackend
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
-    | AttemptGetPlaylists String
+    | AttemptGetChannelAndPlaylists String 
+    | AttemptGetLogs
     | NoOpToBackend

@@ -8,6 +8,7 @@ import Gen.Params.Admin
 import Gen.Params.End
 import Gen.Params.Example
 import Gen.Params.Home_
+import Gen.Params.Log
 import Gen.Params.Login
 import Gen.Params.NotFound
 import Gen.Params.Register
@@ -22,6 +23,7 @@ type Route
     | End
     | Example
     | Home_
+    | Log
     | Login
     | NotFound
     | Register
@@ -40,6 +42,7 @@ routes =
     , Parser.map Admin Gen.Params.Admin.parser
     , Parser.map End Gen.Params.End.parser
     , Parser.map Example Gen.Params.Example.parser
+    , Parser.map Log Gen.Params.Log.parser
     , Parser.map Login Gen.Params.Login.parser
     , Parser.map NotFound Gen.Params.NotFound.parser
     , Parser.map Register Gen.Params.Register.parser
@@ -67,6 +70,9 @@ toHref route =
     
         Home_ ->
             joinAsHref []
+    
+        Log ->
+            joinAsHref [ "log" ]
     
         Login ->
             joinAsHref [ "login" ]

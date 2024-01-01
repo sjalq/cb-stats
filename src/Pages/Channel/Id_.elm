@@ -1,17 +1,21 @@
-module Pages.Channel.Id_ exposing (Model, Msg, page)
+module Pages.Channel.Id_ exposing (Model, Msg(..), page)
 
 import Api.YoutubeModel exposing (Channel, Playlist)
+import Bridge exposing (ToBackend(..))
 import Effect exposing (Effect)
+import Element exposing (..)
+import Element.Border
+import Element.Font exposing (..)
 import Gen.Params.Channel.Id_ exposing (Params)
+import Gen.Route as Route
+import Html.Attributes
+import Lamdera exposing (sendToBackend)
 import Page
 import Request
 import Shared
 import View exposing (View)
-import Element exposing (..)
-import Element.Border
-import Html.Attributes
-import Element.Font exposing (..)
-import Gen.Route as Route
+import UI.Helpers exposing (..)
+
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -40,7 +44,7 @@ init { params } =
       , channel = Nothing
       , playlists = []
       }
-    , Effect.none
+    , Effect.fromCmd <| sendToBackend <| AttemptGetChannelAndPlaylists params.id
     )
 
 
@@ -78,53 +82,22 @@ view : Model -> View Msg
 view model =
     { title = "Elm Land ❤️ Lamdera"
     , body =
-        let
-            wrappedCell text =
-                Element.paragraph
-                    [ Element.width <| Element.px 200
-                    , Element.Border.width 1
-                    , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
-                    , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
-                    ]
-                    [ Element.text text ]
-        in
-            el
-                [ centerX
-                , centerY
-                ]
-                (Element.column
-                    []
-                    [ Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "ihmpossibru!")
-                    , Element.table
-                        [ Element.centerX
-                        , Element.centerY
-                        , Element.spacing 5
-                        , Element.padding 10
-                        , Element.Border.width 1
+        el
+            [ centerX
+            , centerY
+            ]
+            (Element.column
+                []
+                [ Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "ihmpossibru!")
+                , Element.table
+                    tableStyle
+                    { data = model.playlists
+                    , columns =
+                        [ Column (Element.text "Id") (px 450) (.id >> wrappedText)
+                        , Column (Element.text "Title") (px 275) (.title >> wrappedText)
+                        , Column (Element.text "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         ]
-                        { data = model.playlists
-                        , columns =
-                            [ { header = Element.text "Id"
-                            , width = px 200
-                            , view =
-                                    \p ->
-                                        wrappedCell p.id
-                            }
-                            , { header = Element.text "Title"
-                            , width = px 275
-                            , view =
-                                    \p ->
-                                        wrappedCell p.title
-                            }
-                            , { header = Element.text "Description"
-                            , width = px 300 |> maximum 100
-                            , view =
-                                    \p ->
-                                        wrappedCell p.description
-
-                            }
-                            ]
-                        }
-                    ]
-                )
+                    }
+                ]
+            )
     }

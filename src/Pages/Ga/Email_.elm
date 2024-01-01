@@ -1,30 +1,26 @@
 module Pages.Ga.Email_ exposing (Model, Msg(..), page)
 
 import Api.YoutubeModel exposing (Channel)
+import Base64
 import Bridge exposing (ToBackend(..), sendToBackend)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
+import Element exposing (..)
+import Element.Border
+import Element.Font exposing (underline)
 import Gen.Params.Ga.Email_ exposing (Params)
+import Gen.Route as Route
+import Html.Attributes
 import Page
 import Request
 import Shared
+import UI.Helpers exposing (..)
 import Url
 import View exposing (View)
-import Base64
-
-import Element.Border
-import Element exposing (..)
-import Element.Font exposing (underline)
-import Html.Attributes
-import Gen.Route as Route
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
-    let
-        _ =
-            Debug.log "Goolgeaccount.Email_.page" "aa"
-    in
     Page.advanced
         { init = init req
         , update = update
@@ -46,7 +42,8 @@ type alias Model =
 init : Request.With Params -> ( Model, Effect Msg )
 init { params } =
     let
-        decodedEmail = params.email |> Base64.decode |> Result.withDefault ""
+        decodedEmail =
+            params.email |> Base64.decode |> Result.withDefault ""
     in
     ( { email = decodedEmail
       , channels = []
@@ -89,72 +86,32 @@ view : Model -> View Msg
 view model =
     { title = "Elm Land ❤️ Lamdera"
     , body =
-        let
-            wrappedCell text =
-                Element.paragraph
-                    [ Element.width <| Element.px 200
-                    , Element.Border.width 1
-                    , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
-                    , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
-                    ]
-                    [ Element.text text ]
-        in
-            el
-                [ centerX
-                , centerY
-                ]
-                (Element.column
-                    []
-                    [ Element.text model.email
-                    , Element.table
-                        [ Element.centerX
-                        , Element.centerY
-                        , Element.spacing 5
-                        , Element.padding 10
-                        , Element.Border.width 1
+        el
+            [ centerX
+            , centerY
+            ]
+            (Element.column
+                []
+                [ Element.text model.email
+                , Element.table
+                    tableStyle
+                    { data = model.channels
+                    , columns =
+                        [ Column (Element.text "Id") (px 200) (\c -> wrappedText c.id)
+                        , Column (Element.text "Title") (px 275) (\c -> wrappedText c.title)
+                        , Column (Element.text "Description") (px 300 |> maximum 100) (\c -> wrappedText c.description)
+                        , Column (Element.text "Custom Url") (px 500) (\c -> wrappedText c.customUrl)
+                        , Column
+                            (Element.text "Playlists")
+                            (px 200)
+                            (\c ->
+                                [ Element.link
+                                    [ centerX, centerY, underline ]
+                                    { url = Route.toHref (Route.Channel__Id_ { id = c.id }), label = Element.text "Channels" }
+                                ] |> wrappedCell
+                            )
                         ]
-                        { data = model.channels
-                        , columns =
-                            [ { header = Element.text "Id"
-                            , width = px 200
-                            , view =
-                                    \c ->
-                                        wrappedCell c.id
-                            }
-                            , { header = Element.text "Title"
-                            , width = px 275
-                            , view =
-                                    \c ->
-                                        wrappedCell c.title
-                            }
-                            , { header = Element.text "Description"
-                            , width = px 300 |> maximum 100
-                            , view =
-                                    \c ->
-                                        wrappedCell c.description
-                            }
-                            , { header = Element.text "Custom Url"
-                            , width = px 500
-                            , view =
-                                    \c ->
-                                        wrappedCell c.customUrl
-                            }
-                            , { header = Element.text "Playlists"
-                            , width = px 200
-                            , view =
-                                    \c ->
-                                        Element.link [ centerX, centerY, underline ]
-                                            { url =
-                                                Route.toHref
-                                                    (Route.Channel__Id_
-                                                        { id = c.id 
-                                                        }
-                                                    )
-                                            , label = Element.text "Channels"
-                                            }
-                            }
-                            ]
-                        }
-                    ]
+                    }
+                ]
             )
     }

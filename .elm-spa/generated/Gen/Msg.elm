@@ -4,6 +4,7 @@ import Gen.Params.Admin
 import Gen.Params.End
 import Gen.Params.Example
 import Gen.Params.Home_
+import Gen.Params.Log
 import Gen.Params.Login
 import Gen.Params.NotFound
 import Gen.Params.Register
@@ -13,6 +14,7 @@ import Pages.Admin
 import Pages.End
 import Pages.Example
 import Pages.Home_
+import Pages.Log
 import Pages.Login
 import Pages.NotFound
 import Pages.Register
@@ -25,6 +27,7 @@ type Msg
     | End Pages.End.Msg
     | Example Pages.Example.Msg
     | Home_ Pages.Home_.Msg
+    | Log Pages.Log.Msg
     | Login Pages.Login.Msg
     | Register Pages.Register.Msg
     | Channel__Id_ Pages.Channel.Id_.Msg

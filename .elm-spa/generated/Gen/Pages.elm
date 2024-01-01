@@ -7,6 +7,7 @@ import Gen.Params.Admin
 import Gen.Params.End
 import Gen.Params.Example
 import Gen.Params.Home_
+import Gen.Params.Log
 import Gen.Params.Login
 import Gen.Params.NotFound
 import Gen.Params.Register
@@ -20,6 +21,7 @@ import Pages.Admin
 import Pages.End
 import Pages.Example
 import Pages.Home_
+import Pages.Log
 import Pages.Login
 import Pages.NotFound
 import Pages.Register
@@ -55,6 +57,9 @@ init route =
         Route.Home_ ->
             pages.home_.init ()
     
+        Route.Log ->
+            pages.log.init ()
+    
         Route.Login ->
             pages.login.init ()
     
@@ -85,6 +90,9 @@ update msg_ model_ =
     
         ( Msg.Home_ msg, Model.Home_ params model ) ->
             pages.home_.update params msg model
+    
+        ( Msg.Log msg, Model.Log params model ) ->
+            pages.log.update params msg model
     
         ( Msg.Login msg, Model.Login params model ) ->
             pages.login.update params msg model
@@ -120,6 +128,9 @@ view model_ =
         Model.Home_ params model ->
             pages.home_.view params model
     
+        Model.Log params model ->
+            pages.log.view params model
+    
         Model.Login params model ->
             pages.login.view params model
     
@@ -154,6 +165,9 @@ subscriptions model_ =
         Model.Home_ params model ->
             pages.home_.subscriptions params model
     
+        Model.Log params model ->
+            pages.log.subscriptions params model
+    
         Model.Login params model ->
             pages.login.subscriptions params model
     
@@ -179,6 +193,7 @@ pages :
     , end : Bundle Gen.Params.End.Params Pages.End.Model Pages.End.Msg
     , example : Bundle Gen.Params.Example.Params Pages.Example.Model Pages.Example.Msg
     , home_ : Bundle Gen.Params.Home_.Params Pages.Home_.Model Pages.Home_.Msg
+    , log : Bundle Gen.Params.Log.Params Pages.Log.Model Pages.Log.Msg
     , login : Bundle Gen.Params.Login.Params Pages.Login.Model Pages.Login.Msg
     , notFound : Static Gen.Params.NotFound.Params
     , register : Bundle Gen.Params.Register.Params Pages.Register.Model Pages.Register.Msg
@@ -190,6 +205,7 @@ pages =
     , end = bundle Pages.End.page Model.End Msg.End
     , example = bundle Pages.Example.page Model.Example Msg.Example
     , home_ = bundle Pages.Home_.page Model.Home_ Msg.Home_
+    , log = bundle Pages.Log.page Model.Log Msg.Log
     , login = bundle Pages.Login.page Model.Login Msg.Login
     , notFound = static Pages.NotFound.view Model.NotFound
     , register = bundle Pages.Register.page Model.Register Msg.Register

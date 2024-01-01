@@ -12,7 +12,7 @@ type LogLevel
 
 type alias LogEntry =
     { message : String
-    , timeStamp : Time.Posix
+    , timestamp : Time.Posix
     , logLevel : LogLevel
     }
 
@@ -22,11 +22,11 @@ logToList logMessage timeStamp level logs =
     let
         newLogEntry =
             { message = logMessage
-            , timeStamp = timeStamp
+            , timestamp = timeStamp
             , logLevel = level
             }
     in
-    logs ++ [ newLogEntry ]
+    newLogEntry ::logs 
 
 
 logToModel : String -> Time.Posix -> LogLevel -> { a | logs : List LogEntry } -> { a | logs : List LogEntry }
@@ -88,3 +88,18 @@ monthToString month =
 
         Time.Dec ->
             "12"
+
+{-
+    Converts a log level to a string representation with emojis
+-}
+logLevelToString : LogLevel -> String
+logLevelToString level =
+    case level of
+        Error ->
+            "Error 🔥"
+
+        Info ->
+            "Info 👍"
+
+        Alert ->
+            "Alert 🚨"

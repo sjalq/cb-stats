@@ -5,7 +5,6 @@ import Bridge
 import Browser
 import Browser.Navigation exposing (Key)
 import Dict exposing (Dict)
-import Gen.Pages as Pages
 import Http
 import Lamdera exposing (ClientId, SessionId)
 import Shared
@@ -19,6 +18,7 @@ import Api.YoutubeModel exposing (..)
 import Json.Auto.Playlists
 import Json.Auto.Channels
 import Set exposing (..)
+import Gen.Pages as Pages
 
 
 type alias FrontendModel =
@@ -59,13 +59,10 @@ type BackendMsg
     | VerifySession SessionId ClientId Time.Posix
     | RegisterUser SessionId ClientId { email : String, password : String } String
     | Log_ String LogLevel Time.Posix -- don't use directly, use BackendLogging.log instead
-    | FetchChannels String
-    | FetchAccessToken String 
-    | GotAccessTokenResponse String Json.Auto.AccessToken.Root
     | GotFreshAccessTokenWithTime String String Posix
     | RefreshAccessTokens Time.Posix
-    | RefreshChannels Time.Posix
-    | RefreshPlaylists Time.Posix
+    | RefreshAllChannels Time.Posix
+    | RefreshAllPlaylists Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
     | GetChannels String
     | GotChannels String (Result Http.Error Json.Auto.Channels.Root)

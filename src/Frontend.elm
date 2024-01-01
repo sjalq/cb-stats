@@ -40,15 +40,11 @@ app =
 init : Url -> Key -> ( Model, Cmd Msg )
 init url key =
     let
-        _ = Debug.log "INIT" url
-
         ( shared, sharedCmd ) =
             Shared.init (Request.create () url key) ()
 
         ( page, effect ) =
             Pages.init (Route.fromUrl url) shared url key
-
-        _ = Debug.log "INIT PAGE" page
     in
     ( FrontendModel url key shared page
     , Cmd.batch
