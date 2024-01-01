@@ -8,6 +8,7 @@ import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Border
 import Element.Font exposing (underline)
+import Element.Input
 import Gen.Params.Ga.Email_ exposing (Params)
 import Gen.Route as Route
 import Html.Attributes
@@ -17,6 +18,8 @@ import Shared
 import UI.Helpers exposing (..)
 import Url
 import View exposing (View)
+import Element.Font 
+import Pages.Example exposing (Msg(..))
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -58,6 +61,7 @@ init { params } =
 
 type Msg
     = GotChannels (List Channel)
+    | GetChannels
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -67,6 +71,9 @@ update msg model =
             ( { model | channels = channels }
             , Effect.none
             )
+
+        GetChannels ->
+            ( model, Effect.fromCmd <| sendToBackend <| FetchChannelsFromYoutube <| model.email )
 
 
 
@@ -104,13 +111,26 @@ view model =
                         , Column
                             (Element.text "Playlists")
                             (px 200)
-                            (\c ->
-                                [ Element.link
-                                    [ centerX, centerY, underline ]
-                                    { url = Route.toHref (Route.Channel__Id_ { id = c.id }), label = Element.text "Channels" }
-                                ] |> wrappedCell
-                            )
+                            (\c -> idLink Route.Channel__Id_ c.id c.title)
                         ]
+                    }
+                , Element.Input.button
+                    [ centerX
+                    , centerY
+                    , Element.Font.size 16
+                    , Element.Font.bold
+                    , padding 30
+                    , Element.Border.color <| rgb255 128 128 128
+                    , Element.Border.width 1
+                    , Element.Border.innerGlow (rgb255 128 0 0) 5
+                    --, Element.Border.glow (rgb255 128 0 0) 10
+                    --, Element.Border.shadow { offset = (10, 10), size = 3, blur = 0.5, color = rgb255 128 0 0 }
+                    --, border3d 4 Color.grey Color.black Color.white
+                    --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
+                    --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
+                    ]
+                    { label = Element.text "Get Channels"
+                    , onPress = Just GetChannels 
                     }
                 ]
             )

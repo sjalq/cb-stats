@@ -38,6 +38,8 @@ type alias BackendModel =
     , channels : Dict String Channel
     , channelAssociations : List ChannelAssociation
     , playlists : Dict String Playlist
+    , schedules : Dict String Schedule
+    , apiCallCount : Int
     }
 
 
@@ -60,14 +62,17 @@ type BackendMsg
     | RegisterUser SessionId ClientId { email : String, password : String } String
     | Log_ String LogLevel Time.Posix -- don't use directly, use BackendLogging.log instead
     | GotFreshAccessTokenWithTime String String Posix
-    | RefreshAccessTokens Time.Posix
-    | RefreshAllChannels Time.Posix
-    | RefreshAllPlaylists Time.Posix
+    | Quota_RefreshAccessTokens Time.Posix
+    | Quota_RefreshAllChannels Time.Posix
+    | Quota_RefreshAllPlaylists Time.Posix
+    | Quota_RefreshAllVideos Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
     | GetChannels String
     | GotChannels String (Result Http.Error Json.Auto.Channels.Root)
     | GetPlaylists String
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
+    | GetVideos String
+    -- | GotVideos String (Result Http.Error Json.Auto.Videos.Root)
     | NoOpBackendMsg
 
 

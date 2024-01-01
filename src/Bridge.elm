@@ -17,6 +17,9 @@ type ToBackend
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
+    | FetchChannelsFromYoutube String
+    | FetchPlaylistsFromYoutube String
+    | FetchVideosFromYoutube String
     | AttemptGetChannelAndPlaylists String 
     | AttemptGetLogs
     | NoOpToBackend

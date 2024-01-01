@@ -2,22 +2,32 @@ module UI.Helpers exposing (..)
 
 import Element 
 import Element.Border
-import Html.Attributes 
+import Gen.Route as Route
+import Html.Attributes
+import Element.Font
 
-wrappedCell : List (Element.Element msg) -> Element.Element msg
+
+enlist : a -> List a
+enlist item =
+    [ item ]
+
+
+wrappedCell : Element.Element msg -> Element.Element msg
 wrappedCell =
-    Element.paragraph
-        [ Element.width <| Element.px 200
-        , Element.Border.width 1
-        , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
-        , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
-        --, Element.height <| Element.px 26
-        ]
-       
+    enlist
+        >> Element.paragraph
+            [ Element.width <| Element.px 200
+            , Element.Border.width 1
+            , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
+            , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
+
+            --, Element.height <| Element.px 26
+            ]
+
 
 wrappedText : String -> Element.Element msg
-wrappedText text =
-    [Element.text text] |> wrappedCell
+wrappedText =
+    Element.text >> wrappedCell
 
 
 tableStyle : List (Element.Attribute msg)
@@ -28,3 +38,12 @@ tableStyle =
     , Element.padding 10
     , Element.Border.width 1
     ]
+
+
+idLink linkRouteMsg id text =
+    Element.link
+        [ Element.centerX, Element.centerY, Element.Font.underline ]
+        { url = Route.toHref (linkRouteMsg {id = id} )
+        , label = Element.text text
+        }
+    |> wrappedCell

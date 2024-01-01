@@ -13,6 +13,7 @@ import Gen.Params.NotFound
 import Gen.Params.Register
 import Gen.Params.Channel.Id_
 import Gen.Params.Ga.Email_
+import Gen.Params.Playlist.Id_
 import Gen.Model as Model
 import Gen.Msg as Msg
 import Gen.Route as Route exposing (Route)
@@ -27,6 +28,7 @@ import Pages.NotFound
 import Pages.Register
 import Pages.Channel.Id_
 import Pages.Ga.Email_
+import Pages.Playlist.Id_
 import Request exposing (Request)
 import Shared
 import Task
@@ -74,6 +76,9 @@ init route =
     
         Route.Ga__Email_ params ->
             pages.ga__email_.init params
+    
+        Route.Playlist__Id_ params ->
+            pages.playlist__id_.init params
 
 
 update : Msg -> Model -> Shared.Model -> Url -> Key -> ( Model, Effect Msg )
@@ -105,6 +110,9 @@ update msg_ model_ =
     
         ( Msg.Ga__Email_ msg, Model.Ga__Email_ params model ) ->
             pages.ga__email_.update params msg model
+    
+        ( Msg.Playlist__Id_ msg, Model.Playlist__Id_ params model ) ->
+            pages.playlist__id_.update params msg model
 
         _ ->
             \_ _ _ -> ( model_, Effect.none )
@@ -145,6 +153,9 @@ view model_ =
     
         Model.Ga__Email_ params model ->
             pages.ga__email_.view params model
+    
+        Model.Playlist__Id_ params model ->
+            pages.playlist__id_.view params model
 
 
 subscriptions : Model -> Shared.Model -> Url -> Key -> Sub Msg
@@ -182,6 +193,9 @@ subscriptions model_ =
     
         Model.Ga__Email_ params model ->
             pages.ga__email_.subscriptions params model
+    
+        Model.Playlist__Id_ params model ->
+            pages.playlist__id_.subscriptions params model
 
 
 
@@ -199,6 +213,7 @@ pages :
     , register : Bundle Gen.Params.Register.Params Pages.Register.Model Pages.Register.Msg
     , channel__id_ : Bundle Gen.Params.Channel.Id_.Params Pages.Channel.Id_.Model Pages.Channel.Id_.Msg
     , ga__email_ : Bundle Gen.Params.Ga.Email_.Params Pages.Ga.Email_.Model Pages.Ga.Email_.Msg
+    , playlist__id_ : Bundle Gen.Params.Playlist.Id_.Params Pages.Playlist.Id_.Model Pages.Playlist.Id_.Msg
     }
 pages =
     { admin = bundle Pages.Admin.page Model.Admin Msg.Admin
@@ -211,6 +226,7 @@ pages =
     , register = bundle Pages.Register.page Model.Register Msg.Register
     , channel__id_ = bundle Pages.Channel.Id_.page Model.Channel__Id_ Msg.Channel__Id_
     , ga__email_ = bundle Pages.Ga.Email_.page Model.Ga__Email_ Msg.Ga__Email_
+    , playlist__id_ = bundle Pages.Playlist.Id_.page Model.Playlist__Id_ Msg.Playlist__Id_
     }
 
 

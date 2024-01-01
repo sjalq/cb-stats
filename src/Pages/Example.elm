@@ -2,25 +2,26 @@ module Pages.Example exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
 import Api.YoutubeModel exposing (ClientCredentials)
+import Base64
 import Bridge exposing (ToBackend(..))
 import Bytes.Encode
 import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Border
+import Element.Font exposing (underline)
 import Element.Input
 import Env
 import Gen.Params.Example exposing (Params)
 import Gen.Route as Route
-import Html.Attributes 
+import Html.Attributes
 import Lamdera exposing (sendToBackend)
 import Page
 import Request
 import Shared
 import Time
-import View exposing (View)
-import Base64 
-import Element.Font exposing (underline)
 import UI.Helpers exposing (..)
+import View exposing (View)
+
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -115,42 +116,44 @@ view model =
                 , Element.table
                     tableStyle
                     { data = model.clientCredentials
-                    , columns = 
+                    , columns =
                         [ Column (Element.text "Display Name") (px 200) (.displayName >> wrappedText)
                         , Column (Element.text "Email Address") (px 275) (.email >> wrappedText)
                         , Column (Element.text "Refresh Token") (px 300 |> maximum 100) (.refreshToken >> wrappedText)
-                        , Column (Element.text "Access Token") (px 500) (.accessToken >> wrappedText)
-                        , Column (Element.text "Remaining time") (px 200) (\cred -> 
-                            let
-                                currentTime_ =
-                                    model.currentTime |> Time.posixToMillis
-
-                                remainingTime =
-                                    (cred.timestamp - currentTime_ + 3600000) // 1000
-
-                                label =
-                                    if remainingTime < 0 then
-                                        "Expired"
-
-                                    else
-                                        String.fromInt remainingTime
-                            in
-                            wrappedText label
-                        )
-                        , Column 
-                            (Element.text "Fetch Channels Button") 
+                        , Column (Element.text "Access Token") (px 400) (.accessToken >> wrappedText)
+                        , Column (Element.text "Remaining time")
                             (px 200)
-                            (\cred -> 
-                                [ Element.link 
+                            (\cred ->
+                                let
+                                    currentTime_ =
+                                        model.currentTime |> Time.posixToMillis
+
+                                    remainingTime =
+                                        (cred.timestamp - currentTime_ + 3600000) // 1000
+
+                                    label =
+                                        if remainingTime < 0 then
+                                            "Expired"
+
+                                        else
+                                            String.fromInt remainingTime
+                                in
+                                wrappedText label
+                            )
+                        , Column
+                            (Element.text "Fetch Channels Button")
+                            (px 200)
+                            (\cred ->
+                                Element.link
                                     [ centerX, centerY, underline ]
                                     { url =
                                         Route.toHref
                                             (Route.Ga__Email_
                                                 { email = cred.email |> Base64.encode
                                                 }
-                                            ) 
+                                            )
                                     , label = Element.text cred.email
-                                    } ]
+                                    }
                                     |> wrappedCell
                             )
                         ]
@@ -158,70 +161,3 @@ view model =
                 ]
             )
     }
-                    -- columns =
-                    --     [ { header = Element.text "Display Name"
-                    --       , width = px 200
-                    --       , view =
-                    --             \cred ->
-                    --                 wrappedCell cred.displayName
-                    --       }
-                    --     , { header = Element.text "Email Address"
-                    --       , width = px 275
-                    --       , view =
-                    --             \cred ->
-                    --                 wrappedCell cred.email
-                    --       }
-                    --     , { header = Element.text "Refresh Token"
-                    --       , width = px 300 |> maximum 100
-                    --       , view =
-                    --             \cred ->
-                    --                 wrappedCell cred.refreshToken
-                    --       }
-                    --     , { header = Element.text "Access Token"
-                    --       , width = px 500
-                    --       , view =
-                    --             \cred ->
-                    --                 wrappedCell cred.accessToken
-                    --       }
-                    --     , { header = Element.text "Remaining time"
-                    --       , width = px 200
-                    --       , view =
-                    --             \cred ->
-                    --                 let
-                    --                     currentTime_ =
-                    --                         model.currentTime |> Time.posixToMillis
-
-                    --                     remainingTime =
-                    --                         (cred.timestamp - currentTime_ + 3600000) // 1000
-
-                    --                     label =
-                    --                         if remainingTime < 0 then
-                    --                             "Expired"
-
-                    --                         else
-                    --                             String.fromInt remainingTime
-
-                    --                     -- ++ " "
-                    --                     -- ++ String.fromInt cred.timestamp
-                    --                     -- ++ " "
-                    --                     -- ++ String.fromInt currentTime_
-                    --                 in
-                    --                 wrappedCell label
-                    --       }
-                    --     , { header = Element.text "Fetch Channels Button"
-                    --       , width = px 200
-                    --       , view =
-                    --             \cred ->
-                    --                 Element.link [ centerX, centerY, underline ]
-                    --                     { url =
-                    --                         Route.toHref
-                    --                             (Route.Ga__Email_
-                    --                                 { email = cred.email |> Base64.encode
-                    --                                 }
-                    --                             )
-                    --                     , label = Element.text "Channels"
-                    --                     }
-                    --       }
-                
-    --         )
-    -- }

@@ -52,6 +52,9 @@ app =
 
 init : ( Model, Cmd BackendMsg )
 init =
+    let
+        _ = Debug.log "init is running" ()
+    in
     ( { users = Dict.empty
       , authenticatedSessions = Dict.empty
       , incrementedInt = 0
@@ -60,22 +63,32 @@ init =
       , channels = Dict.empty
       , channelAssociations = []
       , playlists = Dict.empty
+      , schedules = Dict.empty
+      , apiCallCount = 0
       }
     , Cmd.batch <|
-        [ performNowWithTime RefreshAccessTokens
-        , performNowWithTime RefreshAllChannels
-        , performNowWithTime RefreshAllPlaylists
+        [ performNowWithTime Quota_RefreshAccessTokens
+        , performNowWithTime Quota_RefreshAllChannels
+        , performNowWithTime Quota_RefreshAllPlaylists
+        , performNowWithTime Quota_RefreshAllVideos 
         ]
     )
+
+
+second = 1000
+minute = 60 * second
+hour = 60 * minute
+day = 24 * hour
 
 
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
-        [ Time.every 1800000 RefreshAccessTokens -- 30 minutes
-        , Time.every 10000 RefreshAllChannels -- 1 minute
-        , Time.every 10000 RefreshAllPlaylists -- 1 minute
-        , onConnect OnConnect
+        [ Time.every (10 * second) Quota_RefreshAccessTokens -- 30 minutes
+        , Time.every day Quota_RefreshAllChannels -- 1 day
+        , Time.every day Quota_RefreshAllPlaylists -- 1 day
+        , Time.every minute Quota_RefreshAllVideos -- 1 minute
+        , onConnect OnConnect 
         ]
 
 
@@ -199,17 +212,18 @@ update msg model =
                     )
                         |> log ("Failed to fetch access token for " ++ email ++ "\n" ++ httpErrToString error) Error
 
-        RefreshAccessTokens time ->
+        Quota_RefreshAccessTokens time ->
             let
                 fetches =
                     model.clientCredentials
                         |> Dict.values
+                        |> List.filter (\c -> (c.timestamp + 3600000) < (time |> Time.posixToMillis))
                         |> List.map
                             (\c ->
                                 YouTubeApi.refreshAccessTokenCmd Env.clientId Env.clientSecret c.refreshToken c.email time
                             )
             in
-            ( model
+            ( model |> addToQuotaCount fetches
             , Cmd.batch fetches
             )
 
@@ -294,7 +308,7 @@ update msg model =
                         |> Maybe.withDefault Cmd.none
             in
             ( model
-            , fetch
+            , fetch 
             )
 
         GotPlaylists channelId playlistResponse ->
@@ -335,7 +349,7 @@ update msg model =
                     )
                         |> log ("Failed to fetch playlists for channel : " ++ channelId ++ "\n" ++ httpErrToString error) Error
 
-        RefreshAllChannels _ ->
+        Quota_RefreshAllChannels _ ->
             let
                 fetches =
                     model.clientCredentials
@@ -343,9 +357,10 @@ update msg model =
                         |> List.map GetChannels
                         |> List.map performNow
             in
-            ( model, fetches |> Cmd.batch )
+            ( model |> addToQuotaCount fetches
+            , fetches |> Cmd.batch )
 
-        RefreshAllPlaylists _ ->
+        Quota_RefreshAllPlaylists _ ->
             let
                 fetches =
                     model.channels
@@ -353,7 +368,23 @@ update msg model =
                         |> List.map GetPlaylists
                         |> List.map performNow
             in
-            ( model, fetches |> Cmd.batch )
+            ( model |> addToQuotaCount fetches
+            , fetches |> Cmd.batch )
+
+        Quota_RefreshAllVideos _ ->
+            -- let
+            --     fetches =
+            --         model.playlists
+            --             |> Dict.keys
+            --             |> List.map GetVideos
+            --             |> List.map performNow
+            -- in
+            -- ( model, fetches |> Cmd.batch )
+            ( model |> addToQuotaCount [] -- fetches
+            , Cmd.none )
+
+        GetVideos playlistId ->
+            ( model |> addToQuotaCount [] -- [GetVideos playlistId])
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -480,6 +511,9 @@ updateFromFrontend sessionId clientId msg model =
                         |> Dict.filter (\_ v -> v.channelId == channelId)
                         |> Dict.values
                         |> Debug.log "playlists" 
+
+                -- schedules =
+                --     model.
             in
             case channel of
                 Just channel_ ->
@@ -499,6 +533,15 @@ updateFromFrontend sessionId clientId msg model =
                     Pages.Log.GotLogs <|
                         model.logs
             )
+
+        FetchChannelsFromYoutube email ->
+            (model, performNow (GetChannels email))
+
+        FetchPlaylistsFromYoutube channelId ->
+            (model, performNow (GetPlaylists channelId))
+
+        FetchVideosFromYoutube playlistId ->
+            (model, performNow (GetVideos playlistId))
 
 
 randomSalt : Random.Generator String
@@ -586,3 +629,7 @@ httpErrToString error =
                 BadBody message ->
                     "Bad body: " ++ message
            )
+
+addToQuotaCount : List a -> Model -> Model
+addToQuotaCount fetches model =
+    { model | apiCallCount = model.apiCallCount + (fetches |> List.length) }

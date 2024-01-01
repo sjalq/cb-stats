@@ -10,6 +10,7 @@ import Gen.Params.NotFound
 import Gen.Params.Register
 import Gen.Params.Channel.Id_
 import Gen.Params.Ga.Email_
+import Gen.Params.Playlist.Id_
 import Pages.Admin
 import Pages.End
 import Pages.Example
@@ -20,6 +21,7 @@ import Pages.NotFound
 import Pages.Register
 import Pages.Channel.Id_
 import Pages.Ga.Email_
+import Pages.Playlist.Id_
 
 
 type Msg
@@ -32,4 +34,5 @@ type Msg
     | Register Pages.Register.Msg
     | Channel__Id_ Pages.Channel.Id_.Msg
     | Ga__Email_ Pages.Ga.Email_.Msg
+    | Playlist__Id_ Pages.Playlist.Id_.Msg
 
