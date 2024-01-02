@@ -12,7 +12,7 @@ import Lamdera exposing (..)
 import LamderaRPC exposing (..)
 import Types exposing (..)
 import Api.YoutubeModel exposing (..)
-import Api.PerformNow exposing (performNow)
+import Api.PerformNow exposing (..)
 
 -- move this to decoder folder
 
@@ -45,7 +45,9 @@ storeClientCredentialsEndpoint rawReq _ model headers jsonArg =
                 updatedModel = { model | clientCredentials = model.clientCredentials |> Dict.insert credentials.email credentials  }
                 responseMsg = "Stored credentials"
             in
-            ( Ok <| E.string responseMsg, updatedModel, Cmd.none)-- FetchChannels credentials.email |> performNow)
+            ( Ok <| E.string responseMsg
+            , updatedModel
+            , performNowWithTime (GetAccessToken credentials.email)) 
 
         Err err ->
             -- Handle decoding error

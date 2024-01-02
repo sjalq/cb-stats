@@ -9,6 +9,7 @@ import Json.Encode as Encode
 import Task exposing (Task)
 import Time
 import Types exposing (BackendMsg(..))
+import Json.Auto.PlaylistItems
 
 
 
@@ -77,7 +78,6 @@ refreshAccessToken clientId clientSecret refreshToken =
         }
 
 
---refreshAccessTokenCmd : String -> String -> String -> String -> Time.Posix -> Cmd msg
 refreshAccessTokenCmd clientId clientSecret refreshToken email time  =
     let
         jsonRequest =
@@ -123,6 +123,22 @@ getPlaylistsCmd channelId accessToken =
             , url = url
             , body = Http.emptyBody
             , expect = Http.expectJson (GotPlaylists channelId) Json.Auto.Playlists.rootDecoder
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+
+getVideosCmd : String -> String -> Cmd BackendMsg
+getVideosCmd playlistId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=5000&playlistId=" ++ playlistId
+    in
+        Http.request
+            { method = "GET"
+            , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+            , url = url
+            , body = Http.emptyBody
+            , expect = Http.expectJson (GotVideos playlistId) Json.Auto.PlaylistItems.rootDecoder
             , timeout = Nothing
             , tracker = Nothing
             }

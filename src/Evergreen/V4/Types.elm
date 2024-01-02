@@ -64,7 +64,6 @@ type BackendMsg
         String
     | Log_ String Evergreen.V4.Api.Logging.LogLevel Time.Posix
     | FetchChannels String
-    | FetchAccessToken String
     | GotAccessTokenResponse String Evergreen.V4.Json.Auto.AccessToken.Root
     | GotFreshAccessTokenWithTime String String Time.Posix
     | GetAccessTokens Time.Posix

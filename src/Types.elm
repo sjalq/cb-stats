@@ -1,24 +1,23 @@
 module Types exposing (..)
 
+import Api.Logging exposing (..)
 import Api.User exposing (Email, User, UserFull)
+import Api.YoutubeModel exposing (..)
 import Bridge
 import Browser
 import Browser.Navigation exposing (Key)
 import Dict exposing (Dict)
-import Http
-import Lamdera exposing (ClientId, SessionId)
-import Shared
-import Time
-import Url exposing (Url)
-import Api.YoutubeModel exposing (ClientCredentials)
-import Api.Logging exposing (..)
-import Time exposing (Posix)
-import Json.Auto.AccessToken 
-import Api.YoutubeModel exposing (..)
-import Json.Auto.Playlists
-import Json.Auto.Channels
-import Set exposing (..)
 import Gen.Pages as Pages
+import Http
+import Json.Auto.AccessToken
+import Json.Auto.Channels
+import Json.Auto.Playlists
+import Json.Auto.PlaylistItems
+import Lamdera exposing (ClientId, SessionId)
+import Set exposing (..)
+import Shared
+import Time exposing (Posix)
+import Url exposing (Url)
 
 
 type alias FrontendModel =
@@ -39,6 +38,7 @@ type alias BackendModel =
     , channelAssociations : List ChannelAssociation
     , playlists : Dict String Playlist
     , schedules : Dict String Schedule
+    , videos : Dict String Video
     , apiCallCount : Int
     }
 
@@ -62,17 +62,20 @@ type BackendMsg
     | RegisterUser SessionId ClientId { email : String, password : String } String
     | Log_ String LogLevel Time.Posix -- don't use directly, use BackendLogging.log instead
     | GotFreshAccessTokenWithTime String String Posix
-    | Quota_RefreshAccessTokens Time.Posix
-    | Quota_RefreshAllChannels Time.Posix
-    | Quota_RefreshAllPlaylists Time.Posix
-    | Quota_RefreshAllVideos Time.Posix
+      -- batch calls to youtube api
+    | Batch_RefreshAccessTokens Time.Posix
+    | Batch_RefreshAllChannels Time.Posix
+    | Batch_RefreshAllPlaylists Time.Posix
+    | Batch_RefreshAllVideos Time.Posix
+      -- youtube calls and responses
+    | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
     | GetChannels String
     | GotChannels String (Result Http.Error Json.Auto.Channels.Root)
     | GetPlaylists String
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
     | GetVideos String
-    -- | GotVideos String (Result Http.Error Json.Auto.Videos.Root)
+    | GotVideos String (Result Http.Error Json.Auto.PlaylistItems.Root)
     | NoOpBackendMsg
 
 

@@ -1,0 +1,37 @@
+{
+    "kind": "youtube#playlistItemListResponse",
+    "etag": "exsoJp_lZ5I1hIjTWVm_kZCUQOk",
+    "items": [
+        {
+            "kind": "youtube#playlistItem",
+            "etag": "-Ju3n6Wo3-yOsxXQDyP5miwYuQc",
+            "id": "UExiTFQ0dG9FMG5rUXEzUTRBZGxvTjFTUkYwVExSTlc4My41NkI0NEY2RDEwNTU3Q0M2",
+            "snippet": {
+                "publishedAt": "2024-01-02T16:20:34Z",
+                "channelId": "UCi1BlQaTk-Y9eGGh97z_qLg",
+                "title": "Let's talk Ethereum with Vitalik Buterin",
+                "description": "An interview about the advances in Ethereum over current distributed consensus computing methods.",
+                "thumbnails": {
+                    "standard": {
+                        "url": "https://i.ytimg.com/vi/Cw27x_xAPmI/sddefault.jpg",
+                        "width": 640,
+                        "height": 480
+                    }
+                },
+                "channelTitle": "Schalk Dormehl",
+                "playlistId": "PLbLT4toE0nkQq3Q4AdloN1SRF0TLRNW83",
+                "position": 0,
+                "resourceId": {
+                    "kind": "youtube#video",
+                    "videoId": "Cw27x_xAPmI"
+                },
+                "videoOwnerChannelTitle": "Schalk Dormehl",
+                "videoOwnerChannelId": "UCi1BlQaTk-Y9eGGh97z_qLg"
+            }
+        }
+    ],
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 50
+    }
+}

@@ -1,10 +1,10 @@
 module Bridge exposing (..)
 
 import Api.User exposing (Email)
+import Api.YoutubeModel exposing (Channel, Playlist)
 import Dict exposing (Dict)
 import Lamdera
-import Api.YoutubeModel exposing (Channel)
-import Api.YoutubeModel exposing (Playlist)
+import Api.YoutubeModel exposing (Schedule)
 
 
 sendToBackend =
@@ -17,9 +17,15 @@ type ToBackend
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
+      -- front end instructions to fetch data from youtube
     | FetchChannelsFromYoutube String
     | FetchPlaylistsFromYoutube String
     | FetchVideosFromYoutube String
-    | AttemptGetChannelAndPlaylists String 
+      -- normal fetches from backend to frontend
+    | AttemptGetChannelAndPlaylists String
+    | AttemptGetVideos String
     | AttemptGetLogs
+    -- update from frontend
+    | UpdateSchedule Schedule
+    -- no op for migrations
     | NoOpToBackend

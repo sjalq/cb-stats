@@ -30,7 +30,7 @@ import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
-
+import Pages.Playlist.Id_
 
 
 -- todo:
@@ -53,7 +53,8 @@ app =
 init : ( Model, Cmd BackendMsg )
 init =
     let
-        _ = Debug.log "init is running" ()
+        _ =
+            Debug.log "init is running" ()
     in
     ( { users = Dict.empty
       , authenticatedSessions = Dict.empty
@@ -64,31 +65,37 @@ init =
       , channelAssociations = []
       , playlists = Dict.empty
       , schedules = Dict.empty
+      , videos = Dict.empty
       , apiCallCount = 0
       }
-    , Cmd.batch <|
-        [ performNowWithTime Quota_RefreshAccessTokens
-        , performNowWithTime Quota_RefreshAllChannels
-        , performNowWithTime Quota_RefreshAllPlaylists
-        , performNowWithTime Quota_RefreshAllVideos 
-        ]
+    , Cmd.none -- might as well be none since it gets called at weird points
     )
 
 
-second = 1000
-minute = 60 * second
-hour = 60 * minute
-day = 24 * hour
+second =
+    1000
+
+
+minute =
+    60 * second
+
+
+hour =
+    60 * minute
+
+
+day =
+    24 * hour
 
 
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
-        [ Time.every (10 * second) Quota_RefreshAccessTokens -- 30 minutes
-        , Time.every day Quota_RefreshAllChannels -- 1 day
-        , Time.every day Quota_RefreshAllPlaylists -- 1 day
-        , Time.every minute Quota_RefreshAllVideos -- 1 minute
-        , onConnect OnConnect 
+        [ Time.every (10 * second) Batch_RefreshAccessTokens -- 30 minutes
+        , Time.every day Batch_RefreshAllChannels -- 1 day
+        , Time.every day Batch_RefreshAllPlaylists -- 1 day
+        , Time.every minute Batch_RefreshAllVideos -- 1 minute
+        , onConnect OnConnect
         ]
 
 
@@ -212,7 +219,7 @@ update msg model =
                     )
                         |> log ("Failed to fetch access token for " ++ email ++ "\n" ++ httpErrToString error) Error
 
-        Quota_RefreshAccessTokens time ->
+        Batch_RefreshAccessTokens time ->
             let
                 fetches =
                     model.clientCredentials
@@ -242,7 +249,7 @@ update msg model =
                             )
                         |> Maybe.withDefault Cmd.none
             in
-            ( model
+            ( model |> addToQuotaCount [ fetch ]
             , fetch
             )
 
@@ -308,7 +315,7 @@ update msg model =
                         |> Maybe.withDefault Cmd.none
             in
             ( model
-            , fetch 
+            , fetch
             )
 
         GotPlaylists channelId playlistResponse ->
@@ -328,11 +335,11 @@ update msg model =
                                         )
                                     )
                                 |> Dict.fromList
-                            |> Debug.log "retrieved playlists"
+                                |> Debug.log "retrieved playlists"
 
                         newPlaylists =
                             Dict.union retrievedPlaylists model.playlists
-                            |> Debug.log "new playlists"
+                                |> Debug.log "new playlists"
 
                         newModel =
                             { model
@@ -349,7 +356,7 @@ update msg model =
                     )
                         |> log ("Failed to fetch playlists for channel : " ++ channelId ++ "\n" ++ httpErrToString error) Error
 
-        Quota_RefreshAllChannels _ ->
+        Batch_RefreshAllChannels _ ->
             let
                 fetches =
                     model.clientCredentials
@@ -358,9 +365,10 @@ update msg model =
                         |> List.map performNow
             in
             ( model |> addToQuotaCount fetches
-            , fetches |> Cmd.batch )
+            , fetches |> Cmd.batch
+            )
 
-        Quota_RefreshAllPlaylists _ ->
+        Batch_RefreshAllPlaylists _ ->
             let
                 fetches =
                     model.channels
@@ -369,9 +377,10 @@ update msg model =
                         |> List.map performNow
             in
             ( model |> addToQuotaCount fetches
-            , fetches |> Cmd.batch )
+            , fetches |> Cmd.batch
+            )
 
-        Quota_RefreshAllVideos _ ->
+        Batch_RefreshAllVideos _ ->
             -- let
             --     fetches =
             --         model.playlists
@@ -380,11 +389,112 @@ update msg model =
             --             |> List.map performNow
             -- in
             -- ( model, fetches |> Cmd.batch )
-            ( model |> addToQuotaCount [] -- fetches
-            , Cmd.none )
+            ( model |> addToQuotaCount []
+              -- fetches
+            , Cmd.none
+            )
 
         GetVideos playlistId ->
-            ( model |> addToQuotaCount [] -- [GetVideos playlistId])
+            let
+                maybeAccessToken =
+                    model.playlists
+                        |> Dict.get playlistId
+                        |> Maybe.map .channelId
+                        |> Maybe.andThen (\channelId -> model.channelAssociations |> List.filter (\c -> c.channelId == channelId) |> List.head |> Maybe.map .email)
+                        |> Maybe.andThen (\email -> model.clientCredentials |> Dict.get email |> Maybe.map .accessToken)
+    
+                fetch =
+                    maybeAccessToken
+                        |> Maybe.map
+                            (\accessToken ->
+                                YouTubeApi.getVideosCmd playlistId accessToken
+                            )
+                        |> Maybe.withDefault Cmd.none
+            in
+            ( model |> addToQuotaCount [fetch]
+            , fetch
+            )
+
+        GetAccessToken email time ->
+            let
+                maybeRefreshToken =
+                    model.clientCredentials
+                        |> Dict.get email
+                        |> Maybe.map .refreshToken
+
+                fetch =
+                    maybeRefreshToken
+                        |> Maybe.map
+                            (\refreshToken ->
+                                YouTubeApi.refreshAccessTokenCmd Env.clientId Env.clientSecret refreshToken email time
+                            )
+                        |> Maybe.withDefault Cmd.none
+            in
+            ( model |> addToQuotaCount [ fetch ]
+            , fetch
+            )
+
+        GotVideos playlistId playlistItemResponse ->
+            case playlistItemResponse of
+                Ok validResponse ->
+                    let
+                        -- type alias Video =
+                        --     { id : String
+                        --     , title : String
+                        --     , description : String
+                        --     , channelId : String
+                        --     , playlistId : String
+                        --     , thumbnailUrl : String
+                        --     , publishedAt : String
+                        --     , duration : Int
+                        --     , viewCount : Int
+                        --     , likeCount : Int
+                        --     , dislikeCount : Int
+                        --     , favoriteCount : Int
+                        --     , commentCount : Int
+                        --     }
+
+                        retrievedVideos =
+                            validResponse.items
+                                |> List.map
+                                    (\v ->
+                                        ( v.snippet.resourceId.videoId
+                                        , {
+                                            id = v.snippet.resourceId.videoId
+                                            , title = v.snippet.title
+                                            , description = v.snippet.description
+                                            , channelId = v.snippet.channelId
+                                            , playlistId = v.snippet.playlistId
+                                            , thumbnailUrl = v.snippet.thumbnails.standard.url
+                                            , publishedAt = v.snippet.publishedAt
+                                            , duration = 0
+                                            , viewCount = 0
+                                            , likeCount = 0
+                                            , dislikeCount = 0
+                                            , favoriteCount = 0
+                                            , commentCount = 0
+                                            }
+                                        )
+                                    )
+                                |> Dict.fromList
+
+                        newVideos =
+                            Dict.union retrievedVideos model.videos
+
+                        newModel =
+                            { model
+                                | videos = newVideos
+                            }
+                    in
+                    ( newModel
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+                        |> log ("Failed to fetch videos for playlist : " ++ playlistId ++ "\n" ++ httpErrToString error) Error
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -504,24 +614,27 @@ updateFromFrontend sessionId clientId msg model =
                         |> Dict.get channelId
                         |> Debug.log "channel"
 
-                _ = Debug.log "all playlists" model.playlists
+                _ =
+                    Debug.log "all playlists" model.playlists
 
                 playlists =
                     model.playlists
                         |> Dict.filter (\_ v -> v.channelId == channelId)
-                        |> Dict.values
-                        |> Debug.log "playlists" 
 
-                -- schedules =
-                --     model.
+
+                schedules =
+                    model.schedules 
+                        |> Dict.filter (\_ v -> playlists |> Dict.member v.playlistId)
+                        |> Debug.log "schedules"
             in
             case channel of
                 Just channel_ ->
                     ( model
                     , sendToPage clientId <|
                         Gen.Msg.Channel__Id_ <|
-                            Pages.Channel.Id_.GotChannelAndPlaylists channel_ playlists
-                    ) |> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ ( playlists |> List.length |> String.fromInt)) Info
+                            Pages.Channel.Id_.GotChannelAndPlaylists channel_ playlists schedules
+                    )
+                        |> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ (playlists |> Dict.size |> String.fromInt)) Info
 
                 Nothing ->
                     ( model, Cmd.none ) |> log ("Failed to find channel with id: " ++ channelId) Error
@@ -535,13 +648,31 @@ updateFromFrontend sessionId clientId msg model =
             )
 
         FetchChannelsFromYoutube email ->
-            (model, performNow (GetChannels email))
+            ( model, performNow (GetChannels email) )
 
         FetchPlaylistsFromYoutube channelId ->
-            (model, performNow (GetPlaylists channelId))
+            ( model, performNow (GetPlaylists channelId) )
 
         FetchVideosFromYoutube playlistId ->
-            (model, performNow (GetVideos playlistId))
+            ( model, performNow (GetVideos playlistId) )
+
+        UpdateSchedule schedule ->
+            ( { model | schedules = model.schedules |> Dict.insert schedule.playlistId schedule }
+            , Cmd.none
+            )
+
+        AttemptGetVideos playlistId ->
+            let
+                videos =
+                    model.videos
+                        |> Dict.filter (\_ v -> v.playlistId == playlistId)
+            in
+            ( model
+            , sendToPage clientId <|
+                Gen.Msg.Playlist__Id_ <|
+                    Pages.Playlist.Id_.GotVideos <|
+                        videos
+            )
 
 
 randomSalt : Random.Generator String
@@ -629,6 +760,7 @@ httpErrToString error =
                 BadBody message ->
                     "Bad body: " ++ message
            )
+
 
 addToQuotaCount : List a -> Model -> Model
 addToQuotaCount fetches model =

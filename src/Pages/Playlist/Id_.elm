@@ -1,4 +1,4 @@
-module Pages.Playlist.Id_ exposing (Model, Msg, page)
+module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.YoutubeModel
 import Effect exposing (Effect)
@@ -14,6 +14,7 @@ import Element.Font
 import Element.Border
 import Element.Input
 import Bridge exposing (..)
+import Dict exposing (Dict)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -32,15 +33,15 @@ page shared req =
 
 type alias Model =
     { playlistId : String
-    , videos : List Video
+    , videos : Dict String Video
     }
 
 
 init : Request.With Params -> ( Model, Effect Msg )
 init { params }=
-    ( { videos = []
+    ( { videos = Dict.empty
     , playlistId = params.id }
-    , Effect.none )
+    , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id )
 
 
 
@@ -48,7 +49,7 @@ init { params }=
 
 
 type Msg
-    = GotVideos (List Video)
+    = GotVideos (Dict String Video)
     | GetVideos
 
 
@@ -89,7 +90,7 @@ view model =
                 [ Element.text <| (model.playlistId )
                 , Element.table
                     tableStyle
-                    { data = model.videos
+                    { data = model.videos |> Dict.values
                     , columns =
                         [ Column (Element.text "Id") (px 450) (.id >> wrappedText)
                         , Column (Element.text "Title") (px 275) (.title >> wrappedText)
@@ -118,7 +119,7 @@ view model =
                     --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
                     --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
                     ]
-                    { label = Element.text "Get Channels"
+                    { label = Element.text "Get Videos"
                     , onPress = Just GetVideos
                     }
                 ]

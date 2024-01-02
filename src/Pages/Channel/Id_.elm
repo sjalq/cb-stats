@@ -2,6 +2,7 @@ module Pages.Channel.Id_ exposing (Model, Msg(..), page)
 
 import Api.YoutubeModel exposing (Channel, DaysOfWeek, Playlist, Schedule)
 import Bridge exposing (ToBackend(..))
+import Dict exposing (..)
 import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Border
@@ -35,8 +36,8 @@ page shared req =
 type alias Model =
     { channelId : String
     , channel : Maybe Channel
-    , playlists : List Playlist
-    , schedules : List Schedule
+    , playlists : Dict String Playlist
+    , schedules : Dict String Schedule
     }
 
 
@@ -44,8 +45,8 @@ init : Request.With Params -> ( Model, Effect Msg )
 init { params } =
     ( { channelId = params.id
       , channel = Nothing
-      , playlists = []
-      , schedules = []
+      , playlists = Dict.empty
+      , schedules = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetChannelAndPlaylists params.id
     )
@@ -56,11 +57,69 @@ init { params } =
 
 
 type Msg
-    = GotChannelAndPlaylists Channel (List Playlist)
+    = GotChannelAndPlaylists Channel (Dict String Playlist) (Dict String Schedule)
     | GetPlaylists
-    | Schedule_UpdateHour Schedule String
-    | Schedule_UpdateMinute Schedule String
-    | Schedule_UpdateDaysOfWeek Schedule DaysOfWeek
+    | Schedule_UpdateSchedule Schedule
+
+
+schedule_selectDaysOfWeek dayCaseInsesitive schedule selected =
+    let
+        days =
+            schedule.days
+
+        day =
+            dayCaseInsesitive |> String.toLower |> String.trim
+    in
+    case day of
+        "monday" ->
+            { schedule | days = { days | monday = selected } }
+
+        "tuesday" ->
+            { schedule | days = { days | tuesday = selected } }
+
+        "wednesday" ->
+            { schedule | days = { days | wednesday = selected } }
+
+        "thursday" ->
+            { schedule | days = { days | thursday = selected } }
+
+        "friday" ->
+            { schedule | days = { days | friday = selected } }
+
+        "saturday" ->
+            { schedule | days = { days | saturday = selected } }
+
+        "sunday" ->
+            { schedule | days = { days | sunday = selected } }
+
+        _ ->
+            schedule
+
+
+schedule_updateHour schedule hour =
+    case hour |> String.toInt of
+        Just hour_ ->
+            if hour_ < 0 || hour_ > 23 then
+                { schedule | hour = 0 }
+
+            else
+                { schedule | hour = hour_ }
+
+        _ ->
+            schedule
+
+
+schedule_updateMinute schedule minute =
+    case minute |> String.toInt of
+        Just minute_ ->
+            if minute_ < 0 || minute_ > 23 then
+                { schedule | minute = 0 }
+
+            else
+                { schedule | minute = minute_ }
+
+        _ ->
+            schedule
 
 
 updateSchedule : Schedule -> Model -> Model
@@ -68,8 +127,7 @@ updateSchedule schedule model =
     let
         schedules =
             model.schedules
-                |> List.filter (\s -> s.playlistId /= schedule.playlistId)
-                |> List.append [ schedule ]
+                |> Dict.insert schedule.playlistId schedule
     in
     { model | schedules = schedules }
 
@@ -77,34 +135,14 @@ updateSchedule schedule model =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotChannelAndPlaylists channel playlists ->
-            ( { model | channel = Just channel, playlists = playlists }
+        GotChannelAndPlaylists channel playlists schedules ->
+            ( { model | channel = Just channel, playlists = playlists, schedules = schedules }
             , Effect.none
             )
 
-        Schedule_UpdateHour shedule hour ->
-            case hour |> String.toInt of
-                Just hour_ ->
-                    ( model |> updateSchedule { shedule | hour = hour_ }
-                    , Effect.none
-                    )
-
-                _ ->
-                    ( model, Effect.none )
-
-        Schedule_UpdateMinute shedule minute ->
-            case minute |> String.toInt of
-                Just minute_ ->
-                    ( model |> updateSchedule { shedule | minute = minute_ }
-                    , Effect.none
-                    )
-
-                _ ->
-                    ( model, Effect.none )
-
-        Schedule_UpdateDaysOfWeek shedule days ->
-            ( model |> updateSchedule { shedule | days = days }
-            , Effect.none
+        Schedule_UpdateSchedule newSchedule ->
+            ( model |> updateSchedule newSchedule
+            , Effect.fromCmd <| sendToBackend <| UpdateSchedule newSchedule
             )
 
         GetPlaylists ->
@@ -139,65 +177,55 @@ scheduleComponent schedule =
 
             else
                 Element.text "X"
+
+        dayCheckbox label checked =
+            let
+                newSchedule =
+                    schedule_selectDaysOfWeek label schedule
+            in
+            Element.Input.checkbox []
+                { onChange = \c -> Schedule_UpdateSchedule (newSchedule c)
+                , icon = tickOrUntick
+                , checked = checked
+                , label = text label |> Element.Input.labelLeft []
+                }
     in
     column []
-        [ Element.Input.text []
-            { onChange = \hour -> Schedule_UpdateHour schedule hour
-            , placeholder = Element.Input.placeholder [] (text "Hour") |> Just
-            , text = schedule.hour |> String.fromInt
-            , label = text "Hour" |> Element.Input.labelLeft []
-            }
-        , Element.Input.text []
-            { onChange = \minute -> Schedule_UpdateMinute schedule minute
-            , placeholder = Element.Input.placeholder [] (text "Hour") |> Just
-            , text = schedule.minute |> String.fromInt
-            , label = text "Minute" |> Element.Input.labelLeft []
-            }
-        , row []
-            [ Element.Input.checkbox []
-                { onChange = \monday -> Schedule_UpdateDaysOfWeek schedule { days | monday = monday }
-                , icon = tickOrUntick
-                , checked = schedule.days.monday
-                , label = text "Monday" |> Element.Input.labelLeft []
+        [ row []
+            [ Element.Input.text [ width <| Element.minimum 50 (px 10) ]
+                { onChange = \hour -> Schedule_UpdateSchedule (schedule_updateHour schedule hour)
+                , placeholder = Nothing
+                , text = schedule.hour |> String.fromInt
+                , label = text "Hour" |> Element.Input.labelLeft []
                 }
-            , Element.Input.checkbox []
-                { onChange = \tuesday -> Schedule_UpdateDaysOfWeek schedule { days | tuesday = tuesday }
-                , icon = tickOrUntick
-                , checked = schedule.days.tuesday
-                , label = text "Tuesday" |> Element.Input.labelLeft []
-                }
-            , Element.Input.checkbox []
-                { onChange = \wednesday -> Schedule_UpdateDaysOfWeek schedule { days | wednesday = wednesday }
-                , icon = tickOrUntick
-                , checked = schedule.days.wednesday
-                , label = text "Wednesday" |> Element.Input.labelLeft []
-                }
-            , Element.Input.checkbox []
-                { onChange = \thursday -> Schedule_UpdateDaysOfWeek schedule { days | thursday = thursday }
-                , icon = tickOrUntick
-                , checked = schedule.days.thursday
-                , label = text "Thursday" |> Element.Input.labelLeft []
-                }
-            , Element.Input.checkbox []
-                { onChange = \friday -> Schedule_UpdateDaysOfWeek schedule { days | friday = friday }
-                , icon = tickOrUntick
-                , checked = schedule.days.friday
-                , label = text "Friday" |> Element.Input.labelLeft []
-                }
-            , Element.Input.checkbox []
-                { onChange = \saturday -> Schedule_UpdateDaysOfWeek schedule { days | saturday = saturday }
-                , icon = tickOrUntick
-                , checked = schedule.days.saturday
-                , label = text "Saturday" |> Element.Input.labelLeft []
-                }
-            , Element.Input.checkbox []
-                { onChange = \sunday -> Schedule_UpdateDaysOfWeek schedule { days | sunday = sunday }
-                , icon = tickOrUntick
-                , checked = schedule.days.sunday
-                , label = text "Sunday" |> Element.Input.labelLeft []
+            , Element.Input.text [ width <| Element.minimum 50 (px 10) ]
+                { onChange = \minute -> Schedule_UpdateSchedule (schedule_updateMinute schedule minute)
+                , placeholder = Nothing
+                , text = schedule.minute |> String.fromInt
+                , label = text "Minute" |> Element.Input.labelLeft []
                 }
             ]
+        , column []
+            [ row []
+                [ dayCheckbox "Monday" days.monday
+                , dayCheckbox "Tuesday" days.tuesday
+                ]
+            , row []
+                [ dayCheckbox "Wednesday" days.wednesday
+                , dayCheckbox "Thursday" days.thursday
+                ]
+            , row []
+                [ dayCheckbox "Friday" days.friday
+                , dayCheckbox "Saturday" days.saturday
+                , dayCheckbox "Sunday" days.sunday
+                ]
+            ]
+            |> UI.Helpers.wrappedCell
         ]
+
+
+
+-- |> UI.Helpers.wrappedCell
 
 
 view : Model -> View Msg
@@ -213,7 +241,7 @@ view model =
                 [ Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "ihmpossibru!")
                 , Element.table
                     tableStyle
-                    { data = model.playlists
+                    { data = model.playlists |> Dict.values |> List.sortBy .title
                     , columns =
                         [ Column (Element.text "Id") (px 450) (.id >> wrappedText)
                         , Column (Element.text "Title") (px 275) (.title >> wrappedText)
@@ -227,9 +255,9 @@ view model =
                             (px 100)
                             (\p ->
                                 model.schedules
-                                    |> List.filter (\s -> s.playlistId == p.id)
-                                    |> List.head
+                                    |> Dict.get p.id
                                     |> Maybe.withDefault
+                                        -- also acts to initialize one if none exists
                                         { playlistId = p.id
                                         , hour = 0
                                         , minute = 0
@@ -247,25 +275,25 @@ view model =
                             )
                         ]
                     }
-                    , Element.Input.button
-                        [ centerX
-                        , centerY
-                        , Element.Font.size 16
-                        , Element.Font.bold
-                        , padding 30
-                        , Element.Border.color <| rgb255 128 128 128
-                        , Element.Border.width 1
-                        , Element.Border.innerGlow (rgb255 128 0 0) 5
-                        --, Element.Border.glow (rgb255 128 0 0) 10
-                        --, Element.Border.shadow { offset = (10, 10), size = 3, blur = 0.5, color = rgb255 128 0 0 }
-                        --, border3d 4 Color.grey Color.black Color.white
-                        --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
-                        --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
-                        ]
-                        { label = Element.text "Get Playlists"
-                        , onPress = Just GetPlaylists
-                        }
-                
+                , Element.Input.button
+                    [ centerX
+                    , centerY
+                    , Element.Font.size 16
+                    , Element.Font.bold
+                    , padding 30
+                    , Element.Border.color <| rgb255 128 128 128
+                    , Element.Border.width 1
+                    , Element.Border.innerGlow (rgb255 128 0 0) 5
+
+                    --, Element.Border.glow (rgb255 128 0 0) 10
+                    --, Element.Border.shadow { offset = (10, 10), size = 3, blur = 0.5, color = rgb255 128 0 0 }
+                    --, border3d 4 Color.grey Color.black Color.white
+                    --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
+                    --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
+                    ]
+                    { label = Element.text "Get Playlists"
+                    , onPress = Just GetPlaylists
+                    }
                 ]
             )
     }
