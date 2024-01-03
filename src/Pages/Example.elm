@@ -5,6 +5,7 @@ import Api.YoutubeModel exposing (ClientCredentials)
 import Base64
 import Bridge exposing (ToBackend(..))
 import Bytes.Encode
+import Dict exposing (..)
 import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Border
@@ -38,15 +39,17 @@ page shared req =
 
 
 type alias Model =
-    { clientCredentials : List ClientCredentials
+    { clientCredentials : Dict String ClientCredentials
     , currentTime : Time.Posix
+    , noAccessKeysIncluded : Bool
     }
 
 
 init : ( Model, Effect Msg )
 init =
-    ( { clientCredentials = []
+    ( { clientCredentials = Dict.empty
       , currentTime = Time.millisToPosix 0
+      , noAccessKeysIncluded = True
       }
     , Effect.fromCmd <|
         Cmd.batch
@@ -61,7 +64,7 @@ init =
 
 
 type Msg
-    = GotCredentials (List ClientCredentials)
+    = GotCredentials (Dict String ClientCredentials)
     | GetChannels String
     | Tick Time.Posix
 
@@ -70,7 +73,18 @@ update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         GotCredentials clientCredentials ->
-            ( { model | clientCredentials = clientCredentials }, Effect.none )
+            let
+                noAccesKeysInculded =
+                    clientCredentials
+                        |> Dict.values
+                        |> List.foldl (\cred acc -> acc && cred.accessToken == "") True
+            in
+            ( { model
+                | clientCredentials = clientCredentials
+                , noAccessKeysIncluded = noAccesKeysInculded
+              }
+            , Effect.none
+            )
 
         GetChannels email ->
             ( model
@@ -117,44 +131,47 @@ view model =
                 , el [ paddingXY 0 10 ] <|
                     Element.table
                         tableStyle
-                        { data = model.clientCredentials
+                        { data = model.clientCredentials |> Dict.values
                         , columns =
                             [ Column (columnHeader "Display Name") (px 200) (.displayName >> wrappedText)
                             , Column (columnHeader "Email Address") (px 275) (.email >> wrappedText)
-                            , Column (columnHeader "Refresh Token") (px 300 |> maximum 100) (.refreshToken >> wrappedText)
-                            , Column (columnHeader "Access Token") (px 400) (.accessToken >> wrappedText)
-                            , Column
-                                (columnHeader "Remaining time")
-                                (px 200)
-                                (\cred ->
-                                    let
-                                        currentTime_ =
-                                            model.currentTime |> Time.posixToMillis
-
-                                        remainingTime =
-                                            (cred.timestamp - currentTime_ + 3600000) // 1000
-
-                                        label =
-                                            if remainingTime < 0 then
-                                                "Expired"
-
-                                            else
-                                                String.fromInt remainingTime
-                                    in
-                                    wrappedText label
-                                )
-                            , Column
-                                (Element.text "")
-                                (px 200)
-                                (\cred ->
-                                    linkButton
-                                        "Channels"
-                                    <|
-                                        Route.toHref <|
-                                            Route.Ga__Email_
-                                                { email = cred.email |> Base64.encode }
-                                )
                             ]
+                                ++ (if (not model.noAccessKeysIncluded) then
+                                        [ Column (columnHeader "Refresh Token") (px 300 |> maximum 100) (.refreshToken >> wrappedText)
+                                        , Column (columnHeader "Access Token") (px 400) (.accessToken >> wrappedText)
+                                   ] else [])
+                                ++ [ Column
+                                        (columnHeader "Remaining time")
+                                        (px 200)
+                                        (\cred ->
+                                            let
+                                                currentTime_ =
+                                                    model.currentTime |> Time.posixToMillis
+
+                                                remainingTime =
+                                                    (cred.timestamp - currentTime_ + 3600000) // 1000
+
+                                                label =
+                                                    if remainingTime < 0 then
+                                                        "Expired"
+
+                                                    else
+                                                        String.fromInt remainingTime
+                                            in
+                                            wrappedText label
+                                        )
+                                   , Column
+                                        (Element.text "")
+                                        (px 200)
+                                        (\cred ->
+                                            linkButton
+                                                "Channels"
+                                            <|
+                                                Route.toHref <|
+                                                    Route.Ga__Email_
+                                                        { email = cred.email |> Base64.encode }
+                                        )
+                                   ]
                         }
                 ]
             )

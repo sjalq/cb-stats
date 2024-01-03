@@ -27,5 +27,6 @@ type ToBackend
     | AttemptGetLogs
     -- update from frontend
     | UpdateSchedule Schedule
+    | UpdatePlaylist Playlist
     -- no op for migrations
     | NoOpToBackend

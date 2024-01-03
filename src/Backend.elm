@@ -331,6 +331,7 @@ update msg model =
                                           , title = p.snippet.title
                                           , description = p.snippet.description
                                           , channelId = p.snippet.channelId
+                                          , monitor = False
                                           }
                                         )
                                     )
@@ -581,11 +582,32 @@ updateFromFrontend sessionId clientId msg model =
             ( model, Cmd.none )
 
         AttemptGetCredentials ->
+            let
+                userEmail = model.authenticatedSessions |> Dict.get sessionId |> Maybe.map .user
+
+                adminEmails = Env.adminUsers |> String.split ","
+            
+                isAdmin =
+                    case userEmail of
+                        Just userEmail_ ->
+                            List.member userEmail_ adminEmails
+
+                        Nothing ->
+                            False
+
+                santizedCredentials =
+                    if isAdmin then
+                        model.clientCredentials
+
+                    else
+                        model.clientCredentials
+                            |> Dict.map (\_ v -> { v | accessToken = "", refreshToken = "" })
+            in
             ( model
             , sendToPage clientId <|
                 Gen.Msg.Example <|
                     Pages.Example.GotCredentials <|
-                        (model.clientCredentials |> Dict.values)
+                        santizedCredentials
             )
 
         AttemptGetChannels email ->
@@ -658,6 +680,11 @@ updateFromFrontend sessionId clientId msg model =
 
         UpdateSchedule schedule ->
             ( { model | schedules = model.schedules |> Dict.insert schedule.playlistId schedule }
+            , Cmd.none
+            )
+
+        UpdatePlaylist playlist ->
+            ( { model | playlists = model.playlists |> Dict.insert playlist.id playlist }
             , Cmd.none
             )
 

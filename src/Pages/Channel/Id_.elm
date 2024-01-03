@@ -1,6 +1,5 @@
 module Pages.Channel.Id_ exposing (Model, Msg(..), page)
 
-import Styles.Colors
 import Api.YoutubeModel exposing (Channel, DaysOfWeek, Playlist, Schedule)
 import Bridge exposing (ToBackend(..))
 import Dict exposing (..)
@@ -16,6 +15,7 @@ import Lamdera exposing (sendToBackend)
 import Page
 import Request
 import Shared
+import Styles.Colors
 import UI.Helpers exposing (..)
 import View exposing (View)
 
@@ -61,6 +61,7 @@ type Msg
     = GotChannelAndPlaylists Channel (Dict String Playlist) (Dict String Schedule)
     | GetPlaylists
     | Schedule_UpdateSchedule Schedule
+    | MonitorPlaylist Playlist Bool
 
 
 schedule_selectDaysOfWeek dayCaseInsesitive schedule selected =
@@ -151,6 +152,15 @@ update msg model =
             , Effect.fromCmd <| sendToBackend <| FetchPlaylistsFromYoutube model.channelId
             )
 
+        MonitorPlaylist playlist monitor ->
+            let
+                newPlaylist =
+                    { playlist | monitor = monitor }
+            in
+            ( { model | playlists = model.playlists |> Dict.insert playlist.id newPlaylist }
+            , Effect.fromCmd <| sendToBackend <| UpdatePlaylist newPlaylist
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -165,19 +175,20 @@ subscriptions model =
 -- VIEW
 
 
+tickOrUntick : Bool -> Element Msg
+tickOrUntick ticked =
+    if ticked then
+        Element.text "✅"
+
+    else
+        Element.text "❌"
+
+
 scheduleComponent : Schedule -> Element Msg
 scheduleComponent schedule =
     let
         days =
             schedule.days
-
-        tickOrUntick : Bool -> Element Msg
-        tickOrUntick ticked =
-            if ticked then
-                Element.text "✅"
-
-            else
-                Element.text "❌"
 
         dayCheckbox label checked =
             let
@@ -193,7 +204,7 @@ scheduleComponent schedule =
     in
     column [ Element.width fill, Element.paddingXY 10 10 ]
         [ row [ Element.width fill ]
-            [ Element.Input.text [ width <| Element.minimum 40 (px 10), paddingXY 3 3, centerX, centerY  ]
+            [ Element.Input.text [ width <| Element.minimum 40 (px 10), paddingXY 3 3, centerX, centerY ]
                 { onChange = \hour -> Schedule_UpdateSchedule (schedule_updateHour schedule hour)
                 , placeholder = Nothing
                 , text = schedule.hour |> String.fromInt
@@ -242,8 +253,8 @@ view model =
             (Element.column
                 []
                 [ Element.el titleStyle (Element.text <| "Playlists associated to channel:")
-                , Element.el 
-                    (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) 
+                , Element.el
+                    (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ])
                     (Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "impossibruu!"))
                 , Element.table
                     tableStyle
@@ -253,29 +264,41 @@ view model =
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column
-                            (columnHeader "Schedule")
-                            (px 350)
+                            (columnHeader "Monitor")
+                            (px 100)
                             (\p ->
-                                model.schedules
-                                    |> Dict.get p.id
-                                    |> Maybe.withDefault
-                                        -- also acts to initialize one if none exists
-                                        { playlistId = p.id
-                                        , hour = 0
-                                        , minute = 0
-                                        , days =
-                                            { monday = False
-                                            , tuesday = False
-                                            , wednesday = False
-                                            , thursday = False
-                                            , friday = False
-                                            , saturday = False
-                                            , sunday = False
-                                            }
-                                        }
-                                    |> scheduleComponent
+                                Element.Input.checkbox [ paddingXY 35 35, width fill, centerX, centerY ]
+                                    { onChange = \c -> MonitorPlaylist p c
+                                    , icon = tickOrUntick
+                                    , checked = p.monitor
+                                    , label = "Monitor" |> Element.Input.labelHidden
+                                    }
+                                |> UI.Helpers.wrappedCell
                             )
-                        ,Column 
+                        -- , Column
+                        --     (columnHeader "Schedule")
+                        --     (px 350)
+                        --     (\p ->
+                        --         model.schedules
+                        --             |> Dict.get p.id
+                        --             |> Maybe.withDefault
+                        --                 -- also acts to initialize one if none exists
+                        --                 { playlistId = p.id
+                        --                 , hour = 0
+                        --                 , minute = 0
+                        --                 , days =
+                        --                     { monday = False
+                        --                     , tuesday = False
+                        --                     , wednesday = False
+                        --                     , thursday = False
+                        --                     , friday = False
+                        --                     , saturday = False
+                        --                     , sunday = False
+                        --                     }
+                        --                 }
+                        --             |> scheduleComponent
+                        --  )
+                        , Column
                             (Element.text "")
                             (px 200)
                             (\c ->

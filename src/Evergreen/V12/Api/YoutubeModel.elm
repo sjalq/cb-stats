@@ -1,6 +1,5 @@
-module Api.YoutubeModel exposing (..)
+module Evergreen.V12.Api.YoutubeModel exposing (..)
 
-import Set exposing (Set)
 
 type alias ClientCredentials =
     { displayName : String
@@ -10,6 +9,7 @@ type alias ClientCredentials =
     , timestamp : Int
     }
 
+
 type alias Channel =
     { id : String
     , title : String
@@ -17,25 +17,15 @@ type alias Channel =
     , customUrl : String
     }
 
-type alias ChannelAssociation =
-    { email : String
-    , channelId : String
-    }
 
 type alias Playlist =
     { id : String
     , title : String
     , description : String
     , channelId : String
-    , monitor : Bool -- this will check the playlist for live videos every 10 minutes
+    , monitor : Bool
     }
 
-type alias Schedule =
-    { playlistId : String 
-    , hour : Int
-    , minute : Int
-    , days : DaysOfWeek
-    }
 
 type alias DaysOfWeek =
     { monday : Bool
@@ -46,6 +36,15 @@ type alias DaysOfWeek =
     , saturday : Bool
     , sunday : Bool
     }
+
+
+type alias Schedule =
+    { playlistId : String
+    , hour : Int
+    , minute : Int
+    , days : DaysOfWeek
+    }
+
 
 type alias Video =
     { id : String
@@ -61,4 +60,10 @@ type alias Video =
     , dislikeCount : Int
     , favoriteCount : Int
     , commentCount : Int
+    }
+
+
+type alias ChannelAssociation =
+    { email : String
+    , channelId : String
     }
