@@ -31,6 +31,8 @@ import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
 import Pages.Playlist.Id_
+import MoreDict
+import Dict exposing (Dict)
 
 
 -- todo:
@@ -52,10 +54,6 @@ app =
 
 init : ( Model, Cmd BackendMsg )
 init =
-    let
-        _ =
-            Debug.log "init is running" ()
-    in
     ( { users = Dict.empty
       , authenticatedSessions = Dict.empty
       , incrementedInt = 0
@@ -322,6 +320,7 @@ update msg model =
             case playlistResponse of
                 Result.Ok playlists ->
                     let
+                        --retrievedPlaylists : Dict String Playlist
                         retrievedPlaylists =
                             playlists.items
                                 |> List.map
@@ -336,11 +335,14 @@ update msg model =
                                         )
                                     )
                                 |> Dict.fromList
-                                |> Debug.log "retrieved playlists"
 
+                        --newPlaylists : Dict String Playlist
                         newPlaylists =
-                            Dict.union retrievedPlaylists model.playlists
-                                |> Debug.log "new playlists"
+                            MoreDict.fullOuterJoin retrievedPlaylists model.playlists
+                            |> MoreDict.filterMap 
+                                identity
+                                identity
+                                (\(retrieved, current) -> { retrieved | monitor = current.monitor })
 
                         newModel =
                             { model
@@ -634,10 +636,6 @@ updateFromFrontend sessionId clientId msg model =
                 channel =
                     model.channels
                         |> Dict.get channelId
-                        |> Debug.log "channel"
-
-                _ =
-                    Debug.log "all playlists" model.playlists
 
                 playlists =
                     model.playlists
@@ -647,7 +645,6 @@ updateFromFrontend sessionId clientId msg model =
                 schedules =
                     model.schedules 
                         |> Dict.filter (\_ v -> playlists |> Dict.member v.playlistId)
-                        |> Debug.log "schedules"
             in
             case channel of
                 Just channel_ ->

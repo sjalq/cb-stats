@@ -32,9 +32,6 @@ wrappedCell =
             , Element.height <| Element.fill
             , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
             , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
-            --, Element.explain Debug.todo
-            
-            --, Element.height <| Element.px 26
             ]
 
 
@@ -50,8 +47,7 @@ tableStyle =
     , Element.spacingXY 5 5
     , Element.paddingXY 10 20
     , Element.Border.width 2
-    , Element.Border.rounded 5
-    -- , explain Debug.todo
+    , Element.Border.rounded 5 
     ]
 
 columnHeader : String -> Element.Element msg
