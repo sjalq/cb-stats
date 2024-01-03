@@ -112,7 +112,7 @@ schedule_updateHour schedule hour =
 schedule_updateMinute schedule minute =
     case minute |> String.toInt of
         Just minute_ ->
-            if minute_ < 0 || minute_ > 23 then
+            if minute_ < 0 || minute_ > 59 then
                 { schedule | minute = 0 }
 
             else
@@ -192,13 +192,13 @@ scheduleComponent schedule =
     in
     column [ Element.width fill, Element.paddingXY 10 10 ]
         [ row [ Element.width fill ]
-            [ Element.Input.text [ width <| Element.minimum 50 (px 10) ]
+            [ Element.Input.text [ width <| Element.minimum 40 (px 10), paddingXY 3 3, centerX, centerY  ]
                 { onChange = \hour -> Schedule_UpdateSchedule (schedule_updateHour schedule hour)
                 , placeholder = Nothing
                 , text = schedule.hour |> String.fromInt
                 , label = text "Hour" |> Element.Input.labelLeft []
                 }
-            , Element.Input.text [ width <| Element.minimum 50 (px 10) ]
+            , Element.Input.text [ width <| Element.minimum 40 (px 10), paddingXY 3 3 ]
                 { onChange = \minute -> Schedule_UpdateSchedule (schedule_updateMinute schedule minute)
                 , placeholder = Nothing
                 , text = schedule.minute |> String.fromInt
