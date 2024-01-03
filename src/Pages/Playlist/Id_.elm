@@ -92,37 +92,21 @@ view model =
                     tableStyle
                     { data = model.videos |> Dict.values
                     , columns =
-                        [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
+                        [ Column (columnHeader "Id") (px 200) (.id >> wrappedText)
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
-                        , Column (columnHeader "Published at") (px 200) (.publishedAt >> wrappedText)
+                        , Column (columnHeader "Published at") (px 220) (.publishedAt >> wrappedText)
                         , Column (columnHeader "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "View count") (px 100) (.viewCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Like count") (px 100) (.likeCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Dislike count") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Favorite count") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Comment count") (px 100) (.commentCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Views") (px 100) (.viewCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Likes") (px 100) (.likeCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Dislikes") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Favorites") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Comments") (px 100) (.commentCount >> String.fromInt >> wrappedText)
                         ]
                     }
-                , Element.Input.button
-                    [ centerX
-                    , centerY
-                    , Element.Font.size 16
-                    , Element.Font.bold
-                    , padding 30
-                    , Element.Border.color <| rgb255 128 128 128
-                    , Element.Border.width 1
-                    , Element.Border.innerGlow (rgb255 128 0 0) 5
-                    --, Element.Border.glow (rgb255 128 0 0) 10
-                    --, Element.Border.shadow { offset = (10, 10), size = 3, blur = 0.5, color = rgb255 128 0 0 }
-                    --, border3d 4 Color.grey Color.black Color.white
-                    --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
-                    --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
-                    ]
-                    { label = Element.text "Get Videos"
-                    , onPress = Just GetVideos
-                    }
-                , msgButton "Get Videos" (Just GetVideos)
+                , el
+                    ([ Element.width (px 200), paddingXY 10 10 ] ++ centerCenter) 
+                    (msgButton "Get Videos" (Just GetVideos))
                 ]
             )
     }

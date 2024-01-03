@@ -6,7 +6,7 @@ import Base64
 import Bridge exposing (ToBackend(..), sendToBackend)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
-import Element as ElementElement exposing (..)
+import Element exposing (..)
 import Element.Border
 import Element.Font exposing (underline)
 import Element.Input
@@ -99,11 +99,11 @@ view model =
             [ centerX
             , centerY
             ]
-            (ElementElement.column
+            (Element.column
                 []
                 [ Element.el titleStyle (Element.text <| "Channels associated to")
                 , Element.el (titleStyle ++ [Element.Font.color Styles.Colors.skyBlue]) (Element.text <| model.email)
-                , ElementElement.table
+                , Element.table
                     tableStyle
                     { data = model.channels
                     , columns =
@@ -112,7 +112,7 @@ view model =
                         , Column (columnHeader "Description") (px 300 |> maximum 100) (.description >> wrappedText)
                         , Column (columnHeader "Custom Url") (px 500) (.customUrl >> wrappedText)
                         , Column 
-                            (ElementElement.text "")
+                            (Element.text "")
                             (px 200)
                             (\c ->
                                 linkButton
@@ -124,7 +124,7 @@ view model =
                             )
                         ]
                     }
-                , el ([ ElementElement.width (px 200), paddingXY 10 10 ] ++ centerCenter) <| msgButton "Get Channels" <| Just GetChannels
+                , el ([ Element.width (px 200), paddingXY 10 10 ] ++ centerCenter) <| msgButton "Get Channels" <| Just GetChannels
                 ]
             )
     }

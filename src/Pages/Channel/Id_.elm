@@ -173,25 +173,25 @@ scheduleComponent schedule =
         tickOrUntick : Bool -> Element Msg
         tickOrUntick ticked =
             if ticked then
-                Element.text "✓"
+                Element.text "✅"
 
             else
-                Element.text "X"
+                Element.text "❌"
 
         dayCheckbox label checked =
             let
                 newSchedule =
                     schedule_selectDaysOfWeek label schedule
             in
-            Element.Input.checkbox []
+            Element.Input.checkbox [ paddingXY 5 5, width fill, centerX ]
                 { onChange = \c -> Schedule_UpdateSchedule (newSchedule c)
                 , icon = tickOrUntick
                 , checked = checked
                 , label = text label |> Element.Input.labelLeft []
                 }
     in
-    column []
-        [ row []
+    column [ Element.width fill, Element.paddingXY 10 10 ]
+        [ row [ Element.width fill ]
             [ Element.Input.text [ width <| Element.minimum 50 (px 10) ]
                 { onChange = \hour -> Schedule_UpdateSchedule (schedule_updateHour schedule hour)
                 , placeholder = Nothing
@@ -205,23 +205,25 @@ scheduleComponent schedule =
                 , label = text "Minute" |> Element.Input.labelLeft []
                 }
             ]
-        , column []
-            [ row []
+        , column [ Element.width fill ]
+            [ row [ Element.width fill, centerX ]
                 [ dayCheckbox "Monday" days.monday
                 , dayCheckbox "Tuesday" days.tuesday
                 ]
-            , row []
+            , row [ Element.width fill, centerX ]
                 [ dayCheckbox "Wednesday" days.wednesday
                 , dayCheckbox "Thursday" days.thursday
                 ]
-            , row []
+            , row [ Element.width fill, centerX ]
                 [ dayCheckbox "Friday" days.friday
                 , dayCheckbox "Saturday" days.saturday
                 , dayCheckbox "Sunday" days.sunday
                 ]
             ]
-            |> UI.Helpers.wrappedCell
+
+        --|> UI.Helpers.wrappedCell
         ]
+        |> UI.Helpers.wrappedCell
 
 
 
@@ -247,12 +249,8 @@ view model =
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column
-                            (columnHeader "Playlists")
-                            (px 100)
-                            (\p -> idLink Route.Playlist__Id_ p.id "Playlists")
-                        , Column
                             (columnHeader "Schedule")
-                            (px 100)
+                            (px 350)
                             (\p ->
                                 model.schedules
                                     |> Dict.get p.id
@@ -272,6 +270,17 @@ view model =
                                             }
                                         }
                                     |> scheduleComponent
+                            )
+                        ,Column 
+                            (Element.text "")
+                            (px 200)
+                            (\c ->
+                                linkButton
+                                    "Videos"
+                                <|
+                                    Route.toHref <|
+                                        Route.Playlist__Id_
+                                            { id = c.id }
                             )
                         ]
                     }
