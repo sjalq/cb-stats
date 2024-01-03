@@ -419,7 +419,7 @@ migrate_Pages_Login_Msg old =
 migrate_Pages_Playlist_Id__Model : Evergreen.V8.Pages.Playlist.Id_.Model -> Evergreen.V11.Pages.Playlist.Id_.Model
 migrate_Pages_Playlist_Id__Model old =
     { playlistId = old.playlistId
-    , playlistTitle = (Unimplemented {- Type `String` was added in V11. I need you to set a default value. -})
+    , playlistTitle = ""
     , videos = old.videos
     }
 
@@ -428,8 +428,9 @@ migrate_Pages_Playlist_Id__Msg : Evergreen.V8.Pages.Playlist.Id_.Msg -> Evergree
 migrate_Pages_Playlist_Id__Msg old =
     case old of
         Evergreen.V8.Pages.Playlist.Id_.GotVideos p0 ->
-            Evergreen.V11.Pages.Playlist.Id_.GotVideos (p0 |> (Unimplemented {- Type changed from `Dict (String) (Evergreen.V8.Api.YoutubeModel.Video)` to `Evergreen.V11.Api.YoutubeModel.Playlist`. I need you to write this migration. -}))
-                (Unimplemented {- This new variant needs to be initialised -})
+            Evergreen.V11.Pages.Playlist.Id_.GotVideos 
+                (Evergreen.V8.Api.YoutubeModel.Playlist "" "" "" "")
+                p0
 
         Evergreen.V8.Pages.Playlist.Id_.GetVideos ->
             Evergreen.V11.Pages.Playlist.Id_.GetVideos
