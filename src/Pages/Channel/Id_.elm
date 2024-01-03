@@ -1,5 +1,6 @@
 module Pages.Channel.Id_ exposing (Model, Msg(..), page)
 
+import Styles.Colors
 import Api.YoutubeModel exposing (Channel, DaysOfWeek, Playlist, Schedule)
 import Bridge exposing (ToBackend(..))
 import Dict exposing (..)
@@ -240,7 +241,10 @@ view model =
             ]
             (Element.column
                 []
-                [ Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "ihmpossibru!")
+                [ Element.el titleStyle (Element.text <| "Playlists associated to channel:")
+                , Element.el 
+                    (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) 
+                    (Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "impossibruu!"))
                 , Element.table
                     tableStyle
                     { data = model.playlists |> Dict.values |> List.sortBy .title

@@ -666,12 +666,19 @@ updateFromFrontend sessionId clientId msg model =
                 videos =
                     model.videos
                         |> Dict.filter (\_ v -> v.playlistId == playlistId)
+
+                playlist =
+                    model.playlists
+                        |> Dict.get playlistId
             in
             ( model
-            , sendToPage clientId <|
-                Gen.Msg.Playlist__Id_ <|
-                    Pages.Playlist.Id_.GotVideos <|
-                        videos
+            , case playlist of 
+                Just playlist_ ->
+                    sendToPage clientId <|
+                        Gen.Msg.Playlist__Id_ <|
+                            Pages.Playlist.Id_.GotVideos playlist_ videos
+
+                Nothing -> Cmd.none
             )
 
 

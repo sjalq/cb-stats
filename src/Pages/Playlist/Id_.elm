@@ -1,20 +1,21 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
-import Api.YoutubeModel
+import Dict
+import Api.YoutubeModel exposing (Video, Playlist)
+import Bridge exposing (..)
+import Dict exposing (Dict)
 import Effect exposing (Effect)
+import Element exposing (..)
+import Element.Border
+import Element.Font
+import Element.Input
 import Gen.Params.Playlist.Id_ exposing (Params)
 import Page
 import Request
 import Shared
-import View exposing (View)
-import Api.YoutubeModel exposing (Video)
-import Element exposing (..)
+import Styles.Colors
 import UI.Helpers exposing (..)
-import Element.Font
-import Element.Border
-import Element.Input
-import Bridge exposing (..)
-import Dict exposing (Dict)
+import View exposing (View)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -33,15 +34,19 @@ page shared req =
 
 type alias Model =
     { playlistId : String
+    , playlistTitle : String
     , videos : Dict String Video
     }
 
 
 init : Request.With Params -> ( Model, Effect Msg )
-init { params }=
+init { params } =
     ( { videos = Dict.empty
-    , playlistId = params.id }
-    , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id )
+      , playlistId = params.id 
+      , playlistTitle = ""
+      }
+    , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
+    )
 
 
 
@@ -49,19 +54,20 @@ init { params }=
 
 
 type Msg
-    = GotVideos (Dict String Video)
+    = GotVideos Playlist (Dict String Video)
     | GetVideos
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotVideos videos ->
-            ( { model | videos = videos }, Effect.none )
+        GotVideos playlist videos ->
+            ( { model | videos = videos, playlistTitle = playlist.title }, Effect.none )
+
         GetVideos ->
             ( model
-            , Effect.fromCmd <| sendToBackend <| FetchVideosFromYoutube model.playlistId )
-        
+            , Effect.fromCmd <| sendToBackend <| FetchVideosFromYoutube model.playlistId
+            )
 
 
 
@@ -87,7 +93,8 @@ view model =
             ]
             (Element.column
                 []
-                [ Element.text <| (model.playlistId )
+                [ Element.el titleStyle (Element.text <| "Videos associated to playlist:")
+                , Element.el (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) (Element.text <| model.playlistTitle)
                 , Element.table
                     tableStyle
                     { data = model.videos |> Dict.values
@@ -105,7 +112,7 @@ view model =
                         ]
                     }
                 , el
-                    ([ Element.width (px 200), paddingXY 10 10 ] ++ centerCenter) 
+                    ([ Element.width (px 200), paddingXY 10 10 ] ++ centerCenter)
                     (msgButton "Get Videos" (Just GetVideos))
                 ]
             )
