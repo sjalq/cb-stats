@@ -224,7 +224,7 @@ update msg model =
                 fetches =
                     model.clientCredentials
                         |> Dict.values
-                        |> List.filter (\c -> (c.timestamp + 3600000) < (time |> Time.posixToMillis))
+                        |> List.filter (\c -> (c.timestamp + 3550000) < (time |> Time.posixToMillis))
                         |> List.map
                             (\c ->
                                 YouTubeApi.refreshAccessTokenCmd Env.clientId Env.clientSecret c.refreshToken c.email time

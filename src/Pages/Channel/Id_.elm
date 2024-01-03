@@ -243,15 +243,15 @@ view model =
                     tableStyle
                     { data = model.playlists |> Dict.values |> List.sortBy .title
                     , columns =
-                        [ Column (Element.text "Id") (px 450) (.id >> wrappedText)
-                        , Column (Element.text "Title") (px 275) (.title >> wrappedText)
-                        , Column (Element.text "Description") (px 400 |> maximum 100) (.description >> wrappedText)
+                        [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
+                        , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
+                        , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column
-                            (Element.text "Playlists")
+                            (columnHeader "Playlists")
                             (px 100)
                             (\p -> idLink Route.Playlist__Id_ p.id "Playlists")
                         , Column
-                            (Element.text "Schedule")
+                            (columnHeader "Schedule")
                             (px 100)
                             (\p ->
                                 model.schedules
@@ -275,25 +275,9 @@ view model =
                             )
                         ]
                     }
-                , Element.Input.button
-                    [ centerX
-                    , centerY
-                    , Element.Font.size 16
-                    , Element.Font.bold
-                    , padding 30
-                    , Element.Border.color <| rgb255 128 128 128
-                    , Element.Border.width 1
-                    , Element.Border.innerGlow (rgb255 128 0 0) 5
-
-                    --, Element.Border.glow (rgb255 128 0 0) 10
-                    --, Element.Border.shadow { offset = (10, 10), size = 3, blur = 0.5, color = rgb255 128 0 0 }
-                    --, border3d 4 Color.grey Color.black Color.white
-                    --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
-                    --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
-                    ]
-                    { label = Element.text "Get Playlists"
-                    , onPress = Just GetPlaylists
-                    }
+                , el
+                    ([ Element.width (px 200), paddingXY 10 10 ] ++ centerCenter)
+                    (msgButton "Get Playlists" (Just GetPlaylists))
                 ]
             )
     }

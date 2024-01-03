@@ -1,11 +1,12 @@
 module Pages.Ga.Email_ exposing (Model, Msg(..), page)
 
+import Element
 import Api.YoutubeModel exposing (Channel)
 import Base64
 import Bridge exposing (ToBackend(..), sendToBackend)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
-import Element exposing (..)
+import Element as ElementElement exposing (..)
 import Element.Border
 import Element.Font exposing (underline)
 import Element.Input
@@ -13,13 +14,14 @@ import Gen.Params.Ga.Email_ exposing (Params)
 import Gen.Route as Route
 import Html.Attributes
 import Page
+import Pages.Example exposing (Msg(..))
 import Request
 import Shared
 import UI.Helpers exposing (..)
 import Url
 import View exposing (View)
-import Element.Font 
-import Pages.Example exposing (Msg(..))
+import Styles.Colors exposing (lightGrey)
+import Styles.Colors exposing (darkGrey)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -91,47 +93,38 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Elm Land ❤️ Lamdera"
+    { title = "Banter Stats - Channels"
     , body =
         el
             [ centerX
             , centerY
             ]
-            (Element.column
+            (ElementElement.column
                 []
-                [ Element.text model.email
-                , Element.table
+                [ Element.el titleStyle (Element.text <| "Channels associated to")
+                , Element.el (titleStyle ++ [Element.Font.color Styles.Colors.skyBlue]) (Element.text <| model.email)
+                , ElementElement.table
                     tableStyle
                     { data = model.channels
                     , columns =
-                        [ Column (Element.text "Id") (px 200) (\c -> wrappedText c.id)
-                        , Column (Element.text "Title") (px 275) (\c -> wrappedText c.title)
-                        , Column (Element.text "Description") (px 300 |> maximum 100) (\c -> wrappedText c.description)
-                        , Column (Element.text "Custom Url") (px 500) (\c -> wrappedText c.customUrl)
-                        , Column
-                            (Element.text "Playlists")
+                        [ Column (columnHeader "Id") (px 200) (.id  >> wrappedText )
+                        , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
+                        , Column (columnHeader "Description") (px 300 |> maximum 100) (.description >> wrappedText)
+                        , Column (columnHeader "Custom Url") (px 500) (.customUrl >> wrappedText)
+                        , Column 
+                            (ElementElement.text "")
                             (px 200)
-                            (\c -> idLink Route.Channel__Id_ c.id c.title)
+                            (\c ->
+                                linkButton
+                                    "Playlists"
+                                <|
+                                    Route.toHref <|
+                                        Route.Channel__Id_
+                                            { id = c.id }
+                            )
                         ]
                     }
-                , Element.Input.button
-                    [ centerX
-                    , centerY
-                    , Element.Font.size 16
-                    , Element.Font.bold
-                    , padding 30
-                    , Element.Border.color <| rgb255 128 128 128
-                    , Element.Border.width 1
-                    , Element.Border.innerGlow (rgb255 128 0 0) 5
-                    --, Element.Border.glow (rgb255 128 0 0) 10
-                    --, Element.Border.shadow { offset = (10, 10), size = 3, blur = 0.5, color = rgb255 128 0 0 }
-                    --, border3d 4 Color.grey Color.black Color.white
-                    --, Element.Border.color (rgb255 0 128 128) -- Typical teal color
-                    --, hover [ Background.color (rgb255 0 104 104) ] -- Slightly darker on hover
-                    ]
-                    { label = Element.text "Get Channels"
-                    , onPress = Just GetChannels 
-                    }
+                , el ([ ElementElement.width (px 200), paddingXY 10 10 ] ++ centerCenter) <| msgButton "Get Channels" <| Just GetChannels
                 ]
             )
     }

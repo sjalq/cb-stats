@@ -92,16 +92,16 @@ view model =
                     tableStyle
                     { data = model.videos |> Dict.values
                     , columns =
-                        [ Column (Element.text "Id") (px 450) (.id >> wrappedText)
-                        , Column (Element.text "Title") (px 275) (.title >> wrappedText)
-                        , Column (Element.text "Description") (px 400 |> maximum 100) (.description >> wrappedText)
-                        , Column (Element.text "Published at") (px 200) (.publishedAt >> wrappedText)
-                        , Column (Element.text "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
-                        , Column (Element.text "View count") (px 100) (.viewCount >> String.fromInt >> wrappedText)
-                        , Column (Element.text "Like count") (px 100) (.likeCount >> String.fromInt >> wrappedText)
-                        , Column (Element.text "Dislike count") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
-                        , Column (Element.text "Favorite count") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
-                        , Column (Element.text "Comment count") (px 100) (.commentCount >> String.fromInt >> wrappedText)
+                        [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
+                        , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
+                        , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
+                        , Column (columnHeader "Published at") (px 200) (.publishedAt >> wrappedText)
+                        , Column (columnHeader "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "View count") (px 100) (.viewCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Like count") (px 100) (.likeCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Dislike count") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Favorite count") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Comment count") (px 100) (.commentCount >> String.fromInt >> wrappedText)
                         ]
                     }
                 , Element.Input.button
@@ -122,6 +122,7 @@ view model =
                     { label = Element.text "Get Videos"
                     , onPress = Just GetVideos
                     }
+                , msgButton "Get Videos" (Just GetVideos)
                 ]
             )
     }

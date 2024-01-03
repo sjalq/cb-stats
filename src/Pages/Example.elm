@@ -100,7 +100,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Elm Land ❤️ Lamdera"
+    { title = "Banter Stats - Accounts"
     , body =
         el
             [ centerX
@@ -108,56 +108,54 @@ view model =
             ]
             (Element.column
                 []
-                [ Element.link
-                    [ centerX, centerY ]
-                    { url = Env.googleOauthUrl
-                    , label = Element.text "🦄 Google Auth Yerself! ✨"
-                    }
-                , Element.table
-                    tableStyle
-                    { data = model.clientCredentials
-                    , columns =
-                        [ Column (Element.text "Display Name") (px 200) (.displayName >> wrappedText)
-                        , Column (Element.text "Email Address") (px 275) (.email >> wrappedText)
-                        , Column (Element.text "Refresh Token") (px 300 |> maximum 100) (.refreshToken >> wrappedText)
-                        , Column (Element.text "Access Token") (px 400) (.accessToken >> wrappedText)
-                        , Column (Element.text "Remaining time")
-                            (px 200)
-                            (\cred ->
-                                let
-                                    currentTime_ =
-                                        model.currentTime |> Time.posixToMillis
+                -- [ Element.link
+                --     ( buttonStyle ++  buttonHoverStyle)
+                --     { url = Env.googleOauthUrl
+                --     , label = Element.text "🦄 Google Auth Yerself! ✨"
+                --     }
+                [ linkButton "🦄 Google Auth Yerself! ✨" Env.googleOauthUrl
+                , el [ paddingXY 0 10 ] <|
+                    Element.table
+                        tableStyle
+                        { data = model.clientCredentials
+                        , columns =
+                            [ Column (columnHeader "Display Name") (px 200) (.displayName >> wrappedText)
+                            , Column (columnHeader "Email Address") (px 275) (.email >> wrappedText)
+                            , Column (columnHeader "Refresh Token") (px 300 |> maximum 100) (.refreshToken >> wrappedText)
+                            , Column (columnHeader "Access Token") (px 400) (.accessToken >> wrappedText)
+                            , Column
+                                (columnHeader "Remaining time")
+                                (px 200)
+                                (\cred ->
+                                    let
+                                        currentTime_ =
+                                            model.currentTime |> Time.posixToMillis
 
-                                    remainingTime =
-                                        (cred.timestamp - currentTime_ + 3600000) // 1000
+                                        remainingTime =
+                                            (cred.timestamp - currentTime_ + 3600000) // 1000
 
-                                    label =
-                                        if remainingTime < 0 then
-                                            "Expired"
+                                        label =
+                                            if remainingTime < 0 then
+                                                "Expired"
 
-                                        else
-                                            String.fromInt remainingTime
-                                in
-                                wrappedText label
-                            )
-                        , Column
-                            (Element.text "Fetch Channels Button")
-                            (px 200)
-                            (\cred ->
-                                Element.link
-                                    [ centerX, centerY, underline ]
-                                    { url =
-                                        Route.toHref
-                                            (Route.Ga__Email_
-                                                { email = cred.email |> Base64.encode
-                                                }
-                                            )
-                                    , label = Element.text cred.email
-                                    }
-                                    |> wrappedCell
-                            )
-                        ]
-                    }
+                                            else
+                                                String.fromInt remainingTime
+                                    in
+                                    wrappedText label
+                                )
+                            , Column
+                                (Element.text "")
+                                (px 200)
+                                (\cred ->
+                                    linkButton
+                                        "Channels"
+                                    <|
+                                        Route.toHref <|
+                                            Route.Ga__Email_
+                                                { email = cred.email |> Base64.encode }
+                                )
+                            ]
+                        }
                 ]
             )
     }
