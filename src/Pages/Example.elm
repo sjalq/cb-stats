@@ -156,7 +156,7 @@ view model =
                                                         "Expired"
 
                                                     else
-                                                        String.fromInt remainingGetTime
+                                                        String.fromInt remainingTime
                                             in
                                             wrappedText label
                                         )
