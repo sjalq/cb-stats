@@ -61,6 +61,7 @@ type LiveStatus
     | Scheduled
     | Live
     | Ended
+    | Impossibru
 
 
 type alias Video =
@@ -92,7 +93,7 @@ type alias LiveVideoDetails =
     , actualEndTime : Maybe String
     }
 
-type alias ConcurrentViewers =
+type alias CurrentViewers =
     { videoId : String
     , timestamp : Posix
     , value : Int

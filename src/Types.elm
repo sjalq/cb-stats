@@ -41,6 +41,7 @@ type alias BackendModel =
     , schedules : Dict String Schedule
     , videos : Dict String Video
     , liveVideoDetails : Dict String LiveVideoDetails
+    , currentViewers : Dict String CurrentViewers
     , apiCallCount : Int
     }
 
@@ -80,7 +81,7 @@ type BackendMsg
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
     | GetVideos String
     | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
-    | GotVideoLiveStreamData String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotVideoLiveStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | NoOpBackendMsg
 
 

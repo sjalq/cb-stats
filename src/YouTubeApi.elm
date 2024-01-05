@@ -145,8 +145,8 @@ getVideosCmd playlistId accessToken =
         , tracker = Nothing
         }
 
-getVideoLiveStreamDataCmd : String -> String -> Cmd BackendMsg
-getVideoLiveStreamDataCmd videoId accessToken =
+getVideoLiveStreamDataCmd : Posix -> String -> String -> Cmd BackendMsg
+getVideoLiveStreamDataCmd timestamp videoId accessToken =
     let
         url =
             "https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=" ++ videoId
@@ -156,7 +156,7 @@ getVideoLiveStreamDataCmd videoId accessToken =
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotVideoLiveStreamData videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , expect = Http.expectJson (GotVideoLiveStreamData timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
