@@ -103,12 +103,12 @@ view model =
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column (columnHeader "Published at") (px 220) (.publishedAt >> wrappedText)
-                        , Column (columnHeader "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Views") (px 100) (.viewCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Likes") (px 100) (.likeCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Dislikes") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Favorites") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
-                        , Column (columnHeader "Comments") (px 100) (.commentCount >> String.fromInt >> wrappedText)
+                        -- , Column (columnHeader "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
+                        -- , Column (columnHeader "Views") (px 100) (.viewCount >> String.fromInt >> wrappedText)
+                        -- , Column (columnHeader "Likes") (px 100) (.likeCount >> String.fromInt >> wrappedText)
+                        -- , Column (columnHeader "Dislikes") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
+                        -- , Column (columnHeader "Favorites") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
+                        -- , Column (columnHeader "Comments") (px 100) (.commentCount >> String.fromInt >> wrappedText)
                         ]
                     }
                 , el

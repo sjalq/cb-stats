@@ -4,21 +4,24 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
+import Api.YoutubeModel exposing (LiveVideoDetails, Video)
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
-import Dict
+import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
 import Http exposing (Error(..))
 import Lamdera exposing (..)
 import List.Extra
+import MoreDict
 import Pages.Channel.Id_
 import Pages.Example
 import Pages.Ga.Email_
 import Pages.Log
 import Pages.Login
+import Pages.Playlist.Id_
 import Pages.Register
 import Random
 import Random.Char
@@ -30,9 +33,7 @@ import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
-import Pages.Playlist.Id_
-import MoreDict
-import Dict exposing (Dict)
+
 
 
 -- todo:
@@ -64,9 +65,11 @@ init =
       , playlists = Dict.empty
       , schedules = Dict.empty
       , videos = Dict.empty
+      , liveVideoDetails = Dict.empty
       , apiCallCount = 0
       }
-    , Cmd.none -- might as well be none since it gets called at weird points
+    , Cmd.none
+      -- might as well be none since it gets called at weird points
     )
 
 
@@ -93,6 +96,8 @@ subscriptions model =
         , Time.every day Batch_RefreshAllChannels -- 1 day
         , Time.every day Batch_RefreshAllPlaylists -- 1 day
         , Time.every minute Batch_RefreshAllVideos -- 1 minute
+        , Time.every (10 * minute) Batch_MonitorForLiveStreams -- 10 minutes
+        , Time.every minute Batch_GetLiveVideoData
         , onConnect OnConnect
         ]
 
@@ -339,10 +344,10 @@ update msg model =
                         --newPlaylists : Dict String Playlist
                         newPlaylists =
                             MoreDict.fullOuterJoin retrievedPlaylists model.playlists
-                            |> MoreDict.filterMap 
-                                identity
-                                identity
-                                (\(retrieved, current) -> { retrieved | monitor = current.monitor })
+                                |> MoreDict.filterMapJoin
+                                    identity
+                                    identity
+                                    (\( retrieved, current ) -> { retrieved | monitor = current.monitor })
 
                         newModel =
                             { model
@@ -405,7 +410,7 @@ update msg model =
                         |> Maybe.map .channelId
                         |> Maybe.andThen (\channelId -> model.channelAssociations |> List.filter (\c -> c.channelId == channelId) |> List.head |> Maybe.map .email)
                         |> Maybe.andThen (\email -> model.clientCredentials |> Dict.get email |> Maybe.map .accessToken)
-    
+
                 fetch =
                     maybeAccessToken
                         |> Maybe.map
@@ -414,7 +419,7 @@ update msg model =
                             )
                         |> Maybe.withDefault Cmd.none
             in
-            ( model |> addToQuotaCount [fetch]
+            ( model |> addToQuotaCount [ fetch ]
             , fetch
             )
 
@@ -437,7 +442,7 @@ update msg model =
             , fetch
             )
 
-        GotVideos playlistId playlistItemResponse ->
+        GotVideosFromPlaylist playlistId playlistItemResponse ->
             case playlistItemResponse of
                 Ok validResponse ->
                     let
@@ -449,44 +454,35 @@ update msg model =
                         --     , playlistId : String
                         --     , thumbnailUrl : String
                         --     , publishedAt : String
-                        --     , duration : Int
-                        --     , viewCount : Int
-                        --     , likeCount : Int
-                        --     , dislikeCount : Int
-                        --     , favoriteCount : Int
-                        --     , commentCount : Int
                         --     }
-
                         retrievedVideos =
                             validResponse.items
                                 |> List.map
                                     (\v ->
                                         ( v.snippet.resourceId.videoId
-                                        , {
-                                            id = v.snippet.resourceId.videoId
-                                            , title = v.snippet.title
-                                            , description = v.snippet.description
-                                            , channelId = v.snippet.channelId
-                                            , playlistId = v.snippet.playlistId
-                                            , thumbnailUrl = v.snippet.thumbnails.standard.url
-                                            , publishedAt = v.snippet.publishedAt
-                                            , duration = 0
-                                            , viewCount = 0
-                                            , likeCount = 0
-                                            , dislikeCount = 0
-                                            , favoriteCount = 0
-                                            , commentCount = 0
-                                            }
+                                        , { id = v.snippet.resourceId.videoId
+                                          , title = v.snippet.title
+                                          , description = v.snippet.description
+                                          , channelId = v.snippet.channelId
+                                          , playlistId = v.snippet.playlistId
+                                          , thumbnailUrl = v.snippet.thumbnails.standard.url
+                                          , publishedAt = v.snippet.publishedAt
+                                          , liveStatus = Api.YoutubeModel.Unknown
+                                          }
                                         )
                                     )
                                 |> Dict.fromList
 
+                        -- here we get all the videos we don't have in the model yet
                         newVideos =
-                            Dict.union retrievedVideos model.videos
+                            MoreDict.leftDiff retrievedVideos model.videos
+
+                        videosToPersist =
+                            Dict.union newVideos model.videos
 
                         newModel =
                             { model
-                                | videos = newVideos
+                                | videos = videosToPersist
                             }
                     in
                     ( newModel
@@ -498,6 +494,135 @@ update msg model =
                     , Cmd.none
                     )
                         |> log ("Failed to fetch videos for playlist : " ++ playlistId ++ "\n" ++ httpErrToString error) Error
+
+        Batch_MonitorForLiveStreams time ->
+            let
+                -- check the videos for which we don't know if they are live
+                liveStatusUnknownVideos =
+                    model.videos
+                        |> Dict.values
+                        |> List.filter (\v -> v.liveStatus == Api.YoutubeModel.Unknown)
+                        |> List.map .id
+
+                -- check their live status
+                fetches =
+                    liveStatusUnknownVideos
+                        |> List.map
+                            (\videoId ->
+                                model.playlists
+                                    |> Dict.get videoId
+                                    |> Maybe.map .channelId
+                                    |> Maybe.andThen (\channelId -> model.channelAssociations |> List.filter (\c -> c.channelId == channelId) |> List.head |> Maybe.map .email)
+                                    |> Maybe.andThen (\email -> model.clientCredentials |> Dict.get email |> Maybe.map .accessToken)
+                                    |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd videoId)
+                            )
+                        |> List.filterMap identity
+            in
+            ( model
+            , fetches |> Cmd.batch
+            )
+
+        Batch_GetLiveVideoData time ->
+            let
+                -- check all the videos that we know are live or scheduled
+                liveOrScheduledVideos =
+                    model.videos
+                        |> Dict.values
+                        |> List.filter (\v -> v.liveStatus == Api.YoutubeModel.Live || v.liveStatus == Api.YoutubeModel.Scheduled)
+                        |> List.map .id
+
+                -- get their live data
+                fetches =
+                    liveOrScheduledVideos
+                        |> List.map
+                            (\videoId ->
+                                model.playlists
+                                    |> Dict.get videoId
+                                    |> Maybe.map .channelId
+                                    |> Maybe.andThen (\channelId -> model.channelAssociations |> List.filter (\c -> c.channelId == channelId) |> List.head |> Maybe.map .email)
+                                    |> Maybe.andThen (\email -> model.clientCredentials |> Dict.get email |> Maybe.map .accessToken)
+                                    |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd videoId)
+                            )
+                        |> List.filterMap identity
+            in
+            ( model
+            , fetches |> Cmd.batch
+            )
+
+        GotVideoLiveStreamData videoId liveVideoResponseData ->
+            case liveVideoResponseData of
+                Ok liveVideoResponse ->
+                    -- here we deal with
+                    -- 1. updating never-live videos
+                    -- 2. updating scheduled videos
+                    -- 3. updating live videos
+                    -- 4. updating concluded videos
+                    -- 5. create the liveStreamsData
+                    let
+                        videosToUpdate =
+                            liveVideoResponse.items
+                                |> List.map
+                                    (\v ->
+                                        ( v.id
+                                        , { id = v.id
+                                          , liveStatus =
+                                                case v.liveStreamingDetails of
+                                                    Nothing ->
+                                                        Api.YoutubeModel.NeverLive
+
+                                                    Just liveStreamingDetails ->
+                                                        case ( liveStreamingDetails.scheduledStartTime, liveStreamingDetails.actualStartTime, liveStreamingDetails.actualEndTime ) of
+                                                            ( Just scheduledStartTime, Nothing, Nothing ) ->
+                                                                Api.YoutubeModel.Scheduled
+
+                                                            ( Just scheduledStartTime, Just actualStartTime, Nothing ) ->
+                                                                Api.YoutubeModel.Live
+
+                                                            ( Just scheduledStartTime, Just actualStartTime, Just actualEndTime ) ->
+                                                                Api.YoutubeModel.Ended
+
+                                                            _ ->
+                                                                Api.YoutubeModel.Unknown
+                                          }
+                                        )
+                                    )
+                                |> Dict.fromList
+
+                        newVideos =
+                            MoreDict.fullOuterJoin model.videos videosToUpdate
+                                |> MoreDict.filterMapJoin
+                                    Just
+                                    (\_ -> Nothing)
+                                    (\( current, retrieved ) -> Just { current | liveStatus = retrieved.liveStatus })
+                                |> MoreDict.demaybe
+
+                        retrievedLiveVideoDetails =
+                            liveVideoResponse.items
+                                |> List.filter (\v -> v.liveStreamingDetails /= Nothing)
+                                |> List.map
+                                    (\v ->
+                                        { videoId = v.id
+                                        , scheduledStartTime = v.liveStreamingDetails |> Maybe.map .scheduledStartTime
+                                        , actualStartTime = v.liveStreamingDetails |> Maybe.map .actualStartTime
+                                        , actualEndTime = v.liveStreamingDetails |> Maybe.map .actualEndTime
+                                        }
+                                    )
+
+                        newLiveVideoDetails = 
+                            retrievedLiveVideoDetails
+                                |> List.filter (\v -> model.liveVideoDetails |> Dict.member v.videoId |> not)
+                                |> List.map 
+
+                    in
+                    ( model
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
+                        |> log ("Failed to fetch live video data for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -585,10 +710,12 @@ updateFromFrontend sessionId clientId msg model =
 
         AttemptGetCredentials ->
             let
-                userEmail = model.authenticatedSessions |> Dict.get sessionId |> Maybe.map .user
+                userEmail =
+                    model.authenticatedSessions |> Dict.get sessionId |> Maybe.map .user
 
-                adminEmails = Env.adminUsers |> String.split ","
-            
+                adminEmails =
+                    Env.adminUsers |> String.split ","
+
                 isAdmin =
                     case userEmail of
                         Just userEmail_ ->
@@ -641,9 +768,8 @@ updateFromFrontend sessionId clientId msg model =
                     model.playlists
                         |> Dict.filter (\_ v -> v.channelId == channelId)
 
-
                 schedules =
-                    model.schedules 
+                    model.schedules
                         |> Dict.filter (\_ v -> playlists |> Dict.member v.playlistId)
             in
             case channel of
@@ -696,13 +822,14 @@ updateFromFrontend sessionId clientId msg model =
                         |> Dict.get playlistId
             in
             ( model
-            , case playlist of 
+            , case playlist of
                 Just playlist_ ->
                     sendToPage clientId <|
                         Gen.Msg.Playlist__Id_ <|
                             Pages.Playlist.Id_.GotVideos playlist_ videos
 
-                Nothing -> Cmd.none
+                Nothing ->
+                    Cmd.none
             )
 
 
@@ -796,3 +923,23 @@ httpErrToString error =
 addToQuotaCount : List a -> Model -> Model
 addToQuotaCount fetches model =
     { model | apiCallCount = model.apiCallCount + (fetches |> List.length) }
+
+
+playlist_latestVideo model playlistId =
+    model.videos
+        |> Dict.values
+        |> List.filter (\v -> v.playlistId == playlistId)
+        |> List.sortBy (\v -> v.publishedAt)
+        |> List.reverse
+        |> List.head
+
+
+
+-- gets us the most up to date video we've fetched from youtube so we don't have to fetch videos after this points
+
+
+playlist_lastPublishDate model playlistId =
+    model.videos
+        |> playlist_latestVideo playlistId
+        |> Maybe.map .publishedAt
+        |> Maybe.withDefault "1970-01-01T00:00:00Z"

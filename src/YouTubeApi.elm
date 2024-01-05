@@ -1,15 +1,16 @@
 module YouTubeApi exposing (..)
 
-import Json.Auto.Playlists
-import Json.Auto.Channels
 import Http
 import Json.Auto.AccessToken
+import Json.Auto.Channels
+import Json.Auto.PlaylistItems
+import Json.Auto.Playlists
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Task exposing (Task)
-import Time
+import Time exposing (..)
 import Types exposing (BackendMsg(..))
-import Json.Auto.PlaylistItems
+import Json.Bespoke.VideoDecoder
 
 
 
@@ -52,8 +53,6 @@ oauthEndpoint =
     "https://oauth2.googleapis.com/token"
 
 
-
-
 refreshAccessToken : String -> String -> String -> Task Http.Error Json.Auto.AccessToken.Root
 refreshAccessToken clientId clientSecret refreshToken =
     let
@@ -78,7 +77,7 @@ refreshAccessToken clientId clientSecret refreshToken =
         }
 
 
-refreshAccessTokenCmd clientId clientSecret refreshToken email time  =
+refreshAccessTokenCmd clientId clientSecret refreshToken email time =
     let
         jsonRequest =
             Encode.object
@@ -88,11 +87,11 @@ refreshAccessTokenCmd clientId clientSecret refreshToken email time  =
                 , ( "grant_type", Encode.string "refresh_token" )
                 ]
     in
-        Http.post
-            { url = oauthEndpoint
-            , body = Http.jsonBody jsonRequest
-            , expect = Http.expectJson (GotAccessToken email time) Json.Auto.AccessToken.rootDecoder
-            }
+    Http.post
+        { url = oauthEndpoint
+        , body = Http.jsonBody jsonRequest
+        , expect = Http.expectJson (GotAccessToken email time) Json.Auto.AccessToken.rootDecoder
+        }
 
 
 getChannelsCmd : String -> String -> Cmd BackendMsg
@@ -101,15 +100,16 @@ getChannelsCmd email accessToken =
         url =
             "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true"
     in
-        Http.request
-            { method = "GET"
-            , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
-            , url = url
-            , body = Http.emptyBody
-            , expect = Http.expectJson (GotChannels email) Json.Auto.Channels.rootDecoder
-            , timeout = Nothing
-            , tracker = Nothing
-            }
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotChannels email) Json.Auto.Channels.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
 
 getPlaylistsCmd : String -> String -> Cmd BackendMsg
 getPlaylistsCmd channelId accessToken =
@@ -117,28 +117,46 @@ getPlaylistsCmd channelId accessToken =
         url =
             "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true&maxResults=5000"
     in
-        Http.request
-            { method = "GET"
-            , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
-            , url = url
-            , body = Http.emptyBody
-            , expect = Http.expectJson (GotPlaylists channelId) Json.Auto.Playlists.rootDecoder
-            , timeout = Nothing
-            , tracker = Nothing
-            }
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotPlaylists channelId) Json.Auto.Playlists.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
-getVideosCmd : String -> String -> Cmd BackendMsg
+
+-- getVideosCmd : String -> Time.Posix -> String -> Cmd BackendMsg
+-- getVideosCmd playlistId publishedAfter accessToken =
 getVideosCmd playlistId accessToken =
     let
         url =
             "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=5000&playlistId=" ++ playlistId
     in
-        Http.request
-            { method = "GET"
-            , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
-            , url = url
-            , body = Http.emptyBody
-            , expect = Http.expectJson (GotVideos playlistId) Json.Auto.PlaylistItems.rootDecoder
-            , timeout = Nothing
-            , tracker = Nothing
-            }
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotVideosFromPlaylist playlistId) Json.Auto.PlaylistItems.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+getVideoLiveStreamDataCmd : String -> String -> Cmd BackendMsg
+getVideoLiveStreamDataCmd videoId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=" ++ videoId
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotVideoLiveStreamData videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }

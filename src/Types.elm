@@ -18,6 +18,7 @@ import Set exposing (..)
 import Shared
 import Time exposing (Posix)
 import Url exposing (Url)
+import Json.Bespoke.VideoDecoder
 
 
 type alias FrontendModel =
@@ -39,6 +40,7 @@ type alias BackendModel =
     , playlists : Dict String Playlist
     , schedules : Dict String Schedule
     , videos : Dict String Video
+    , liveVideoDetails : Dict String LiveVideoDetails
     , apiCallCount : Int
     }
 
@@ -67,6 +69,8 @@ type BackendMsg
     | Batch_RefreshAllChannels Time.Posix
     | Batch_RefreshAllPlaylists Time.Posix
     | Batch_RefreshAllVideos Time.Posix
+    | Batch_MonitorForLiveStreams Time.Posix
+    | Batch_GetLiveVideoData Time.Posix
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
@@ -75,7 +79,8 @@ type BackendMsg
     | GetPlaylists String
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
     | GetVideos String
-    | GotVideos String (Result Http.Error Json.Auto.PlaylistItems.Root)
+    | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
+    | GotVideoLiveStreamData String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | NoOpBackendMsg
 
 

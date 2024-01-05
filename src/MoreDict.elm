@@ -22,8 +22,8 @@ fullOuterJoin left right =
     in 
     Dict.fromList joinedValues
 
-filterMap : (left -> result) -> (right -> result) -> ((left, right) -> result) -> Dict comparable (Maybe left, Maybe right) -> Dict comparable result
-filterMap leftMap rightMap bothMap joinedDict =
+filterMapJoin : (left -> result) -> (right -> result) -> ((left, right) -> result) -> Dict comparable (Maybe left, Maybe right) -> Dict comparable result
+filterMapJoin leftMap rightMap bothMap joinedDict =
     joinedDict
         |> Dict.foldl 
             (\key (maybel, mayber) acc ->
@@ -41,6 +41,20 @@ filterMap leftMap rightMap bothMap joinedDict =
                         acc
             )
             Dict.empty
+
+demaybe : Dict comparable (Maybe a) -> Dict comparable a
+demaybe dict =
+    Dict.foldl
+        (\key maybeValue newDict ->
+            case maybeValue of
+                Just value ->
+                    Dict.insert key value newDict
+
+                Nothing ->
+                    newDict
+        )
+        Dict.empty
+        dict
 
 
 getLeftOuter : Dict comparable (l, Maybe r) -> Dict comparable (l, r)
@@ -96,6 +110,14 @@ innerJoin left right =
     fullOuterJoin left right
         |> getInner
 
+
+leftDiff : Dict comparable a -> Dict comparable b -> Dict comparable a
+leftDiff left right =
+    Dict.filter (\key _ -> not <| Dict.member key right) left
+
+rightDiff : Dict comparable a -> Dict comparable b -> Dict comparable b
+rightDiff left right =
+    leftDiff right left
 
 nextId : Dict.Dict number v -> number
 nextId dict =

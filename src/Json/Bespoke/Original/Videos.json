@@ -1,0 +1,46 @@
+{
+    "kind": "youtube#videoListResponse",
+    "etag": "VyfZqGaq57uPYuDqJupZW1-ks_w",
+    "items": [
+        {
+            "kind": "youtube#video",
+            "etag": "dl85fzM_CePgUL-DWamRDugG144",
+            "id": "2B0PvcGmCug",
+            "snippet": {
+                "publishedAt": "2024-01-05T15:40:42Z",
+                "channelId": "UCN9Nj4tjXbVTLYWN0EKly_Q",
+                "title": "This Altcoin Will DESTROY Ethereum In The Crypto Bull Market! (It's NOT Solana!)",
+                "description": "On today's ", 
+                "thumbnails": {
+                    "standard": {
+                        "url": "https://i.ytimg.com/vi/2B0PvcGmCug/sddefault.jpg",
+                        "width": 640,
+                        "height": 480
+                    }
+                },
+                "channelTitle": "Crypto Banter",
+                "tags": [
+                    "crypto news",
+                    "bitcoin news",
+                    "altcoin news",
+                    "bitcoin price"
+                ]
+            },
+            "statistics": {
+                "viewCount": "26092",
+                "likeCount": "4409",
+                "favoriteCount": "0",
+                "commentCount": "84"
+            },
+            "liveStreamingDetails": {
+                "actualStartTime": "2024-01-05T14:36:32Z",
+                "actualEndTime": "2024-01-05T15:21:05Z",
+                "scheduledStartTime": "2024-01-05T14:30:00Z"
+            }
+        }
+    ],
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 1
+    }
+}
