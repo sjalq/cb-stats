@@ -31,14 +31,14 @@ type alias LiveStreamingDetails =
     { actualStartTime : Maybe String
     , actualEndTime : Maybe String
     , scheduledStartTime : Maybe String
-    , currentViewers : Maybe String
+    , concurrentViewers : Maybe String
     }
 
 type alias Video =
     { kind : String
     , etag : String
     , id : String
-    , snippet : Snippet
+    , snippet : Maybe Snippet
     , statistics : Maybe Statistics
     , liveStreamingDetails : Maybe LiveStreamingDetails
     }
@@ -88,7 +88,7 @@ liveStreamingDetailsDecoder =
         |> optional "actualStartTime" (maybe string) Nothing
         |> optional "actualEndTime" (maybe string) Nothing
         |> optional "scheduledStartTime" (maybe string) Nothing
-        |> optional "currentViewers" (maybe string) Nothing
+        |> optional "concurrentViewers" (maybe string) Nothing
 
 videoDecoder : Decoder Video
 videoDecoder =
@@ -96,7 +96,7 @@ videoDecoder =
         |> required "kind" string
         |> required "etag" string
         |> required "id" string
-        |> required "snippet" snippetDecoder
+        |> optional "snippet" (maybe snippetDecoder) Nothing
         |> optional "statistics" (maybe statisticsDecoder) Nothing
         |> optional "liveStreamingDetails" (maybe liveStreamingDetailsDecoder) Nothing
 

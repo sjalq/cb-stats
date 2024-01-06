@@ -41,7 +41,7 @@ type alias BackendModel =
     , schedules : Dict String Schedule
     , videos : Dict String Video
     , liveVideoDetails : Dict String LiveVideoDetails
-    , currentViewers : Dict String CurrentViewers
+    , currentViewers : Dict (String, Int) CurrentViewers
     , apiCallCount : Int
     }
 
@@ -71,7 +71,7 @@ type BackendMsg
     | Batch_RefreshAllPlaylists Time.Posix
     | Batch_RefreshAllVideos Time.Posix
     | Batch_MonitorForLiveStreams Time.Posix
-    | Batch_GetLiveVideoData Time.Posix
+    | Batch_GetLiveVideoStreamData Time.Posix
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
@@ -81,7 +81,7 @@ type BackendMsg
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
     | GetVideos String
     | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
-    | GotVideoLiveStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotLiveVideoStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | NoOpBackendMsg
 
 

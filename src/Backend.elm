@@ -4,7 +4,7 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
-import Api.YoutubeModel 
+import Api.YoutubeModel
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
@@ -34,6 +34,7 @@ import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
+import Iso8601
 
 
 
@@ -99,7 +100,7 @@ subscriptions model =
         , Time.every day Batch_RefreshAllPlaylists -- 1 day
         , Time.every minute Batch_RefreshAllVideos -- 1 minute
         , Time.every (10 * minute) Batch_MonitorForLiveStreams -- 10 minutes
-        , Time.every minute Batch_GetLiveVideoData
+        , Time.every (10 * second) Batch_GetLiveVideoStreamData
         , onConnect OnConnect
         ]
 
@@ -505,7 +506,6 @@ update msg model =
             --             |> Dict.values
             --             |> List.filter (\v -> v.liveStatus == Api.YoutubeModel.Unknown)
             --             |> List.map .id
-
             --     -- check their live status
             --     fetches =
             --         liveStatusUnknownVideos
@@ -523,23 +523,56 @@ update msg model =
             -- ( model
             -- , fetches |> Cmd.batch
             -- )
-            (model, Cmd.none)
+            ( model, Cmd.none )
 
-        Batch_GetLiveVideoData time ->
+        Batch_GetLiveVideoStreamData time ->
             let
-                -- check all the videos that we know are live or scheduled
+                -- check all the videos that we know are live or scheduled or we don't know yet
                 liveOrScheduledVideos =
                     model.videos
                         |> Dict.values
-                        |> List.filter (\v -> v.liveStatus == Api.YoutubeModel.Live || v.liveStatus == Api.YoutubeModel.Scheduled)
+                        |> List.filter
+                            (\v ->
+                                case v.liveStatus of
+                                    Api.YoutubeModel.Unknown ->
+                                        True
+
+                                    Api.YoutubeModel.Live ->
+                                        True
+                                    
+                                    Api.YoutubeModel.Scheduled _ ->
+                                        True
+
+                                    _ ->
+                                        False
+                            )
+                        -- filter out any scheduled stream older than 150 minutes that isn't live yet
+                        |> List.filter
+                            (\v ->
+                                case v.liveStatus of
+                                    Api.YoutubeModel.Scheduled scheduled ->
+                                        let
+                                            scheduledTime =
+                                                scheduled |> Iso8601.toTime 
+                                        in
+                                        case scheduledTime of
+                                            Ok scheduledTime_ ->
+                                                (time |> Time.posixToMillis) - (scheduledTime_ |> Time.posixToMillis) < (150 * minute)
+
+                                            _ ->
+                                                False |> Debug.log "Scheduled time decode failed"
+                                    _ ->
+                                        True
+                            )
                         |> List.map .id
+                        |> Debug.log "liveOrScheduledVideos" 
 
                 -- get their live data
                 fetches =
                     liveOrScheduledVideos
                         |> List.map
                             (\videoId ->
-                                model.playlists
+                                model.videos
                                     |> Dict.get videoId
                                     |> Maybe.map .channelId
                                     |> Maybe.andThen (\channelId -> model.channelAssociations |> List.filter (\c -> c.channelId == channelId) |> List.head |> Maybe.map .email)
@@ -552,7 +585,7 @@ update msg model =
             , fetches |> Cmd.batch
             )
 
-        GotVideoLiveStreamData timestamp videoId liveVideoResponseData ->
+        GotLiveVideoStreamData timestamp videoId liveVideoResponseData ->
             -- assumption -> there's only one item in the .items
             case liveVideoResponseData of
                 Ok liveVideoResponse ->
@@ -569,6 +602,13 @@ update msg model =
                             liveStreamingDetails
                                 |> Maybe.map (\l -> l.actualStartTime == Nothing)
                                 |> Maybe.withDefault False
+
+                        whenScheduled =
+                            liveStreamingDetails
+                                |> Maybe.andThen .scheduledStartTime
+                                |> Maybe.withDefault "strange error"
+                                --|> Maybe.andThen Iso8601.toTime
+                                --|> Result.withDefault timestamp
 
                         isLive =
                             liveStreamingDetails
@@ -590,7 +630,7 @@ update msg model =
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.NeverLive }
 
                                             ( _, True, ( _, _ ) ) ->
-                                                { currentVideoRecord | liveStatus = Api.YoutubeModel.Scheduled }
+                                                { currentVideoRecord | liveStatus = (Api.YoutubeModel.Scheduled whenScheduled) }
 
                                             ( _, _, ( True, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Live }
@@ -613,7 +653,7 @@ update msg model =
                         currentViewers : Maybe Api.YoutubeModel.CurrentViewers
                         currentViewers =
                             liveStreamingDetails
-                                |> Maybe.andThen .currentViewers
+                                |> Maybe.andThen .concurrentViewers
                                 |> Maybe.andThen String.toInt
                                 |> Maybe.map
                                     (\cv ->
@@ -626,12 +666,12 @@ update msg model =
                         newCurrentViewers =
                             case currentViewers of
                                 Just currentViewers_ ->
-                                    model.currentViewers |> Dict.insert videoId currentViewers_
+                                    model.currentViewers |> Dict.insert (videoId, timestamp |> Time.posixToMillis) currentViewers_
 
                                 Nothing ->
                                     model.currentViewers
 
-                        newModel = 
+                        newModel =
                             { model
                                 | videos = newVideos
                                 , currentViewers = newCurrentViewers
@@ -640,6 +680,7 @@ update msg model =
                     ( newModel
                     , Cmd.none
                     )
+                        |> log ("Got live video stream data for video : " ++ videoId) Info
 
                 Err error ->
                     ( model
@@ -840,6 +881,14 @@ updateFromFrontend sessionId clientId msg model =
                     model.videos
                         |> Dict.filter (\_ v -> v.playlistId == playlistId)
 
+                liveVideoDetails =
+                    model.liveVideoDetails
+                        |> Dict.filter (\_ v -> Dict.member v.videoId videos)
+
+                currentViewers =
+                    model.currentViewers
+                        |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
+
                 playlist =
                     model.playlists
                         |> Dict.get playlistId
@@ -849,7 +898,7 @@ updateFromFrontend sessionId clientId msg model =
                 Just playlist_ ->
                     sendToPage clientId <|
                         Gen.Msg.Playlist__Id_ <|
-                            Pages.Playlist.Id_.GotVideos playlist_ videos
+                            Pages.Playlist.Id_.GotVideos playlist_ videos liveVideoDetails currentViewers
 
                 Nothing ->
                     Cmd.none

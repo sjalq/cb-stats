@@ -8,7 +8,6 @@ import Json.Decode as D
 import Lamdera exposing (SessionId)
 import Lamdera.Json as Json
 import Lamdera.Wire3 as Wire3
-import Set
 import Task exposing (Task)
 import Types exposing (BackendModel)
 

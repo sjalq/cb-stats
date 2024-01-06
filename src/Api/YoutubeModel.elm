@@ -58,7 +58,7 @@ type alias DaysOfWeek =
 type LiveStatus 
     = Unknown
     | NeverLive
-    | Scheduled
+    | Scheduled String
     | Live
     | Ended
     | Impossibru

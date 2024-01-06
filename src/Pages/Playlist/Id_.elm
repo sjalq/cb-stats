@@ -1,7 +1,6 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
-import Dict
-import Api.YoutubeModel exposing (Video, Playlist)
+import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
@@ -14,8 +13,10 @@ import Page
 import Request
 import Shared
 import Styles.Colors
+import Time exposing (Posix)
 import UI.Helpers exposing (..)
 import View exposing (View)
+import Time exposing (posixToMillis)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -36,14 +37,18 @@ type alias Model =
     { playlistId : String
     , playlistTitle : String
     , videos : Dict String Video
+    , liveVideoDetails : Dict String LiveVideoDetails
+    , currentViewers : Dict ( String, Int ) CurrentViewers
     }
 
 
 init : Request.With Params -> ( Model, Effect Msg )
 init { params } =
     ( { videos = Dict.empty
-      , playlistId = params.id 
+      , playlistId = params.id
       , playlistTitle = ""
+      , liveVideoDetails = Dict.empty
+      , currentViewers = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
     )
@@ -54,15 +59,22 @@ init { params } =
 
 
 type Msg
-    = GotVideos Playlist (Dict String Video)
+    = GotVideos Playlist (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers)
     | GetVideos
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotVideos playlist videos ->
-            ( { model | videos = videos, playlistTitle = playlist.title }, Effect.none )
+        GotVideos playlist videos liveVideoDetails currentViewers ->
+            ( { model
+                | videos = videos
+                , playlistTitle = playlist.title
+                , liveVideoDetails = liveVideoDetails
+                , currentViewers = currentViewers
+              }
+            , Effect.none
+            )
 
         GetVideos ->
             ( model
@@ -103,6 +115,56 @@ view model =
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column (columnHeader "Published at") (px 220) (.publishedAt >> wrappedText)
+                        , Column
+                            (columnHeader "Channel")
+                            (px 200)
+                            (\v ->
+                                wrappedText <|
+                                    case v.liveStatus of
+                                        Live ->
+                                            "Live now"
+
+                                        Ended ->
+                                            "Ended"
+
+                                        Scheduled strTime ->
+                                            "Scheduled for " ++ strTime 
+
+                                        NeverLive ->
+                                            "Uploaded"
+
+                                        Impossibru ->
+                                            "iMpOssIbRu!"
+
+                                        Unknown ->
+                                            "Unknown - checking..."
+                            )
+                        , Column
+                            (columnHeader "Current")
+                            (px 100)
+                            (\v -> 
+                                model.currentViewers
+                                    |> Dict.filter (\(vId, time) cv  -> vId == v.id)
+                                    |> Dict.values
+                                    |> List.sortBy (.timestamp >> posixToMillis)
+                                    |> List.reverse
+                                    |> List.head
+                                    |> Maybe.map (\cv -> cv.value |> String.fromInt |> wrappedText)
+                                    |> Maybe.withDefault (wrappedText "Unknown")
+                            )
+                        , Column 
+                            (columnHeader "Peak")
+                            (px 100)
+                            (\v -> 
+                                model.currentViewers
+                                    |> Dict.filter (\(vId, time) cv  -> vId == v.id)
+                                    |> Dict.values
+                                    |> List.map (\cv -> cv.value)
+                                    |> List.maximum 
+                                    |> Maybe.map (\cv -> cv  |> String.fromInt |> wrappedText)
+                                    |> Maybe.withDefault (wrappedText "Unknown")
+                            )
+
                         -- , Column (columnHeader "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
                         -- , Column (columnHeader "Views") (px 100) (.viewCount >> String.fromInt >> wrappedText)
                         -- , Column (columnHeader "Likes") (px 100) (.likeCount >> String.fromInt >> wrappedText)

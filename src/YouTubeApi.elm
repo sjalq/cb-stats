@@ -150,13 +150,14 @@ getVideoLiveStreamDataCmd timestamp videoId accessToken =
     let
         url =
             "https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=" ++ videoId
+            |> Debug.log "getVideoLiveStreamDataCmd"
     in
     Http.request
         { method = "GET"
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotVideoLiveStreamData timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , expect = Http.expectJson (GotLiveVideoStreamData timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
