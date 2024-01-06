@@ -59,6 +59,7 @@ type LiveStatus
     = Unknown
     | NeverLive
     | Scheduled String
+    | Expired
     | Live
     | Ended
     | Impossibru

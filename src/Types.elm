@@ -75,11 +75,11 @@ type BackendMsg
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
-    | GetChannels String
+    | GetChannelsByCredential String
     | GotChannels String (Result Http.Error Json.Auto.Channels.Root)
-    | GetPlaylists String
+    | GetPlaylistsByChannel String
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
-    | GetVideos String
+    | GetVideosByPlaylist String
     | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
     | GotLiveVideoStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | NoOpBackendMsg

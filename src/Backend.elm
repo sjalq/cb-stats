@@ -13,6 +13,7 @@ import Dict.Extra as Dict
 import Env
 import Gen.Msg
 import Http exposing (Error(..))
+import Iso8601
 import Json.Bespoke.VideoDecoder exposing (LiveStreamingDetails)
 import Lamdera exposing (..)
 import List.Extra
@@ -34,7 +35,6 @@ import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
-import Iso8601
 
 
 
@@ -95,7 +95,7 @@ day =
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
-        [ Time.every (10 * second) Batch_RefreshAccessTokens -- 30 minutes
+        [ Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every day Batch_RefreshAllChannels -- 1 day
         , Time.every day Batch_RefreshAllPlaylists -- 1 day
         , Time.every minute Batch_RefreshAllVideos -- 1 minute
@@ -236,11 +236,11 @@ update msg model =
                                 YouTubeApi.refreshAccessTokenCmd Env.clientId Env.clientSecret c.refreshToken c.email time
                             )
             in
-            ( model |> addToQuotaCount fetches
+            ( model
             , Cmd.batch fetches
             )
 
-        GetChannels email ->
+        GetChannelsByCredential email ->
             let
                 maybeAccessToken =
                     model.clientCredentials
@@ -255,7 +255,7 @@ update msg model =
                             )
                         |> Maybe.withDefault Cmd.none
             in
-            ( model |> addToQuotaCount [ fetch ]
+            ( model
             , fetch
             )
 
@@ -303,7 +303,7 @@ update msg model =
                     )
                         |> log ("Failed to fetch channels for : " ++ email ++ "\n" ++ httpErrToString error) Error
 
-        GetPlaylists channelId ->
+        GetPlaylistsByChannel channelId ->
             let
                 maybeAccessToken =
                     model.channelAssociations
@@ -372,10 +372,10 @@ update msg model =
                 fetches =
                     model.clientCredentials
                         |> Dict.keys
-                        |> List.map GetChannels
+                        |> List.map GetChannelsByCredential
                         |> List.map performNow
             in
-            ( model |> addToQuotaCount fetches
+            ( model
             , fetches |> Cmd.batch
             )
 
@@ -384,28 +384,25 @@ update msg model =
                 fetches =
                     model.channels
                         |> Dict.keys
-                        |> List.map GetPlaylists
+                        |> List.map GetPlaylistsByChannel
                         |> List.map performNow
             in
-            ( model |> addToQuotaCount fetches
+            ( model
             , fetches |> Cmd.batch
             )
 
         Batch_RefreshAllVideos _ ->
-            -- let
-            --     fetches =
-            --         model.playlists
-            --             |> Dict.keys
-            --             |> List.map GetVideos
-            --             |> List.map performNow
-            -- in
-            -- ( model, fetches |> Cmd.batch )
-            ( model |> addToQuotaCount []
-              -- fetches
-            , Cmd.none
-            )
+            let
+                fetches =
+                    model.playlists
+                        |> Dict.keys
+                        |> List.map GetVideosByPlaylist
+                        |> List.map performNow
+            in
+            ( model, fetches |> Cmd.batch )
 
-        GetVideos playlistId ->
+
+        GetVideosByPlaylist playlistId ->
             let
                 maybeAccessToken =
                     model.playlists
@@ -422,7 +419,7 @@ update msg model =
                             )
                         |> Maybe.withDefault Cmd.none
             in
-            ( model |> addToQuotaCount [ fetch ]
+            ( model
             , fetch
             )
 
@@ -441,7 +438,7 @@ update msg model =
                             )
                         |> Maybe.withDefault Cmd.none
             in
-            ( model |> addToQuotaCount [ fetch ]
+            ( model
             , fetch
             )
 
@@ -539,33 +536,17 @@ update msg model =
 
                                     Api.YoutubeModel.Live ->
                                         True
-                                    
+
                                     Api.YoutubeModel.Scheduled _ ->
                                         True
+
 
                                     _ ->
                                         False
                             )
-                        -- filter out any scheduled stream older than 150 minutes that isn't live yet
-                        |> List.filter
-                            (\v ->
-                                case v.liveStatus of
-                                    Api.YoutubeModel.Scheduled scheduled ->
-                                        let
-                                            scheduledTime =
-                                                scheduled |> Iso8601.toTime 
-                                        in
-                                        case scheduledTime of
-                                            Ok scheduledTime_ ->
-                                                (time |> Time.posixToMillis) - (scheduledTime_ |> Time.posixToMillis) < (150 * minute)
-
-                                            _ ->
-                                                False |> Debug.log "Scheduled time decode failed"
-                                    _ ->
-                                        True
-                            )
+                        
                         |> List.map .id
-                        |> Debug.log "liveOrScheduledVideos" 
+                        |> Debug.log "liveOrScheduledVideos"
 
                 -- get their live data
                 fetches =
@@ -603,12 +584,16 @@ update msg model =
                                 |> Maybe.map (\l -> l.actualStartTime == Nothing)
                                 |> Maybe.withDefault False
 
-                        whenScheduled =
+                        whenScheduledStr =
                             liveStreamingDetails
                                 |> Maybe.andThen .scheduledStartTime
                                 |> Maybe.withDefault "strange error"
-                                --|> Maybe.andThen Iso8601.toTime
-                                --|> Result.withDefault timestamp
+
+                        --|> Maybe.andThen Iso8601.toTime
+                        --|> Result.withDefault timestamp
+                        whenScheduled =
+                            whenScheduledStr
+                                |> Iso8601.toTime
 
                         isLive =
                             liveStreamingDetails
@@ -625,17 +610,22 @@ update msg model =
                                 |> Dict.get videoId
                                 |> Maybe.map
                                     (\currentVideoRecord ->
-                                        case ( wasNeverLive, isScheduled, ( isLive, wasLive ) ) of
-                                            ( True, _, ( _, _ ) ) ->
+                                        case ( wasNeverLive, isScheduled, ( isLive, wasLive, whenScheduled ) ) of
+                                            ( True, _, ( _, _, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.NeverLive }
 
-                                            ( _, True, ( _, _ ) ) ->
-                                                { currentVideoRecord | liveStatus = (Api.YoutubeModel.Scheduled whenScheduled) }
+                                            ( _, True, ( _, _, Ok whenScheduled_ ) ) ->
+                                                -- if the scheduled time is more than 150 minutes ago, then we stop monitoring it
+                                                if (timestamp |> Time.posixToMillis) - (whenScheduled_ |> Time.posixToMillis) < (150 * minute) then
+                                                    { currentVideoRecord | liveStatus = Api.YoutubeModel.Scheduled whenScheduledStr }
 
-                                            ( _, _, ( True, _ ) ) ->
+                                                else
+                                                    { currentVideoRecord | liveStatus = Api.YoutubeModel.Expired }
+
+                                            ( _, _, ( True, _, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Live }
 
-                                            ( _, _, ( _, True ) ) ->
+                                            ( _, _, ( _, True, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Ended }
 
                                             _ ->
@@ -666,7 +656,7 @@ update msg model =
                         newCurrentViewers =
                             case currentViewers of
                                 Just currentViewers_ ->
-                                    model.currentViewers |> Dict.insert (videoId, timestamp |> Time.posixToMillis) currentViewers_
+                                    model.currentViewers |> Dict.insert ( videoId, timestamp |> Time.posixToMillis ) currentViewers_
 
                                 Nothing ->
                                     model.currentViewers
@@ -857,13 +847,13 @@ updateFromFrontend sessionId clientId msg model =
             )
 
         FetchChannelsFromYoutube email ->
-            ( model, performNow (GetChannels email) )
+            ( model, performNow (GetChannelsByCredential email) )
 
         FetchPlaylistsFromYoutube channelId ->
-            ( model, performNow (GetPlaylists channelId) )
+            ( model, performNow (GetPlaylistsByChannel channelId) )
 
         FetchVideosFromYoutube playlistId ->
-            ( model, performNow (GetVideos playlistId) )
+            ( model, performNow (GetVideosByPlaylist playlistId) )
 
         UpdateSchedule schedule ->
             ( { model | schedules = model.schedules |> Dict.insert schedule.playlistId schedule }
@@ -990,11 +980,6 @@ httpErrToString error =
                 BadBody message ->
                     "Bad body: " ++ message
            )
-
-
-addToQuotaCount : List a -> Model -> Model
-addToQuotaCount fetches model =
-    { model | apiCallCount = model.apiCallCount + (fetches |> List.length) }
 
 
 playlist_latestVideo model playlistId =

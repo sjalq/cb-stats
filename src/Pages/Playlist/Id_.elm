@@ -130,6 +130,9 @@ view model =
                                         Scheduled strTime ->
                                             "Scheduled for " ++ strTime 
 
+                                        Expired ->
+                                            "Schedule expired"
+
                                         NeverLive ->
                                             "Uploaded"
 
@@ -165,12 +168,6 @@ view model =
                                     |> Maybe.withDefault (wrappedText "Unknown")
                             )
 
-                        -- , Column (columnHeader "Duration") (px 100) (.duration >> String.fromInt >> wrappedText)
-                        -- , Column (columnHeader "Views") (px 100) (.viewCount >> String.fromInt >> wrappedText)
-                        -- , Column (columnHeader "Likes") (px 100) (.likeCount >> String.fromInt >> wrappedText)
-                        -- , Column (columnHeader "Dislikes") (px 100) (.dislikeCount >> String.fromInt >> wrappedText)
-                        -- , Column (columnHeader "Favorites") (px 100) (.favoriteCount >> String.fromInt >> wrappedText)
-                        -- , Column (columnHeader "Comments") (px 100) (.commentCount >> String.fromInt >> wrappedText)
                         ]
                     }
                 , el
