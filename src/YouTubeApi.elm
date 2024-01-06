@@ -5,12 +5,13 @@ import Json.Auto.AccessToken
 import Json.Auto.Channels
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
+import Json.Bespoke.VideoDecoder
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Task exposing (Task)
 import Time exposing (..)
 import Types exposing (BackendMsg(..))
-import Json.Bespoke.VideoDecoder
+import Pages.Admin exposing (page)
 
 
 
@@ -128,12 +129,18 @@ getPlaylistsCmd channelId accessToken =
         }
 
 
+
 -- getVideosCmd : String -> Time.Posix -> String -> Cmd BackendMsg
 -- getVideosCmd playlistId publishedAfter accessToken =
-getVideosCmd playlistId accessToken =
+
+
+getVideosCmd pageToken playlistId accessToken =
     let
         url =
-            "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=5000&playlistId=" ++ playlistId
+            "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50"
+                ++ "&playlistId="
+                ++ playlistId
+                ++ (pageToken |> Maybe.map (\token -> "&pageToken=" ++ token) |> Maybe.withDefault "")
     in
     Http.request
         { method = "GET"
@@ -145,12 +152,14 @@ getVideosCmd playlistId accessToken =
         , tracker = Nothing
         }
 
+
 getVideoLiveStreamDataCmd : Posix -> String -> String -> Cmd BackendMsg
 getVideoLiveStreamDataCmd timestamp videoId accessToken =
     let
         url =
-            "https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=" ++ videoId
-            |> Debug.log "getVideoLiveStreamDataCmd"
+            "https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id="
+                ++ videoId
+                |> Debug.log "getVideoLiveStreamDataCmd"
     in
     Http.request
         { method = "GET"

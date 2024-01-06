@@ -72,7 +72,6 @@ init =
       , apiCallCount = 0
       }
     , Cmd.none
-      -- might as well be none since it gets called at weird points
     )
 
 
@@ -96,10 +95,9 @@ subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
         [ Time.every (10 * second) Batch_RefreshAccessTokens
-        , Time.every day Batch_RefreshAllChannels -- 1 day
-        , Time.every day Batch_RefreshAllPlaylists -- 1 day
-        , Time.every minute Batch_RefreshAllVideos -- 1 minute
-        , Time.every (10 * minute) Batch_MonitorForLiveStreams -- 10 minutes
+        , Time.every day Batch_RefreshAllChannels 
+        , Time.every day Batch_RefreshAllPlaylists 
+        , Time.every minute Batch_RefreshAllVideos
         , Time.every (10 * second) Batch_GetLiveVideoStreamData
         , onConnect OnConnect
         ]
@@ -179,7 +177,6 @@ update msg model =
             ( model |> Logging.logToModel logMessage posix lvl, Cmd.none )
 
         GotFreshAccessTokenWithTime email newAccessToken newTimestampPosix ->
-            -- this gets called when the access token has been refreshed but we now have the system time also
             let
                 newModel =
                     model.clientCredentials
@@ -194,7 +191,6 @@ update msg model =
                             )
                         |> Maybe.withDefault model
 
-                -- if there were no old credentials, just return the old model
             in
             ( newModel
             , Cmd.none
@@ -212,8 +208,6 @@ update msg model =
                                 -- update the access token
                                 |> Maybe.map (\new -> { model | clientCredentials = model.clientCredentials |> Dict.insert email new })
                                 |> Maybe.withDefault model
-
-                        -- if there were no old credentials, just return the old model
                     in
                     ( newModel
                     , Cmd.none
@@ -328,7 +322,6 @@ update msg model =
             case playlistResponse of
                 Result.Ok playlists ->
                     let
-                        --retrievedPlaylists : Dict String Playlist
                         retrievedPlaylists =
                             playlists.items
                                 |> List.map
@@ -344,7 +337,6 @@ update msg model =
                                     )
                                 |> Dict.fromList
 
-                        --newPlaylists : Dict String Playlist
                         newPlaylists =
                             MoreDict.fullOuterJoin retrievedPlaylists model.playlists
                                 |> MoreDict.filterMapJoin
@@ -396,13 +388,12 @@ update msg model =
                 fetches =
                     model.playlists
                         |> Dict.keys
-                        |> List.map GetVideosByPlaylist
+                        |> List.map (GetVideosByPlaylist Nothing)
                         |> List.map performNow
             in
             ( model, fetches |> Cmd.batch )
 
-
-        GetVideosByPlaylist playlistId ->
+        GetVideosByPlaylist nextPageToken playlistId ->
             let
                 maybeAccessToken =
                     model.playlists
@@ -414,9 +405,7 @@ update msg model =
                 fetch =
                     maybeAccessToken
                         |> Maybe.map
-                            (\accessToken ->
-                                YouTubeApi.getVideosCmd playlistId accessToken
-                            )
+                                (YouTubeApi.getVideosCmd nextPageToken playlistId)
                         |> Maybe.withDefault Cmd.none
             in
             ( model
@@ -484,9 +473,12 @@ update msg model =
                             { model
                                 | videos = videosToPersist
                             }
+
+                        fetchNext =
+                            performNow <| GetVideosByPlaylist validResponse.nextPageToken playlistId
                     in
                     ( newModel
-                    , Cmd.none
+                    , fetchNext
                     )
 
                 Err error ->
@@ -494,33 +486,6 @@ update msg model =
                     , Cmd.none
                     )
                         |> log ("Failed to fetch videos for playlist : " ++ playlistId ++ "\n" ++ httpErrToString error) Error
-
-        Batch_MonitorForLiveStreams time ->
-            -- let
-            --     -- check the videos for which we don't know if they are live
-            --     liveStatusUnknownVideos =
-            --         model.videos
-            --             |> Dict.values
-            --             |> List.filter (\v -> v.liveStatus == Api.YoutubeModel.Unknown)
-            --             |> List.map .id
-            --     -- check their live status
-            --     fetches =
-            --         liveStatusUnknownVideos
-            --             |> List.map
-            --                 (\videoId ->
-            --                     model.playlists
-            --                         |> Dict.get videoId
-            --                         |> Maybe.map .channelId
-            --                         |> Maybe.andThen (\channelId -> model.channelAssociations |> List.filter (\c -> c.channelId == channelId) |> List.head |> Maybe.map .email)
-            --                         |> Maybe.andThen (\email -> model.clientCredentials |> Dict.get email |> Maybe.map .accessToken)
-            --                         |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd videoId)
-            --                 )
-            --             |> List.filterMap identity
-            -- in
-            -- ( model
-            -- , fetches |> Cmd.batch
-            -- )
-            ( model, Cmd.none )
 
         Batch_GetLiveVideoStreamData time ->
             let
@@ -540,11 +505,9 @@ update msg model =
                                     Api.YoutubeModel.Scheduled _ ->
                                         True
 
-
                                     _ ->
                                         False
                             )
-                        
                         |> List.map .id
                         |> Debug.log "liveOrScheduledVideos"
 
@@ -589,8 +552,7 @@ update msg model =
                                 |> Maybe.andThen .scheduledStartTime
                                 |> Maybe.withDefault "strange error"
 
-                        --|> Maybe.andThen Iso8601.toTime
-                        --|> Result.withDefault timestamp
+
                         whenScheduled =
                             whenScheduledStr
                                 |> Iso8601.toTime
@@ -853,7 +815,7 @@ updateFromFrontend sessionId clientId msg model =
             ( model, performNow (GetPlaylistsByChannel channelId) )
 
         FetchVideosFromYoutube playlistId ->
-            ( model, performNow (GetVideosByPlaylist playlistId) )
+            ( model, performNow (GetVideosByPlaylist Nothing playlistId) )
 
         UpdateSchedule schedule ->
             ( { model | schedules = model.schedules |> Dict.insert schedule.playlistId schedule }

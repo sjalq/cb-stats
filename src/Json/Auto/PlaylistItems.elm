@@ -13,6 +13,7 @@ type alias Root =
     { etag : String
     , items : List RootItemsObject
     , kind : String
+    , nextPageToken : Maybe String
     , pageInfo : RootPageInfo
     }
 
@@ -66,11 +67,13 @@ type alias RootPageInfo =
 
 rootDecoder : Json.Decode.Decoder Root
 rootDecoder =
-    Json.Decode.map4 Root
+    Json.Decode.map5 Root
         (Json.Decode.field "etag" Json.Decode.string)
         (Json.Decode.field "items" <| Json.Decode.list rootItemsObjectDecoder)
         (Json.Decode.field "kind" Json.Decode.string)
+        (Json.Decode.maybe <| Json.Decode.field "nextPageToken" Json.Decode.string)
         (Json.Decode.field "pageInfo" rootPageInfoDecoder)
+
 
 
 rootItemsObjectDecoder : Json.Decode.Decoder RootItemsObject
