@@ -170,3 +170,75 @@ getVideoLiveStreamDataCmd timestamp videoId accessToken =
         , timeout = Nothing
         , tracker = Nothing
         }
+
+getVideoStatsOnConclusionCmd : Posix -> String -> String -> Cmd BackendMsg
+getVideoStatsOnConclusionCmd timestamp videoId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
+                ++ videoId
+                |> Debug.log "getVideoStatsCmd"
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotVideoStatsOnConclusion timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+getVideoStatsAfter24HrsCmd : Posix -> String -> String -> Cmd BackendMsg
+getVideoStatsAfter24HrsCmd timestamp videoId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
+                ++ videoId
+                |> Debug.log "getVideoStatsCmd"
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotVideoStatsAfter24Hrs timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+getLiveBroadcastIdCmd timestamp videoId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/liveBroadcasts?part=liveStreamingDetails&id="
+                ++ videoId
+                |> Debug.log "getLiveBroadcastId"
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotLiveBroadcastId timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+getChatMessagesCmd pageToken liveBroadcastId accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet,authorDetails&liveChatId="
+                ++ liveBroadcastId
+                ++ (pageToken |> Maybe.map (\token -> "&pageToken=" ++ token) |> Maybe.withDefault "")
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotChatMessages liveBroadcastId) Json.Bespoke.VideoDecoder.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }

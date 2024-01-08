@@ -71,6 +71,9 @@ type BackendMsg
     | Batch_RefreshAllPlaylists Time.Posix
     | Batch_RefreshAllVideos Time.Posix
     | Batch_GetLiveVideoStreamData Time.Posix
+    | Batch_GetLiveBroadcastIds Time.Posix
+    | Batch_GetChatMessages Time.Posix
+    | Batch_GetVideoStats Time.Posix
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
@@ -81,6 +84,11 @@ type BackendMsg
     | GetVideosByPlaylist (Maybe String) String 
     | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
     | GotLiveVideoStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotVideoStatsOnConclusion Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotVideoStatsAfter24Hrs Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotLiveBroadcastId Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotChatMessages String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+      -- other
     | NoOpBackendMsg
 
 

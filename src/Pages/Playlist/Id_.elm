@@ -124,8 +124,8 @@ view model =
                                         Live ->
                                             "Live now"
 
-                                        Ended ->
-                                            "Ended"
+                                        Ended strIme ->
+                                            "Ended at " ++ strIme
 
                                         Scheduled strTime ->
                                             "Scheduled for " ++ strTime 

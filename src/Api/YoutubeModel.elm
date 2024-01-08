@@ -2,6 +2,7 @@ module Api.YoutubeModel exposing (..)
 
 import Set exposing (Set)
 import Lamdera.Debug exposing (Posix)
+import Json.Bespoke.VideoDecoder exposing (Statistics)
 
 
 type alias ClientCredentials =
@@ -61,7 +62,7 @@ type LiveStatus
     | Scheduled String
     | Expired
     | Live
-    | Ended
+    | Ended String
     | Impossibru
 
 
@@ -74,6 +75,9 @@ type alias Video =
     , thumbnailUrl : String
     , publishedAt : String
     , liveStatus : LiveStatus
+    , statsOnConclusion : Maybe Statistics
+    , statsAfter24Hours : Maybe Statistics
+    , chatMsgCount : Maybe Int
     }
 
 
@@ -98,4 +102,14 @@ type alias CurrentViewers =
     { videoId : String
     , timestamp : Posix
     , value : Int
+    }
+
+type alias VideoStatisticsAtTime =
+    { videoId : String
+    , timestamp : Posix
+    , viewCount : Int
+    , likeCount : Int
+    , dislikeCount : Int
+    , favoriteCount : Int
+    , commentCount : Int
     }

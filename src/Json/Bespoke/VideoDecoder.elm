@@ -32,6 +32,7 @@ type alias LiveStreamingDetails =
     , actualEndTime : Maybe String
     , scheduledStartTime : Maybe String
     , concurrentViewers : Maybe String
+    , activeLiveChatId : Maybe String
     }
 
 type alias Video =
@@ -47,6 +48,7 @@ type alias Root =
     { kind : String
     , etag : String
     , items : List Video
+    , nextPageToken : Maybe String
     , pageInfo : PageInfo
     }
 
@@ -89,6 +91,7 @@ liveStreamingDetailsDecoder =
         |> optional "actualEndTime" (maybe string) Nothing
         |> optional "scheduledStartTime" (maybe string) Nothing
         |> optional "concurrentViewers" (maybe string) Nothing
+        |> optional "activeLiveChatId" (maybe string) Nothing
 
 videoDecoder : Decoder Video
 videoDecoder =
@@ -112,4 +115,6 @@ rootDecoder =
         |> required "kind" string
         |> required "etag" string
         |> required "items" (list videoDecoder)
+        |> optional "nextPageToken" (maybe string) Nothing
         |> required "pageInfo" pageInfoDecoder
+

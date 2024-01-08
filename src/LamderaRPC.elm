@@ -86,18 +86,6 @@ type alias HttpRequest =
     , body : HttpBody
     }
 
-
-
--- @TODO future
--- type alias HttpResponse =
---     { version : String -- HTTP/1.1, HTTP/2, etc.
---     , statusCode : Int -- 200, 404, etc.
---     , statusText : String -- "OK", "Not Found", etc.
---     , headers : List HttpHeader -- List of (header, value) pairs, e.g. [ ("Content-Type", "application/json") ]
---     , body : Maybe HttpBody
---     }
-
-
 type alias HttpHeader =
     ( String, String )
 

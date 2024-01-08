@@ -33,6 +33,7 @@ type alias LiveStreamingDetails =
     , actualEndTime : Maybe String
     , scheduledStartTime : Maybe String
     , concurrentViewers : Maybe String
+    , activeLiveChatId : Maybe String
     }
 
 
