@@ -97,8 +97,8 @@ subscriptions model =
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
         , Time.every minute Batch_RefreshAllVideos
-        , Time.every (1 * minute) Batch_GetLiveVideoStreamData
-        , Time.every (1 * minute) Batch_GetLiveBroadcastIds
+        , Time.every (10 * second) Batch_GetLiveVideoStreamData
+        , Time.every (10 * second) Batch_GetLiveBroadcastIds
         , Time.every minute Batch_GetVideoStats
         , onConnect OnConnect
         ]
@@ -454,7 +454,7 @@ update msg model =
                                           , description = v.snippet.description
                                           , channelId = v.snippet.channelId
                                           , playlistId = v.snippet.playlistId
-                                          , thumbnailUrl = v.snippet.thumbnails.standard.url
+                                          , thumbnailUrl = v.snippet.thumbnails |> Maybe.map (.standard >> .url)
                                           , publishedAt = v.snippet.publishedAt
                                           , liveStatus = Api.YoutubeModel.Unknown
                                           , statsOnConclusion = Nothing

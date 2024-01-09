@@ -72,7 +72,7 @@ type alias Video =
     , description : String
     , channelId : String
     , playlistId : String
-    , thumbnailUrl : String
+    , thumbnailUrl : Maybe String
     , publishedAt : String
     , liveBroadcastId : Maybe String
     , liveStatus : LiveStatus
