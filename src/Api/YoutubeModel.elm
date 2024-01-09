@@ -74,7 +74,7 @@ type alias Video =
     , playlistId : String
     , thumbnailUrl : Maybe String
     , publishedAt : String
-    , liveBroadcastId : Maybe String
+    , liveChatId : Maybe String
     , liveStatus : LiveStatus
     , statsOnConclusion : Maybe Statistics
     , statsAfter24Hours : Maybe Statistics

@@ -98,7 +98,6 @@ subscriptions model =
         , Time.every day Batch_RefreshAllPlaylists
         , Time.every minute Batch_RefreshAllVideos
         , Time.every (10 * second) Batch_GetLiveVideoStreamData
-        , Time.every (10 * second) Batch_GetLiveBroadcastIds
         , Time.every minute Batch_GetVideoStats
         , onConnect OnConnect
         ]
@@ -459,7 +458,7 @@ update msg model =
                                           , liveStatus = Api.YoutubeModel.Unknown
                                           , statsOnConclusion = Nothing
                                           , statsAfter24Hours = Nothing
-                                          , liveBroadcastId = Nothing
+                                          , liveChatId = Nothing
                                           , chatMsgCount = Nothing
                                           }
                                         )
@@ -604,10 +603,15 @@ update msg model =
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Impossibru }
                                     )
 
+                        activeLiveChatId =
+                            liveStreamingDetails
+                                |> Maybe.andThen .activeLiveChatId
+                                |> Debug.log "activeLiveChatId"
+
                         newVideos =
                             case newVideo of
                                 Just newVideo_ ->
-                                    model.videos |> Dict.insert videoId newVideo_
+                                    model.videos |> Dict.insert videoId { newVideo_ | liveChatId = activeLiveChatId }
 
                                 Nothing ->
                                     model.videos
@@ -809,79 +813,14 @@ update msg model =
                                 Maybe.map2
                                     (YouTubeApi.getChatMessagesCmd Nothing)
                                     (video_getAccesToken model videoId)
-                                    v.liveBroadcastId
+                                    v.liveChatId
                             )
                         |> Dict.values
                         |> List.filterMap identity
             in
             ( model, Cmd.batch fetches )
 
-        Batch_GetLiveBroadcastIds time ->
-            let
-                -- fetch all the videos that are currently live and don't have a liveBroadcastId yet
-                needLiveBroadcastIds =
-                    model.videos
-                        |> Dict.filter
-                            (\_ v ->
-                                case ( v.liveStatus, v.liveBroadcastId ) of
-                                    ( Api.YoutubeModel.Live, Nothing ) ->
-                                        True
-
-                                    _ ->
-                                        False
-                            )
-
-                fetches =
-                    needLiveBroadcastIds
-                        |> Dict.keys
-                        |> List.map
-                            (\videoId ->
-                                video_getAccesToken model videoId
-                                    |> Maybe.map (YouTubeApi.getLiveBroadcastIdCmd time videoId)
-                            )
-                        |> List.filterMap identity
-            in
-            ( model
-            , Cmd.batch fetches
-            )
-
-        GotLiveBroadcastId time videoId liveBroadcastResponse ->
-            case liveBroadcastResponse of
-                Ok liveBroadcast ->
-                    let
-                        newVideo =
-                            model.videos
-                                |> Dict.get videoId
-                                |> Maybe.map
-                                    (\currentVideoRecord ->
-                                        case liveBroadcast.items of
-                                            [] ->
-                                                { currentVideoRecord | liveBroadcastId = Nothing }
-
-                                            liveBroadcastItem :: _ ->
-                                                { currentVideoRecord | liveBroadcastId = Just liveBroadcastItem.id }
-                                    )
-
-                        newVideos =
-                            case newVideo of
-                                Just newVideo_ ->
-                                    model.videos |> Dict.insert videoId newVideo_
-
-                                Nothing ->
-                                    model.videos
-
-                        newModel =
-                            { model
-                                | videos = newVideos
-                            }
-                    in
-                    ( newModel, Cmd.none )
-
-                Err error ->
-                    ( model, Cmd.none )
-                        |> log ("Failed to fetch live broadcast id for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
-
-        GotChatMessages liveBroadcastId liveChatMsgResponse ->
+        GotChatMessages liveChatId liveChatMsgResponse ->
             case liveChatMsgResponse of
                 Ok liveChatMsgs ->
                     let
@@ -890,7 +829,7 @@ update msg model =
 
                         videoToUpdate =
                             model.videos
-                                |> Dict.filter (\_ v -> v.liveBroadcastId == Just liveBroadcastId)
+                                |> Dict.filter (\_ v -> v.liveChatId == Just liveChatId)
                                 |> Dict.values
                                 |> List.head
 
@@ -921,7 +860,7 @@ update msg model =
                         fetchMore =
                             Maybe.map2
                                 (\nextPageToken accessToken_ ->
-                                    YouTubeApi.getChatMessagesCmd (Just nextPageToken) liveBroadcastId accessToken_
+                                    YouTubeApi.getChatMessagesCmd (Just nextPageToken) liveChatId accessToken_
                                 )
                                 liveChatMsgs.nextPageToken
                                 accessToken
@@ -931,7 +870,7 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        |> log ("Failed to fetch chat messages for live chat id : " ++ liveBroadcastId ++ "\n" ++ httpErrToString error) Error
+                        |> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )

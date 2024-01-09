@@ -19,6 +19,7 @@ import Shared
 import Time exposing (Posix)
 import Url exposing (Url)
 import Json.Bespoke.VideoDecoder
+import Json.Bespoke.LiveBroadcastDecoder
 
 
 type alias FrontendModel =
@@ -71,7 +72,6 @@ type BackendMsg
     | Batch_RefreshAllPlaylists Time.Posix
     | Batch_RefreshAllVideos Time.Posix
     | Batch_GetLiveVideoStreamData Time.Posix
-    | Batch_GetLiveBroadcastIds Time.Posix
     | Batch_GetChatMessages Time.Posix
     | Batch_GetVideoStats Time.Posix
       -- youtube calls and responses
@@ -86,8 +86,7 @@ type BackendMsg
     | GotLiveVideoStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | GotVideoStatsOnConclusion Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | GotVideoStatsAfter24Hrs Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
-    | GotLiveBroadcastId Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
-    | GotChatMessages String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotChatMessages String (Result Http.Error Json.Bespoke.LiveBroadcastDecoder.Root)
       -- other
     | NoOpBackendMsg
 

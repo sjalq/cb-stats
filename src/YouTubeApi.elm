@@ -6,13 +6,14 @@ import Json.Auto.Channels
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
 import Json.Bespoke.VideoDecoder
+import Json.Auto.LiveBroadcast
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Task exposing (Task)
 import Time exposing (..)
 import Types exposing (BackendMsg(..))
 import Pages.Admin exposing (page)
-
+import Json.Bespoke.LiveBroadcastDecoder
 
 
 -- Type alias for token management
@@ -208,24 +209,6 @@ getVideoStatsAfter24HrsCmd timestamp videoId accessToken =
         }
 
 
-getLiveBroadcastIdCmd timestamp videoId accessToken =
-    let
-        url =
-            "https://www.googleapis.com/youtube/v3/liveBroadcasts?part=liveStreamingDetails&id="
-                ++ videoId
-                |> Debug.log "getLiveBroadcastId"
-    in
-    Http.request
-        { method = "GET"
-        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
-        , url = url
-        , body = Http.emptyBody
-        , expect = Http.expectJson (GotLiveBroadcastId timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
 getChatMessagesCmd pageToken liveBroadcastId accessToken =
     let
         url =
@@ -238,7 +221,7 @@ getChatMessagesCmd pageToken liveBroadcastId accessToken =
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotChatMessages liveBroadcastId) Json.Bespoke.VideoDecoder.rootDecoder
+        , expect = Http.expectJson (GotChatMessages liveBroadcastId) Json.Bespoke.LiveBroadcastDecoder.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

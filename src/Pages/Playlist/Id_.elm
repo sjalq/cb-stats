@@ -115,7 +115,7 @@ view model =
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column (columnHeader "Published at") (px 220) (.publishedAt >> wrappedText)
-                        , Column (columnHeader "liveBroadcastId") (px 200) (.liveBroadcastId >> Maybe.withDefault "" >> wrappedText)
+                        , Column (columnHeader "liveChatId") (px 200) (.liveChatId >> Maybe.withDefault "Unavailable" >> wrappedText)
                         , Column
                             (columnHeader "Channel")
                             (px 200)

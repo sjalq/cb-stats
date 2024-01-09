@@ -1,15 +1,13 @@
-module Json.Bespoke.VideoDecoder exposing (..)
+module Json.Bespoke.LiveBroadcastDecoder exposing (..)
 
 import Json.Decode exposing (Decoder, field, int, list, maybe, string, succeed)
 import Json.Decode.Pipeline exposing (optional, required)
-
 
 type alias Thumbnail =
     { url : String
     , width : Int
     , height : Int
     }
-
 
 type alias Snippet =
     { publishedAt : String
@@ -19,9 +17,7 @@ type alias Snippet =
     , thumbnails : Maybe Thumbnail
     , channelTitle : String
     , tags : Maybe (List String)
-    , liveChatId : Maybe String
     }
-
 
 type alias Statistics =
     { viewCount : Int
@@ -31,7 +27,6 @@ type alias Statistics =
     , commentCount : Int
     }
 
-
 type alias LiveStreamingDetails =
     { actualStartTime : Maybe String
     , actualEndTime : Maybe String
@@ -39,7 +34,6 @@ type alias LiveStreamingDetails =
     , concurrentViewers : Maybe String
     , activeLiveChatId : Maybe String
     }
-
 
 type alias Video =
     { kind : String
@@ -50,7 +44,6 @@ type alias Video =
     , liveStreamingDetails : Maybe LiveStreamingDetails
     }
 
-
 type alias Root =
     { kind : String
     , etag : String
@@ -59,12 +52,10 @@ type alias Root =
     , pageInfo : PageInfo
     }
 
-
 type alias PageInfo =
     { totalResults : Int
     , resultsPerPage : Int
     }
-
 
 thumbnailDecoder : Decoder Thumbnail
 thumbnailDecoder =
@@ -72,7 +63,6 @@ thumbnailDecoder =
         |> required "url" string
         |> required "width" int
         |> required "height" int
-
 
 snippetDecoder : Decoder Snippet
 snippetDecoder =
@@ -84,18 +74,15 @@ snippetDecoder =
         |> optional "thumbnails" (maybe thumbnailDecoder) Nothing
         |> required "channelTitle" string
         |> optional "tags" (maybe (list string)) Nothing
-        |> optional "liveChatId" (maybe string) Nothing
-
 
 statisticsDecoder : Decoder Statistics
 statisticsDecoder =
     succeed Statistics
-        |> required "viewCount" int
-        |> required "likeCount" int
+        |> required "viewCount" int 
+        |> required "likeCount" int 
         |> optional "dislikeCount" (maybe int) Nothing
         |> optional "favoriteCount" (maybe int) Nothing
         |> required "commentCount" int
-
 
 liveStreamingDetailsDecoder : Decoder LiveStreamingDetails
 liveStreamingDetailsDecoder =
@@ -105,7 +92,6 @@ liveStreamingDetailsDecoder =
         |> optional "scheduledStartTime" (maybe string) Nothing
         |> optional "concurrentViewers" (maybe string) Nothing
         |> optional "activeLiveChatId" (maybe string) Nothing
-
 
 videoDecoder : Decoder Video
 videoDecoder =
@@ -117,13 +103,11 @@ videoDecoder =
         |> optional "statistics" (maybe statisticsDecoder) Nothing
         |> optional "liveStreamingDetails" (maybe liveStreamingDetailsDecoder) Nothing
 
-
 pageInfoDecoder : Decoder PageInfo
 pageInfoDecoder =
     succeed PageInfo
         |> required "totalResults" int
         |> required "resultsPerPage" int
-
 
 rootDecoder : Decoder Root
 rootDecoder =
@@ -133,3 +117,4 @@ rootDecoder =
         |> required "items" (list videoDecoder)
         |> optional "nextPageToken" (maybe string) Nothing
         |> required "pageInfo" pageInfoDecoder
+
