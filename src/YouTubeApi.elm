@@ -225,3 +225,24 @@ getChatMessagesCmd pageToken liveBroadcastId accessToken =
         , timeout = Nothing
         , tracker = Nothing
         }
+
+-- getAverageWatchTimeCmd startDate endDate videoId accessToken =
+--     let
+--         url =
+--             "https://www.googleapis.com/youtube/analytics/v2/reports?dimensions=video&endDate="
+--                 ++ endDate
+--                 ++ "&ids=channel%3D%3DMINE&metrics=averageViewPercentage&startDate="
+--                 ++ startDate
+--                 ++ "&filters=video%3D%3D"
+--                 ++ videoId
+--                 ++ "&maxResults=1"
+--     in
+--     Http.request
+--         { method = "GET"
+--         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+--         , url = url
+--         , body = Http.emptyBody
+--         , expect = Http.expectString (GotAverageWatchTime videoId) 
+--         , timeout = Nothing
+--         , tracker = Nothing
+--         }

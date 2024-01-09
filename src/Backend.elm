@@ -96,7 +96,7 @@ subscriptions model =
         [ Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
-        , Time.every minute Batch_RefreshAllVideos
+        , Time.every (10 * second) Batch_RefreshAllVideos
         , Time.every (10 * second) Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
         , onConnect OnConnect
@@ -798,8 +798,8 @@ update msg model =
                     model.videos
                         |> Dict.filter
                             (\_ v ->
-                                case ( v.liveStatus, v.chatMsgCount ) of
-                                    ( Api.YoutubeModel.Ended _, Nothing ) ->
+                                case ( v.liveStatus, v.chatMsgCount, v.liveChatId ) of
+                                    ( Api.YoutubeModel.Ended _, Nothing, Just _ ) ->
                                         True
 
                                     _ ->
