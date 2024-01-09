@@ -104,7 +104,7 @@ view model =
             , centerY
             ]
             (Element.column
-                []
+                [ Element.scrollbarX ]
                 [ Element.el titleStyle (Element.text <| "Videos associated to playlist:")
                 , Element.el (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) (Element.text <| model.playlistTitle)
                 , Element.table
@@ -115,6 +115,7 @@ view model =
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
                         , Column (columnHeader "Published at") (px 220) (.publishedAt >> wrappedText)
+                        , Column (columnHeader "liveBroadcastId") (px 200) (.liveBroadcastId >> Maybe.withDefault "" >> wrappedText)
                         , Column
                             (columnHeader "Channel")
                             (px 200)

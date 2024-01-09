@@ -97,8 +97,8 @@ subscriptions model =
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
         , Time.every minute Batch_RefreshAllVideos
-        , Time.every (10 * second) Batch_GetLiveVideoStreamData
-        , Time.every (10 * second) Batch_GetLiveBroadcastIds
+        , Time.every (1 * minute) Batch_GetLiveVideoStreamData
+        , Time.every (1 * minute) Batch_GetLiveBroadcastIds
         , Time.every minute Batch_GetVideoStats
         , onConnect OnConnect
         ]
@@ -478,11 +478,17 @@ update msg model =
                                 | videos = videosToPersist
                             }
 
-                        fetchNext =
-                            performNow <| GetVideosByPlaylist validResponse.nextPageToken playlistId
+                        fetchMore =
+                            Maybe.map2
+                                (\nextPageToken accessToken_ ->
+                                    YouTubeApi.getVideosCmd (Just nextPageToken) playlistId accessToken_
+                                )
+                                validResponse.nextPageToken
+                                (video_getAccesToken newModel playlistId)
+                                |> Maybe.withDefault Cmd.none
                     in
                     ( newModel
-                    , fetchNext
+                    , fetchMore
                     )
 
                 Err error ->

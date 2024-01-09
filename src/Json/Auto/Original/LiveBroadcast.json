@@ -1,0 +1,32 @@
+{
+    "kind": "youtube#liveBroadcastListResponse",
+    "etag": "uIoF1oQzDZGscVICvU7JixdqbkU",
+    "pageInfo": {
+        "totalResults": 0,
+        "resultsPerPage": 5
+    },
+    "items": [
+        {
+            "kind": "youtube#liveBroadcast",
+            "etag": "CR0WwwUHhOSJlVfTNYtCR5aJwHg",
+            "id": "dvhXyx3J6lw",
+            "snippet": {
+                "publishedAt": "2024-01-09T10:30:29Z",
+                "channelId": "UCi1BlQaTk-Y9eGGh97z_qLg",
+                "title": "Schalk Dormehl is live!",
+                "description": "",
+                "thumbnails": {
+                    "standard": {
+                        "url": "https://i.ytimg.com/vi/dvhXyx3J6lw/sddefault_live.jpg",
+                        "width": 640,
+                        "height": 480
+                    }
+                },
+                "scheduledStartTime": "2024-01-09T10:30:29Z",
+                "actualStartTime": "2024-01-09T10:31:12Z",
+                "isDefaultBroadcast": false,
+                "liveChatId": "KicKGFVDaTFCbFFhVGstWTllR0doOTd6X3FMZxILZHZoWHl4M0o2bHc"
+            }
+        }
+    ]
+}
