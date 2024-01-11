@@ -6,14 +6,15 @@ import Json.Auto.Channels
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
 import Json.Bespoke.VideoDecoder
-import Json.Auto.LiveBroadcast
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Task exposing (Task)
 import Time exposing (..)
 import Types exposing (BackendMsg(..))
-import Pages.Admin exposing (page)
 import Json.Bespoke.LiveBroadcastDecoder
+import Api.Time exposing (..)
+import Json.Bespoke.ReportDecoder
+
 
 
 -- Type alias for token management
@@ -226,23 +227,26 @@ getChatMessagesCmd pageToken liveBroadcastId accessToken =
         , tracker = Nothing
         }
 
--- getAverageWatchTimeCmd startDate endDate videoId accessToken =
---     let
---         url =
---             "https://www.googleapis.com/youtube/analytics/v2/reports?dimensions=video&endDate="
---                 ++ endDate
---                 ++ "&ids=channel%3D%3DMINE&metrics=averageViewPercentage&startDate="
---                 ++ startDate
---                 ++ "&filters=video%3D%3D"
---                 ++ videoId
---                 ++ "&maxResults=1"
---     in
---     Http.request
---         { method = "GET"
---         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
---         , url = url
---         , body = Http.emptyBody
---         , expect = Http.expectString (GotAverageWatchTime videoId) 
---         , timeout = Nothing
---         , tracker = Nothing
---         }
+
+
+-- example:
+-- https://youtubeanalytics.googleapis.com/v2/reports?endDate=2014-02-04&ids=channel==MINE&metrics=averageViewPercentage,subscribersGained,subscribersLost,views,&startDate=2014-02-04&filters=video==Cw27x_xAPmI&dimensions=day
+getVideoDailyReportCmd videoId date accessToken =
+    let
+        url =
+            "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=averageViewPercentage,subscribersGained,subscribersLost,views,&filters=video=="
+                ++ videoId
+                ++ "&dimensions=day&startDate="
+                ++ (date )
+                ++ "&endDate="
+                ++ (date )
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotVideoDailyReport videoId) Json.Bespoke.ReportDecoder.youtubeAnalyticsDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }

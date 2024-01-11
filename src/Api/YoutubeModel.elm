@@ -1,8 +1,12 @@
 module Api.YoutubeModel exposing (..)
 
-import Set exposing (Set)
-import Lamdera.Debug exposing (Posix)
+import Api.Time exposing (..)
+import Dict exposing (Dict)
+import Iso8601
 import Json.Bespoke.VideoDecoder exposing (Statistics)
+import Lamdera.Debug exposing (Posix)
+import Set exposing (Set)
+import Time
 
 
 type alias ClientCredentials =
@@ -44,6 +48,11 @@ type alias Schedule =
     , days : DaysOfWeek
     }
 
+type alias Report =
+    { averageViewPercentage : Float
+    , subscribersGained : Int
+    , subscribersLost : Int
+    }
 
 type alias DaysOfWeek =
     { monday : Bool
@@ -56,7 +65,7 @@ type alias DaysOfWeek =
     }
 
 
-type LiveStatus 
+type LiveStatus
     = Unknown
     | NeverLive
     | Scheduled String
@@ -78,18 +87,11 @@ type alias Video =
     , liveStatus : LiveStatus
     , statsOnConclusion : Maybe Statistics
     , statsAfter24Hours : Maybe Statistics
+    , reportAfter24Hours : Maybe Report
     , chatMsgCount : Maybe Int
     }
 
 
-type alias VideoStats =
-    { videoId : String
-    , viewCount : Int
-    , likeCount : Int
-    , dislikeCount : Int
-    , favoriteCount : Int
-    , commentCount : Int
-    }
 
 
 type alias LiveVideoDetails =
@@ -99,11 +101,13 @@ type alias LiveVideoDetails =
     , actualEndTime : Maybe String
     }
 
+
 type alias CurrentViewers =
     { videoId : String
     , timestamp : Posix
     , value : Int
     }
+
 
 type alias VideoStatisticsAtTime =
     { videoId : String
@@ -114,3 +118,52 @@ type alias VideoStatisticsAtTime =
     , favoriteCount : Int
     , commentCount : Int
     }
+
+
+video_peakViewers currentViewers videoId =
+    currentViewers
+        |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
+        |> Dict.values
+        |> List.sortBy (\cv -> cv.value)
+        |> List.reverse
+        |> List.head
+        |> Maybe.map .value
+
+
+video_viewersAtXminuteMark liveVideoDetails currentViewers minuteMark videoId =
+    let
+        liveStreamingDetails =
+            liveVideoDetails
+                |> Dict.get videoId
+                |> Debug.log "liveStreamingDetails"
+
+        actualStartTime =
+            liveStreamingDetails
+                |> Maybe.andThen .actualStartTime
+                |> Debug.log "actualStartTime"
+                |> Maybe.andThen (Iso8601.toTime >> Result.toMaybe)
+                |> Maybe.map Time.posixToMillis
+                |> Debug.log "actualStartTime"
+
+        minuteOffset =
+            actualStartTime
+                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (minuteMark * minute))
+                |> Maybe.withDefault 0
+                |> Debug.log "minuteOffset"
+
+        listViewers =
+            currentViewers
+                |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
+                |> Dict.values
+                |> Debug.log "listViewers"
+
+        viewersAtMinuteOffset =
+            listViewers
+                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < minuteOffset)
+                |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
+                |> List.reverse
+                |> List.head
+                |> Maybe.map .value
+                |> Debug.log "viewersAtMinuteOffset"
+    in
+    viewersAtMinuteOffset

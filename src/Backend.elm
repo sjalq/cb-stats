@@ -3,6 +3,7 @@ module Backend exposing (..)
 import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
+import Api.Time exposing (..)
 import Api.User
 import Api.YoutubeModel
 import BackendLogging exposing (log)
@@ -74,28 +75,13 @@ init =
     )
 
 
-second =
-    1000
-
-
-minute =
-    60 * second
-
-
-hour =
-    60 * minute
-
-
-day =
-    24 * hour
-
-
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
         [ Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
+        , Time.every day Batch_GetVideoDailyReports 
         , Time.every (10 * second) Batch_RefreshAllVideos
         , Time.every (10 * second) Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
@@ -458,6 +444,7 @@ update msg model =
                                           , liveStatus = Api.YoutubeModel.Unknown
                                           , statsOnConclusion = Nothing
                                           , statsAfter24Hours = Nothing
+                                          , reportAfter24Hours = Nothing
                                           , liveChatId = Nothing
                                           , chatMsgCount = Nothing
                                           }
@@ -637,10 +624,29 @@ update msg model =
                                 Nothing ->
                                     model.currentViewers
 
+                        newLiveVideoDetails =
+                            case liveStreamingDetails of
+                                Just liveStreamingDetails_ ->
+                                    let
+                                        newLiveVideoDetails_ =
+                                            { videoId = videoId
+                                            , scheduledStartTime =
+                                                liveStreamingDetails_.scheduledStartTime
+                                                    |> Maybe.withDefault "1970-01-01T00:00:00+00:00Z"
+                                            , actualStartTime = liveStreamingDetails_.actualStartTime
+                                            , actualEndTime = liveStreamingDetails_.actualEndTime
+                                            }
+                                    in
+                                    model.liveVideoDetails |> Dict.insert videoId newLiveVideoDetails_
+
+                                Nothing ->
+                                    model.liveVideoDetails
+
                         newModel =
                             { model
                                 | videos = newVideos
                                 , currentViewers = newCurrentViewers
+                                , liveVideoDetails = newLiveVideoDetails
                             }
                     in
                     ( newModel
@@ -872,6 +878,78 @@ update msg model =
                     ( model, Cmd.none )
                         |> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
 
+        Batch_GetVideoDailyReports time ->
+            let
+                -- note this implies that only videos that were live and were picked up by the app will be tracked.
+                videosWithout24HrReport : Dict.Dict String Api.YoutubeModel.Video
+                videosWithout24HrReport =
+                    model.videos
+                        |> Dict.filter
+                            (\_ v ->
+                                case ( v.liveStatus, v.reportAfter24Hours ) of
+                                    ( Api.YoutubeModel.Ended endDateStr, Nothing ) ->
+                                        ((endDateStr |> strToIntTime) + day) <= (time |> Time.posixToMillis) 
+
+                                    _ ->
+                                        False
+                            )
+
+                fetches =
+                    videosWithout24HrReport
+                        |> Dict.map
+                            (\videoId v ->
+                                case v.liveStatus of
+                                    Api.YoutubeModel.Ended endDateStr ->
+                                        Maybe.map3
+                                            (YouTubeApi.getVideoDailyReportCmd)
+                                            (Just videoId)
+                                            (Just endDateStr)
+                                            (video_getAccesToken model videoId)
+                                    _ -> Nothing
+                            )
+                        |> Dict.values
+                        |> List.filterMap identity
+                        
+
+            in
+            (model, Cmd.batch fetches)
+
+        GotVideoDailyReport videoId reportResponse ->
+            case reportResponse of
+                Ok report ->
+                    let
+                        -- type alias Report =
+                        --     { averageViewPercentage : Float
+                        --     , subscribersGained : Int
+                        --     , subscribersLost : Int
+                        --     }
+                        newVideos =
+                            model.videos
+                                |> Dict.get videoId
+                                |> Maybe.map
+                                    (\currentVideoRecord ->
+                                        { currentVideoRecord | reportAfter24Hours = Just {
+                                            averageViewPercentage = report.averageViewPercentage
+                                            , subscribersGained = report.subscribersGained
+                                            , subscribersLost = report.subscribersLost
+                                        } }
+                                    ) -- returns maybe an adjusted video record if the videoid is found
+                                |> Maybe.map (\newVideo_ -> model.videos |> Dict.insert videoId newVideo_) --replaces it in the set of videos
+                                |> Maybe.withDefault model.videos -- if the video is not found, just return the original set of videos
+
+                        newModel =
+                            { model
+                                | videos = newVideos
+                            }
+                    in
+                    ( newModel, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
+                        |> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+
+    
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg model =
@@ -1076,13 +1154,23 @@ updateFromFrontend sessionId clientId msg model =
                 playlist =
                     model.playlists
                         |> Dict.get playlistId
+
+                videoChannels =
+                    model.videos
+                        |> Dict.map
+                            (\_ v ->
+                                model.channels
+                                    |> Dict.get v.channelId
+                                    |> Maybe.map .title
+                                    |> Maybe.withDefault "Unknown"
+                            )
             in
             ( model
             , case playlist of
                 Just playlist_ ->
                     sendToPage clientId <|
                         Gen.Msg.Playlist__Id_ <|
-                            Pages.Playlist.Id_.GotVideos playlist_ videos liveVideoDetails currentViewers
+                            Pages.Playlist.Id_.GotVideos playlist_ videos liveVideoDetails currentViewers videoChannels
 
                 Nothing ->
                     Cmd.none
@@ -1194,48 +1282,6 @@ playlist_lastPublishDate model playlistId =
         |> playlist_latestVideo playlistId
         |> Maybe.map .publishedAt
         |> Maybe.withDefault "1970-01-01T00:00:00Z"
-
-
-video_peakViewers currentViewers videoId =
-    currentViewers
-        |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
-        |> Dict.values
-        |> List.sortBy (\cv -> cv.value)
-        |> List.reverse
-        |> List.head
-        |> Maybe.map .value
-
-
-video_viewersAtXminuteMark liveVideoDetails currentViewers minuteMark videoId =
-    let
-        liveStreamingDetails =
-            liveVideoDetails |> Dict.get videoId
-
-        actualStartTime =
-            liveStreamingDetails
-                |> Maybe.andThen .actualStartTime
-                |> Maybe.andThen (Iso8601.toTime >> Result.toMaybe)
-                |> Maybe.map Time.posixToMillis
-
-        minuteOffset =
-            actualStartTime
-                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (minuteMark * minute))
-                |> Maybe.withDefault 0
-
-        listViewers =
-            currentViewers
-                |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
-                |> Dict.values
-
-        viewersAtMinuteOffset =
-            listViewers
-                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < minuteOffset)
-                |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
-                |> List.reverse
-                |> List.head
-                |> Maybe.map .value
-    in
-    viewersAtMinuteOffset
 
 
 video_getAccesToken model videoId =

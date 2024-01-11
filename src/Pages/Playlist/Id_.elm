@@ -1,5 +1,6 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
+import Api.Time exposing (..)
 import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video)
 import Bridge exposing (..)
 import Dict exposing (Dict)
@@ -7,16 +8,15 @@ import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Border
 import Element.Font
-import Element.Input
 import Gen.Params.Playlist.Id_ exposing (Params)
+import Html exposing (video)
 import Page
 import Request
 import Shared
 import Styles.Colors
-import Time exposing (Posix)
+import Time exposing (Posix, posixToMillis)
 import UI.Helpers exposing (..)
 import View exposing (View)
-import Time exposing (posixToMillis)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -39,6 +39,9 @@ type alias Model =
     , videos : Dict String Video
     , liveVideoDetails : Dict String LiveVideoDetails
     , currentViewers : Dict ( String, Int ) CurrentViewers
+    , videoChannels : Dict String String
+
+    --, videoStats : Dict String Api.YoutubeModel.VideoStats
     }
 
 
@@ -49,6 +52,9 @@ init { params } =
       , playlistTitle = ""
       , liveVideoDetails = Dict.empty
       , currentViewers = Dict.empty
+      , videoChannels = Dict.empty
+
+      --, videoStats = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
     )
@@ -59,19 +65,20 @@ init { params } =
 
 
 type Msg
-    = GotVideos Playlist (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers)
+    = GotVideos Playlist (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers) (Dict String String)
     | GetVideos
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotVideos playlist videos liveVideoDetails currentViewers ->
+        GotVideos playlist videos liveVideoDetails currentViewers videoChannels ->
             ( { model
                 | videos = videos
                 , playlistTitle = playlist.title
                 , liveVideoDetails = liveVideoDetails
                 , currentViewers = currentViewers
+                , videoChannels = videoChannels
               }
             , Effect.none
             )
@@ -109,16 +116,41 @@ view model =
                 , Element.el (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) (Element.text <| model.playlistTitle)
                 , Element.table
                     tableStyle
-                    { data = model.videos |> Dict.values
+                    { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) --|> List.reverse
                     , columns =
-                        [ Column (columnHeader "Id") (px 200) (.id >> wrappedText)
-                        , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
-                        , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
-                        , Column (columnHeader "Published at") (px 220) (.publishedAt >> wrappedText)
-                        , Column (columnHeader "liveChatId") (px 200) (.liveChatId >> Maybe.withDefault "Unavailable" >> wrappedText)
+                        [ Column (columnHeader "Id") (px 290) (.id >> wrappedText)
+                        , Column (columnHeader "Published at") (px 165) (.publishedAt >> wrappedText)
                         , Column
-                            (columnHeader "Channel")
-                            (px 200)
+                            (columnHeader "Link")
+                            (px 75)
+                            (\v ->
+                                Element.link [ Element.Font.underline ]
+                                    { url = "https://www.youtube.com/watch?v=" ++ v.id
+                                    , label = text "Youtube"
+                                    }
+                                    |> wrappedCell
+                            )
+                        , Column (columnHeader "Channel") (px 90) (\v -> model.videoChannels |> Dict.get v.id |> Maybe.withDefault "Unknown" |> wrappedText)
+                        , Column (columnHeader "Title") (px 300) (.title >> wrappedText)
+                        , Column
+                            (columnHeader "Thumbnail")
+                            (px 112)
+                            (\v ->
+                                -- Element.el [] Element.none
+                                Element.image
+                                    [ Element.width fill
+                                    , Element.height fill
+                                    , Element.Border.solid
+                                    , Element.Border.width 1
+                                    ]
+                                    { src = v.thumbnailUrl |> Maybe.withDefault "https://media1.tenor.com/m/7COT1LIbwt8AAAAC/elmo-shrug.gif"
+                                    , description = "Thumbnail"
+                                    }
+                             --|> wrappedCell
+                            )
+                        , Column
+                            (columnHeader "Status")
+                            (px 150)
                             (\v ->
                                 wrappedText <|
                                     case v.liveStatus of
@@ -129,7 +161,7 @@ view model =
                                             "Ended at " ++ strIme
 
                                         Scheduled strTime ->
-                                            "Scheduled for " ++ strTime 
+                                            "Scheduled for " ++ strTime
 
                                         Expired ->
                                             "Schedule expired"
@@ -141,14 +173,14 @@ view model =
                                             "iMpOssIbRu!"
 
                                         Unknown ->
-                                            "Unknown - checking..."
+                                            "Checking..."
                             )
                         , Column
-                            (columnHeader "Current")
-                            (px 100)
-                            (\v -> 
+                            (columnHeader "Lobby")
+                            (px 75)
+                            (\v ->
                                 model.currentViewers
-                                    |> Dict.filter (\(vId, time) cv  -> vId == v.id)
+                                    |> Dict.filter (\( vId, time ) cv -> vId == v.id)
                                     |> Dict.values
                                     |> List.sortBy (.timestamp >> posixToMillis)
                                     |> List.reverse
@@ -156,23 +188,53 @@ view model =
                                     |> Maybe.map (\cv -> cv.value |> String.fromInt |> wrappedText)
                                     |> Maybe.withDefault (wrappedText "Unknown")
                             )
-                        , Column 
+                        , Column
                             (columnHeader "Peak")
-                            (px 100)
-                            (\v -> 
-                                model.currentViewers
-                                    |> Dict.filter (\(vId, time) cv  -> vId == v.id)
-                                    |> Dict.values
-                                    |> List.map (\cv -> cv.value)
-                                    |> List.maximum 
-                                    |> Maybe.map (\cv -> cv  |> String.fromInt |> wrappedText)
+                            (px 75)
+                            (\v ->
+                                Api.YoutubeModel.video_viewersAtXminuteMark model.liveVideoDetails model.currentViewers 3 v.id
+                                    |> Maybe.map (String.fromInt >> wrappedText)
                                     |> Maybe.withDefault (wrappedText "Unknown")
                             )
+                        , Column
+                            (columnHeader "Live views")
+                            (px 90)
+                            (\v ->
+                                v.statsOnConclusion
+                                    |> Maybe.map (\stats -> stats.viewCount |> String.fromInt)
+                                    |> Maybe.withDefault "..."
+                                    |> wrappedText
+                            )
+                        , Column
+                            (columnHeader "Live Likes")
+                            (px 90)
+                            (\v ->
+                                v.statsOnConclusion
+                                    |> Maybe.map (\stats -> stats.likeCount |> String.fromInt)
+                                    |> Maybe.withDefault "..."
+                                    |> wrappedText
+                            )
+                        , Column
+                            (columnHeader "24hr views")
+                            (px 90)
+                            (\v ->
+                                v.statsOnConclusion
+                                    |> Maybe.map (\stats -> stats.viewCount |> String.fromInt)
+                                    |> Maybe.withDefault "..."
+                                    |> wrappedText
+                            )
+                        , Column
+                            (columnHeader "Copy row")
+                            (px 80)
+                            (\v ->
+                                msgButton "Copy" (Just GetVideos)
+                            )
 
+                        -- , Columns
                         ]
                     }
                 , el
-                    ([ Element.width (px 200), paddingXY 10 10 ] ++ centerCenter)
+                    ([ Element.width (px 150), paddingXY 10 10 ] ++ centerCenter)
                     (msgButton "Get Videos" (Just GetVideos))
                 ]
             )

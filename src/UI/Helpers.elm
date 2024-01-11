@@ -22,6 +22,7 @@ wrappedCell =
     enlist
         >> Element.paragraph
             [ Element.width <| Element.px 200
+            , Element.Font.size 15
             , Element.Border.width 1
             , Element.Border.widthEach {
                 bottom = 1
@@ -55,6 +56,7 @@ columnHeader =
     let
         columnHeaderStyle =
             [ Element.Font.bold
+            , Element.Font.size 15
             , Element.Border.width 1
             , Element.Border.color grey
             , Element.Border.rounded 3
@@ -110,7 +112,7 @@ buttonStyleBig =
     , Element.height <| Element.px 75
     , Element.Border.rounded 20
     , Element.Font.color white
-    , Element.Font.size 22
+    , Element.Font.size 16
     , Element.transition "all 0.5s ease-out"
     , Element.Border.width 1
     , Element.Border.color black
@@ -124,7 +126,7 @@ buttonStyleMedium =
     , Element.height <| Element.px 50
     , Element.Border.rounded 20
     , Element.Font.color white
-    , Element.Font.size 22
+    , Element.Font.size 16
     , Element.transition "all 0.1s ease-out"
     , Element.Border.width 1
     , Element.Border.color black
