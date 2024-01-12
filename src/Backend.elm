@@ -74,10 +74,11 @@ init =
     , Cmd.none
     )
 
-pollingInterval = 
+
+pollingInterval =
     case Env.mode of
         Env.Development ->
-            10 * second
+            60 * second
 
         Env.Production ->
             1 * minute
@@ -89,10 +90,10 @@ subscriptions model =
         [ Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
-        , Time.every minute Batch_RefreshAllVideos
+        , Time.every minute Batch_RefreshAllVideosFromPlaylists
         , Time.every pollingInterval Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
-        , Time.every pollingInterval Batch_GetVideoDailyReports
+        , Time.every (10 * second) Batch_GetVideoDailyReports
         , onConnect OnConnect
         ]
 
@@ -376,7 +377,7 @@ update msg model =
             , fetches |> Cmd.batch
             )
 
-        Batch_RefreshAllVideos _ ->
+        Batch_RefreshAllVideosFromPlaylists _ ->
             let
                 fetches =
                     model.playlists
@@ -494,7 +495,7 @@ update msg model =
         Batch_GetLiveVideoStreamData time ->
             let
                 -- check all the videos that we know are live or scheduled or we don't know yet
-                (liveOrScheduledVideos, oldLiveOrScheduledVideos) =
+                ( liveOrScheduledVideos, oldLiveOrScheduledVideos ) =
                     model.videos
                         |> Dict.filter
                             (\_ v ->
@@ -511,7 +512,7 @@ update msg model =
                                     _ ->
                                         False
                             )
-                        |> Dict.partition (\_ v -> (v.publishedAt |> strToIntTime) >= ("2024-A01-01T00:00:00Z" |> strToIntTime)  )
+                        |> Dict.partition (\_ v -> video_isNew v)
 
 
                 -- get their live data
@@ -523,18 +524,18 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd time v.id)
                             )
                         |> Dict.values
+                        |> fnLog "fetches" List.length
                         |> List.filterMap identity
-
+                    
                 -- this updates the videos to old so that we know why they didn't update
                 newVideos =
-                    oldLiveOrScheduledVideos 
-                    |> Dict.map (\_ v -> { v | liveStatus = Api.YoutubeModel.Old }) 
-                
+                    oldLiveOrScheduledVideos
+                        |> Dict.map (\_ v -> { v | liveStatus = Api.YoutubeModel.Old })
+
                 newModel =
                     { model
                         | videos = Dict.union newVideos model.videos
                     }
-
             in
             ( newModel
             , fetches |> Cmd.batch
@@ -693,6 +694,7 @@ update msg model =
                                     _ ->
                                         False
                             )
+                        |> Dict.filter (\_ v -> video_isNew v)
 
                 fetchConcluded =
                     concludedVideosWithNoStats
@@ -722,6 +724,7 @@ update msg model =
                                     _ ->
                                         False
                             )
+                        |> Dict.filter (\_ v -> video_isNew v)
 
                 fetch24HrStats =
                     concludedVideosThatNeed24HrStats
@@ -911,6 +914,10 @@ update msg model =
                                     _ ->
                                         False
                             )
+                        |> fnLog "before videosWithout24HrReport" Dict.size
+                        |> Dict.filter (\_ v -> video_isNew v)
+
+                _ = Debug.log "videosWithout24HrReport" (videosWithout24HrReport |> Dict.size)
 
                 fetches =
                     videosWithout24HrReport
@@ -953,6 +960,7 @@ update msg model =
                                                     { averageViewPercentage = report.averageViewPercentage
                                                     , subscribersGained = report.subscribersGained
                                                     , subscribersLost = report.subscribersLost
+                                                    , views = report.views
                                                     }
                                         }
                                     )
@@ -966,7 +974,10 @@ update msg model =
                     ( newModel, Cmd.none )
 
                 Err error ->
-                    ( model, Cmd.none )
+                    let
+                        _ = Debug.log "GotVideoDailyReport error" error
+                    in
+                    ( model, Cmd.none ) 
                         |> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
 
@@ -1320,3 +1331,20 @@ video_getAccesToken model videoId =
                     |> Dict.get email
                     |> Maybe.map .accessToken
             )
+
+
+video_isNew v =
+    let
+        pulishedTimeInt = (v.publishedAt |> strToIntTime)
+
+        cuttoffTimeInt = ("2024-01-01T00:00:00Z" |> strToIntTime)
+    in
+    pulishedTimeInt >= cuttoffTimeInt |> Debug.log "video_isNew" 
+
+fnLog msg fn thing =
+    let
+        _ = thing
+            |> fn
+            |> Debug.log msg
+    in
+    thing

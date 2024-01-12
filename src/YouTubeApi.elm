@@ -14,6 +14,7 @@ import Json.Encode as Encode
 import Task exposing (Task)
 import Time exposing (..)
 import Types exposing (BackendMsg(..))
+import Url
 
 
 
@@ -233,9 +234,10 @@ getVideoDailyReportCmd videoId date accessToken =
             "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=averageViewPercentage,subscribersGained,subscribersLost,views,&filters=video=="
                 ++ videoId
                 ++ "&dimensions=day&startDate="
-                ++ date
+                ++ (date |> String.left 10 |> Url.percentEncode)
                 ++ "&endDate="
-                ++ date
+                ++ (date |> String.left 10 |> Url.percentEncode)
+            
     in
     Http.request
         { method = "GET"

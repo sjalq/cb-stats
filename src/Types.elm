@@ -71,7 +71,7 @@ type BackendMsg
     | Batch_RefreshAccessTokens Time.Posix
     | Batch_RefreshAllChannels Time.Posix
     | Batch_RefreshAllPlaylists Time.Posix
-    | Batch_RefreshAllVideos Time.Posix
+    | Batch_RefreshAllVideosFromPlaylists Time.Posix
     | Batch_GetLiveVideoStreamData Time.Posix
     | Batch_GetChatMessages Time.Posix
     | Batch_GetVideoStats Time.Posix

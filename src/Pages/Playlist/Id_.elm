@@ -231,8 +231,17 @@ view model =
                             (columnHeader "24hr views")
                             (px 90)
                             (\v ->
-                                v.statsAfter24Hours
-                                    |> Maybe.map (\stats -> stats.viewCount |> String.fromInt)
+                                v.reportAfter24Hours
+                                    |> Maybe.map (\r -> r.views |> String.fromInt)
+                                    |> Maybe.withDefault "..."
+                                    |> wrappedText
+                            )
+                        , Column 
+                            (columnHeader "Watch %")
+                            (px 90)
+                            (\v ->
+                                v.reportAfter24Hours
+                                    |> Maybe.map (\r -> r.averageViewPercentage |> String.fromFloat)
                                     |> Maybe.withDefault "..."
                                     |> wrappedText
                             )

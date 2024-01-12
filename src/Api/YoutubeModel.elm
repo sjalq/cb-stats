@@ -52,6 +52,7 @@ type alias Report =
     { averageViewPercentage : Float
     , subscribersGained : Int
     , subscribersLost : Int
+    , views : Int
     }
 
 type alias DaysOfWeek =
