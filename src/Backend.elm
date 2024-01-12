@@ -74,6 +74,14 @@ init =
     , Cmd.none
     )
 
+pollingInterval = 
+    case Env.mode of
+        Env.Development ->
+            10 * second
+
+        Env.Production ->
+            1 * minute
+
 
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
@@ -81,10 +89,10 @@ subscriptions model =
         [ Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
-        , Time.every day Batch_GetVideoDailyReports 
-        , Time.every (10 * second) Batch_RefreshAllVideos
-        , Time.every (10 * second) Batch_GetLiveVideoStreamData
+        , Time.every pollingInterval Batch_RefreshAllVideos
+        , Time.every pollingInterval Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
+        , Time.every pollingInterval Batch_GetVideoDailyReports
         , onConnect OnConnect
         ]
 
@@ -888,7 +896,7 @@ update msg model =
                             (\_ v ->
                                 case ( v.liveStatus, v.reportAfter24Hours ) of
                                     ( Api.YoutubeModel.Ended endDateStr, Nothing ) ->
-                                        ((endDateStr |> strToIntTime) + day) <= (time |> Time.posixToMillis) 
+                                        ((endDateStr |> strToIntTime) + day) <= (time |> Time.posixToMillis)
 
                                     _ ->
                                         False
@@ -901,18 +909,18 @@ update msg model =
                                 case v.liveStatus of
                                     Api.YoutubeModel.Ended endDateStr ->
                                         Maybe.map3
-                                            (YouTubeApi.getVideoDailyReportCmd)
+                                            YouTubeApi.getVideoDailyReportCmd
                                             (Just videoId)
                                             (Just endDateStr)
                                             (video_getAccesToken model videoId)
-                                    _ -> Nothing
+
+                                    _ ->
+                                        Nothing
                             )
                         |> Dict.values
                         |> List.filterMap identity
-                        
-
             in
-            (model, Cmd.batch fetches)
+            ( model, Cmd.batch fetches )
 
         GotVideoDailyReport videoId reportResponse ->
             case reportResponse of
@@ -923,32 +931,33 @@ update msg model =
                         --     , subscribersGained : Int
                         --     , subscribersLost : Int
                         --     }
-                        newVideos =
+                        newModel =
                             model.videos
                                 |> Dict.get videoId
+                                -- returns maybe an adjusted video record if the videoid is found
                                 |> Maybe.map
                                     (\currentVideoRecord ->
-                                        { currentVideoRecord | reportAfter24Hours = Just {
-                                            averageViewPercentage = report.averageViewPercentage
-                                            , subscribersGained = report.subscribersGained
-                                            , subscribersLost = report.subscribersLost
-                                        } }
-                                    ) -- returns maybe an adjusted video record if the videoid is found
-                                |> Maybe.map (\newVideo_ -> model.videos |> Dict.insert videoId newVideo_) --replaces it in the set of videos
-                                |> Maybe.withDefault model.videos -- if the video is not found, just return the original set of videos
-
-                        newModel =
-                            { model
-                                | videos = newVideos
-                            }
+                                        { currentVideoRecord
+                                            | reportAfter24Hours =
+                                                Just
+                                                    { averageViewPercentage = report.averageViewPercentage
+                                                    , subscribersGained = report.subscribersGained
+                                                    , subscribersLost = report.subscribersLost
+                                                    }
+                                        }
+                                    )
+                                --replaces it in the set of videos
+                                |> Maybe.map (\newVideo_ -> model.videos |> Dict.insert videoId newVideo_)
+                                -- replaces the set of videos in the model
+                                |> Maybe.map (\newVideos -> { model | videos = newVideos })
+                                -- returns the current model if the maybe is nothing
+                                |> Maybe.withDefault model
                     in
                     ( newModel, Cmd.none )
 
                 Err error ->
                     ( model, Cmd.none )
                         |> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
-
-    
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )

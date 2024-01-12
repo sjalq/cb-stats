@@ -118,7 +118,8 @@ view model =
                     tableStyle
                     { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) --|> List.reverse
                     , columns =
-                        [ Column (columnHeader "Id") (px 290) (.id >> wrappedText)
+                        [ Column (columnHeader "") (px 10) (\v -> text "")
+                        --, Column (columnHeader "Id") (px 290) (.id >> wrappedText)
                         , Column (columnHeader "Published at") (px 165) (.publishedAt >> wrappedText)
                         , Column
                             (columnHeader "Link")
@@ -215,10 +216,19 @@ view model =
                                     |> wrappedText
                             )
                         , Column
+                            (columnHeader "Subs gained")
+                            (px 100)
+                            (\v ->
+                                v.reportAfter24Hours
+                                    |> Maybe.map (\r -> r.subscribersGained - r.subscribersLost |> String.fromInt)
+                                    |> Maybe.withDefault "..."
+                                    |> wrappedText
+                            )
+                        , Column
                             (columnHeader "24hr views")
                             (px 90)
                             (\v ->
-                                v.statsOnConclusion
+                                v.statsAfter24Hours
                                     |> Maybe.map (\stats -> stats.viewCount |> String.fromInt)
                                     |> Maybe.withDefault "..."
                                     |> wrappedText
