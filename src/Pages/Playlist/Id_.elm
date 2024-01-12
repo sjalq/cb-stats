@@ -164,6 +164,9 @@ view model =
                                         Scheduled strTime ->
                                             "Scheduled for " ++ strTime
 
+                                        Old ->
+                                            "Old..."
+
                                         Expired ->
                                             "Schedule expired"
 

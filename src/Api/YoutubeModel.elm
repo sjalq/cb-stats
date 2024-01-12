@@ -70,6 +70,7 @@ type LiveStatus
     | NeverLive
     | Scheduled String
     | Expired
+    | Old
     | Live
     | Ended String
     | Impossibru
@@ -135,27 +136,22 @@ video_viewersAtXminuteMark liveVideoDetails currentViewers minuteMark videoId =
         liveStreamingDetails =
             liveVideoDetails
                 |> Dict.get videoId
-                |> Debug.log "liveStreamingDetails"
 
         actualStartTime =
             liveStreamingDetails
                 |> Maybe.andThen .actualStartTime
-                |> Debug.log "actualStartTime"
                 |> Maybe.andThen (Iso8601.toTime >> Result.toMaybe)
                 |> Maybe.map Time.posixToMillis
-                |> Debug.log "actualStartTime"
 
         minuteOffset =
             actualStartTime
                 |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (minuteMark * minute))
                 |> Maybe.withDefault 0
-                |> Debug.log "minuteOffset"
 
         listViewers =
             currentViewers
                 |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
                 |> Dict.values
-                |> Debug.log "listViewers"
 
         viewersAtMinuteOffset =
             listViewers
@@ -164,6 +160,5 @@ video_viewersAtXminuteMark liveVideoDetails currentViewers minuteMark videoId =
                 |> List.reverse
                 |> List.head
                 |> Maybe.map .value
-                |> Debug.log "viewersAtMinuteOffset"
     in
     viewersAtMinuteOffset

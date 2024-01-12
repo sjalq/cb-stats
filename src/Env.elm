@@ -20,9 +20,18 @@ ignorme =
     ""
 
 
+
+-- clientId =
+--     "508870477556-vfsj89g9416b2637rjel2phlh71p1arp.apps.googleusercontent.com"
+--
+--
+-- clientSecret =
+--     "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"
+
+
 clientId =
-    "508870477556-vfsj89g9416b2637rjel2phlh71p1arp.apps.googleusercontent.com"
+    "20687432395-uj6tjhrbuct0qadh0u2r6visohul9bli.apps.googleusercontent.com"
 
 
 clientSecret =
-    "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"
+    "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"

@@ -262,7 +262,7 @@ view model =
                     , columns =
                         [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
-                        , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> wrappedText)
+                        , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> String.left 200 >> wrappedText)
                         , Column
                             (columnHeader "Monitor")
                             (px 100)

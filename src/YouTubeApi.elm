@@ -1,19 +1,19 @@
 module YouTubeApi exposing (..)
 
+import Api.Time exposing (..)
 import Http
 import Json.Auto.AccessToken
 import Json.Auto.Channels
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
+import Json.Bespoke.LiveBroadcastDecoder
+import Json.Bespoke.ReportDecoder
 import Json.Bespoke.VideoDecoder
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Task exposing (Task)
 import Time exposing (..)
 import Types exposing (BackendMsg(..))
-import Json.Bespoke.LiveBroadcastDecoder
-import Api.Time exposing (..)
-import Json.Bespoke.ReportDecoder
 
 
 
@@ -118,7 +118,7 @@ getPlaylistsCmd : String -> String -> Cmd BackendMsg
 getPlaylistsCmd channelId accessToken =
     let
         url =
-            "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true&maxResults=5000"
+            "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true&maxResults=50"
     in
     Http.request
         { method = "GET"
@@ -129,11 +129,6 @@ getPlaylistsCmd channelId accessToken =
         , timeout = Nothing
         , tracker = Nothing
         }
-
-
-
--- getVideosCmd : String -> Time.Posix -> String -> Cmd BackendMsg
--- getVideosCmd playlistId publishedAfter accessToken =
 
 
 getVideosCmd pageToken playlistId accessToken =
@@ -161,7 +156,6 @@ getVideoLiveStreamDataCmd timestamp videoId accessToken =
         url =
             "https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id="
                 ++ videoId
-                |> Debug.log "getVideoLiveStreamDataCmd"
     in
     Http.request
         { method = "GET"
@@ -173,13 +167,13 @@ getVideoLiveStreamDataCmd timestamp videoId accessToken =
         , tracker = Nothing
         }
 
+
 getVideoStatsOnConclusionCmd : Posix -> String -> String -> Cmd BackendMsg
 getVideoStatsOnConclusionCmd timestamp videoId accessToken =
     let
         url =
             "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
                 ++ videoId
-                |> Debug.log "getVideoStatsCmd"
     in
     Http.request
         { method = "GET"
@@ -191,13 +185,13 @@ getVideoStatsOnConclusionCmd timestamp videoId accessToken =
         , tracker = Nothing
         }
 
+
 getVideoStatsAfter24HrsCmd : Posix -> String -> String -> Cmd BackendMsg
 getVideoStatsAfter24HrsCmd timestamp videoId accessToken =
     let
         url =
             "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
                 ++ videoId
-                |> Debug.log "getVideoStatsCmd"
     in
     Http.request
         { method = "GET"
@@ -231,15 +225,17 @@ getChatMessagesCmd pageToken liveBroadcastId accessToken =
 
 -- example:
 -- https://youtubeanalytics.googleapis.com/v2/reports?endDate=2014-02-04&ids=channel==MINE&metrics=averageViewPercentage,subscribersGained,subscribersLost,views,&startDate=2014-02-04&filters=video==Cw27x_xAPmI&dimensions=day
+
+
 getVideoDailyReportCmd videoId date accessToken =
     let
         url =
             "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=averageViewPercentage,subscribersGained,subscribersLost,views,&filters=video=="
                 ++ videoId
                 ++ "&dimensions=day&startDate="
-                ++ (date )
+                ++ date
                 ++ "&endDate="
-                ++ (date )
+                ++ date
     in
     Http.request
         { method = "GET"

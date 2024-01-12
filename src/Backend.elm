@@ -89,7 +89,7 @@ subscriptions model =
         [ Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every day Batch_RefreshAllChannels
         , Time.every day Batch_RefreshAllPlaylists
-        , Time.every pollingInterval Batch_RefreshAllVideos
+        , Time.every minute Batch_RefreshAllVideos
         , Time.every pollingInterval Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
         , Time.every pollingInterval Batch_GetVideoDailyReports
@@ -494,11 +494,10 @@ update msg model =
         Batch_GetLiveVideoStreamData time ->
             let
                 -- check all the videos that we know are live or scheduled or we don't know yet
-                liveOrScheduledVideos =
+                (liveOrScheduledVideos, oldLiveOrScheduledVideos) =
                     model.videos
-                        |> Dict.values
-                        |> List.filter
-                            (\v ->
+                        |> Dict.filter
+                            (\_ v ->
                                 case v.liveStatus of
                                     Api.YoutubeModel.Unknown ->
                                         True
@@ -512,20 +511,32 @@ update msg model =
                                     _ ->
                                         False
                             )
-                        |> List.map .id
-                        |> Debug.log "liveOrScheduledVideos"
+                        |> Dict.partition (\_ v -> (v.publishedAt |> strToIntTime) >= ("2024-A01-01T00:00:00Z" |> strToIntTime)  )
+
 
                 -- get their live data
                 fetches =
                     liveOrScheduledVideos
-                        |> List.map
-                            (\videoId ->
-                                video_getAccesToken model videoId
-                                    |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd time videoId)
+                        |> Dict.map
+                            (\_ v ->
+                                video_getAccesToken model v.id
+                                    |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd time v.id)
                             )
+                        |> Dict.values
                         |> List.filterMap identity
+
+                -- this updates the videos to old so that we know why they didn't update
+                newVideos =
+                    oldLiveOrScheduledVideos 
+                    |> Dict.map (\_ v -> { v | liveStatus = Api.YoutubeModel.Old }) 
+                
+                newModel =
+                    { model
+                        | videos = Dict.union newVideos model.videos
+                    }
+
             in
-            ( model
+            ( newModel
             , fetches |> Cmd.batch
             )
 
@@ -601,7 +612,6 @@ update msg model =
                         activeLiveChatId =
                             liveStreamingDetails
                                 |> Maybe.andThen .activeLiveChatId
-                                |> Debug.log "activeLiveChatId"
 
                         newVideos =
                             case newVideo of
