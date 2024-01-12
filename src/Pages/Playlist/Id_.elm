@@ -116,7 +116,7 @@ view model =
                 , Element.el (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) (Element.text <| model.playlistTitle)
                 , Element.table
                     tableStyle
-                    { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) --|> List.reverse
+                    { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) |> List.reverse
                     , columns =
                         [ Column (columnHeader "") (px 10) (\v -> text "")
                         --, Column (columnHeader "Id") (px 290) (.id >> wrappedText)
