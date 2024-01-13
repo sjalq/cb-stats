@@ -67,6 +67,7 @@ init =
       , playlists = Dict.empty
       , schedules = Dict.empty
       , videos = Dict.empty
+      , videoStatisticsAtTime = Dict.empty
       , liveVideoDetails = Dict.empty
       , currentViewers = Dict.empty
       , apiCallCount = 0
@@ -94,6 +95,8 @@ subscriptions model =
         , Time.every pollingInterval Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
         , Time.every (10 * second) Batch_GetVideoDailyReports
+        , Time.every (10 * second) Batch_GetChatMessages
+        , Time.every (10 * second) Batch_GetVideoStatisticsAtTime
         , onConnect OnConnect
         ]
 
@@ -514,7 +517,6 @@ update msg model =
                             )
                         |> Dict.partition (\_ v -> video_isNew v)
 
-
                 -- get their live data
                 fetches =
                     liveOrScheduledVideos
@@ -526,7 +528,7 @@ update msg model =
                         |> Dict.values
                         |> fnLog "fetches" List.length
                         |> List.filterMap identity
-                    
+
                 -- this updates the videos to old so that we know why they didn't update
                 newVideos =
                     oldLiveOrScheduledVideos
@@ -914,10 +916,7 @@ update msg model =
                                     _ ->
                                         False
                             )
-                        |> fnLog "before videosWithout24HrReport" Dict.size
                         |> Dict.filter (\_ v -> video_isNew v)
-
-                _ = Debug.log "videosWithout24HrReport" (videosWithout24HrReport |> Dict.size)
 
                 fetches =
                     videosWithout24HrReport
@@ -974,11 +973,115 @@ update msg model =
                     ( newModel, Cmd.none )
 
                 Err error ->
-                    let
-                        _ = Debug.log "GotVideoDailyReport error" error
-                    in
-                    ( model, Cmd.none ) 
+                    ( model, Cmd.none )
                         |> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+
+        Batch_GetVideoStatisticsAtTime time ->
+            -- for the first 24 hours after a video ends, we fetch the stats every hour
+            -- store these stats in the model.videoStatisticsAtTime
+            let
+                videosThatConcludedInPast24Hrs =
+                    model.videos
+                        |> Dict.filter
+                            (\_ v ->
+                                case v.liveStatus of
+                                    Api.YoutubeModel.Ended endTime ->
+                                        (endTime |> strToIntTime) + day >= (time |> Time.posixToMillis)
+
+                                    _ ->
+                                        False
+                            )
+                        |> Dict.filter (\_ v -> video_isNew v)
+
+                videosWithNoStatsInPastHour =
+                    model.videoStatisticsAtTime
+                        |> Dict.filter (\_ s -> Dict.member s.videoId videosThatConcludedInPast24Hrs)
+                        |> Dict.values
+                        |> List.Extra.groupWhile (\a b -> a.videoId == b.videoId)
+                        |> List.map (\( g, l ) -> l |> List.sortBy (.timestamp >> Time.posixToMillis) |> List.reverse |> List.head)
+                        |> List.filterMap identity
+                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour <= (time |> Time.posixToMillis))
+                        |> List.map .videoId
+
+                videosWithNoStatsAtAll =
+                    model.videos 
+                        |> Dict.filter (\_ v -> video_isNew v)
+                        |> Dict.keys
+                        |> List.filter (\videoId -> 
+                            model.videoStatisticsAtTime
+                                |> Dict.keys
+                                |> List.map Tuple.first
+                                |> List.member videoId
+                                |> not
+                        )
+
+                videosToFetch =
+                    videosWithNoStatsInPastHour ++ videosWithNoStatsAtAll
+                    |> List.Extra.unique
+                    --|> fnLog "videosToFetch" List.length
+
+                fetches =
+                    videosToFetch
+                        |> List.map
+                            (\videoId ->
+                                video_getAccesToken model videoId
+                                    |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsOnTheHour)
+                            )
+                        |> List.filterMap identity
+                        |> fnLog "videosToFetch" List.length
+                        -- |> List.take 1
+            in
+            ( model, Cmd.batch fetches )
+
+        GotVideoStatsOnTheHour time videoId statsResponse ->
+            case statsResponse of
+                Ok statsResponse_ ->
+                    let
+                        _ = Debug.log "statsResponse__" statsResponse_
+
+                        retrievedStats =
+                            statsResponse_.items |> List.head |> Maybe.map .statistics
+                            --|> Debug.log "retrievedStats"
+
+                        -- type alias VideoStatisticsAtTime =
+                        --     { videoId : String
+                        --     , timestamp : Posix
+                        --     , viewCount : Int
+                        --     , likeCount : Int
+                        --     , dislikeCount : Int
+                        --     , favoriteCount : Int
+                        --     , commentCount : Int
+                        --     }
+                        newModel =
+                            retrievedStats
+                                |> Maybe.map
+                                    (\retrievedStats_ ->
+                                        { videoId = videoId
+                                        , timestamp = time
+                                        , viewCount = retrievedStats_.viewCount |> String.toInt |> Maybe.withDefault 0
+                                        , likeCount = retrievedStats_.likeCount |> String.toInt |> Maybe.withDefault 0
+                                        , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt
+                                        , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt 
+                                        , commentCount = retrievedStats_.commentCount |> Maybe.andThen String.toInt
+                                        }
+                                    )
+                                |> Maybe.map
+                                    (\newStats ->
+                                        { model
+                                            | videoStatisticsAtTime = Dict.insert ( videoId, time |> Time.posixToMillis ) newStats model.videoStatisticsAtTime
+                                        }
+                                    )
+                                |> Maybe.withDefault model
+                                --|> Debug.log "newModel" 
+                    in
+                    ( newModel, Cmd.none )
+
+                Err error ->
+                    let
+                        _ =
+                            Debug.log "GotVideoStatsOnTheHour error" error
+                    in
+                    ( model, Cmd.none )
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -1169,9 +1272,19 @@ updateFromFrontend sessionId clientId msg model =
 
         AttemptGetVideos playlistId ->
             let
+                playlists =
+                    case playlistId of
+                        "*" ->
+                            model.playlists
+                                |> Dict.filter (\_ v -> v.monitor)
+
+                        playlistId_ ->
+                            model.playlists
+                                |> Dict.filter (\_ v -> v.id == playlistId_)
+
                 videos =
                     model.videos
-                        |> Dict.filter (\_ v -> v.playlistId == playlistId)
+                        |> Dict.filter (\_ v -> v.playlistId == playlistId || (playlistId == "*" && Dict.member v.playlistId playlists))
 
                 liveVideoDetails =
                     model.liveVideoDetails
@@ -1180,10 +1293,6 @@ updateFromFrontend sessionId clientId msg model =
                 currentViewers =
                     model.currentViewers
                         |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
-
-                playlist =
-                    model.playlists
-                        |> Dict.get playlistId
 
                 videoChannels =
                     model.videos
@@ -1196,14 +1305,9 @@ updateFromFrontend sessionId clientId msg model =
                             )
             in
             ( model
-            , case playlist of
-                Just playlist_ ->
-                    sendToPage clientId <|
-                        Gen.Msg.Playlist__Id_ <|
-                            Pages.Playlist.Id_.GotVideos playlist_ videos liveVideoDetails currentViewers videoChannels
-
-                Nothing ->
-                    Cmd.none
+            , sendToPage clientId <|
+                Gen.Msg.Playlist__Id_ <|
+                    Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels
             )
 
 
@@ -1335,16 +1439,20 @@ video_getAccesToken model videoId =
 
 video_isNew v =
     let
-        pulishedTimeInt = (v.publishedAt |> strToIntTime)
+        pulishedTimeInt =
+            v.publishedAt |> strToIntTime
 
-        cuttoffTimeInt = ("2024-01-01T00:00:00Z" |> strToIntTime)
+        cuttoffTimeInt =
+            "2024-01-01T00:00:00Z" |> strToIntTime
     in
-    pulishedTimeInt >= cuttoffTimeInt |> Debug.log "video_isNew" 
+    pulishedTimeInt >= cuttoffTimeInt 
+
 
 fnLog msg fn thing =
     let
-        _ = thing
-            |> fn
-            |> Debug.log msg
+        _ =
+            thing
+                |> fn
+                |> Debug.log msg
     in
     thing

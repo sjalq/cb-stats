@@ -258,7 +258,7 @@ view model =
                     (Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "impossibruu!"))
                 , Element.table
                     tableStyle
-                    { data = model.playlists |> Dict.values |> List.sortBy .title
+                    { data = model.playlists |> Dict.values |> List.sortBy (\p -> (if p.monitor then 0 else 1, p.title))
                     , columns =
                         [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)

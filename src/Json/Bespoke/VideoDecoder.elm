@@ -89,6 +89,9 @@ snippetDecoder =
 
 statisticsDecoder : Decoder Statistics
 statisticsDecoder =
+    let
+        _ = Debug.log "statisticsDecoder" "called"
+    in
     succeed Statistics
         |> required "viewCount" int
         |> required "likeCount" int
@@ -109,6 +112,9 @@ liveStreamingDetailsDecoder =
 
 videoDecoder : Decoder Video
 videoDecoder =
+    let
+        _ = Debug.log "videoDecoder" "called"
+    in
     succeed Video
         |> required "kind" string
         |> required "etag" string

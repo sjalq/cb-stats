@@ -116,9 +116,9 @@ type alias VideoStatisticsAtTime =
     , timestamp : Posix
     , viewCount : Int
     , likeCount : Int
-    , dislikeCount : Int
-    , favoriteCount : Int
-    , commentCount : Int
+    , dislikeCount : Maybe Int
+    , favoriteCount : Maybe Int
+    , commentCount : Maybe Int
     }
 
 

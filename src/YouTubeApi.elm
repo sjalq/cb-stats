@@ -6,6 +6,7 @@ import Json.Auto.AccessToken
 import Json.Auto.Channels
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
+import Json.Auto.VideoStats
 import Json.Bespoke.LiveBroadcastDecoder
 import Json.Bespoke.ReportDecoder
 import Json.Bespoke.VideoDecoder
@@ -169,6 +170,24 @@ getVideoLiveStreamDataCmd timestamp videoId accessToken =
         }
 
 
+getVideoStats timestamp videoId msg accessToken =
+    let
+        url =
+            "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
+                ++ videoId
+            |> Debug.log "stats_url"
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (msg timestamp videoId) Json.Auto.VideoStats.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 getVideoStatsOnConclusionCmd : Posix -> String -> String -> Cmd BackendMsg
 getVideoStatsOnConclusionCmd timestamp videoId accessToken =
     let
@@ -237,7 +256,6 @@ getVideoDailyReportCmd videoId date accessToken =
                 ++ (date |> String.left 10 |> Url.percentEncode)
                 ++ "&endDate="
                 ++ (date |> String.left 10 |> Url.percentEncode)
-            
     in
     Http.request
         { method = "GET"
