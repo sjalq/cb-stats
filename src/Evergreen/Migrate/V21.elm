@@ -305,7 +305,7 @@ migrate_Bridge_ToBackend old =
             Evergreen.V21.Bridge.AttemptGetVideos p0
 
         Evergreen.V20.Bridge.AttemptGetLogs ->
-            Evergreen.V21.Bridge.AttemptGetLogs
+            Evergreen.V21.Bridge.AttemptGetLogs 0 0 
 
         Evergreen.V20.Bridge.UpdateSchedule p0 ->
             Evergreen.V21.Bridge.UpdateSchedule (p0 |> migrate_Api_YoutubeModel_Schedule)
