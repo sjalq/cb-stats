@@ -52,6 +52,7 @@ type Msg
     = GotLogs Int (List LogEntry)
     | GetLogPage Int Int
     | YeetLogs
+    | YeetVideos 
       ---
     | Batch_RefreshAccessTokens
     | Batch_RefreshAllChannels
@@ -80,6 +81,9 @@ update msg model =
 
         YeetLogs ->
             ( model, Effect.fromCmd <| sendToBackend <| AttemptYeetLogs )
+
+        YeetVideos ->
+            ( model, Effect.fromCmd <| sendToBackend <| AttemptYeetVideos )
 
         Batch_RefreshAccessTokens ->
             ( model, Effect.fromCmd <| sendToBackend <| AttemptBatch_RefreshAccessTokens )
@@ -146,6 +150,7 @@ view model =
                     [ msgButton "Previous" (GetLogPage (model.logIndex - 100) 100 |> Just)
                     , msgButton "Next" (GetLogPage (model.logIndex + 100) 100 |> Just)
                     , msgButton "Yeet" (Just YeetLogs)
+                    , msgButton "Yeet videos" (Just YeetVideos)
                     ]
                  ]
                     ++ ([ msgButton "Refresh access tokens" (Just Batch_RefreshAccessTokens)

@@ -1363,6 +1363,9 @@ updateFromFrontend sessionId clientId msg model =
         AttemptBatch_GetVideoStatisticsAtTime ->
             ( model, performNowWithTime Batch_GetVideoStatisticsAtTime )
 
+        AttemptYeetVideos ->
+            ( { model | videos = Dict.empty }, Cmd.none )
+
 
 randomSalt : Random.Generator String
 randomSalt =

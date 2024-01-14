@@ -1,33 +1,29 @@
-module Bridge exposing (..)
+module Evergreen.V22.Bridge exposing (..)
 
-import Api.User exposing (Email)
-import Api.YoutubeModel exposing (Channel, Playlist)
-import Dict exposing (Dict)
-import Lamdera
-import Api.YoutubeModel exposing (Schedule)
-
-
-sendToBackend =
-    Lamdera.sendToBackend
+import Evergreen.V22.Api.User
+import Evergreen.V22.Api.YoutubeModel
 
 
 type ToBackend
-    = AttemptRegistration { email : Email, password : String }
-    | AttemptSignIn { email : Email, password : String }
+    = AttemptRegistration
+        { email : Evergreen.V22.Api.User.Email
+        , password : String
+        }
+    | AttemptSignIn
+        { email : Evergreen.V22.Api.User.Email
+        , password : String
+        }
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
-      -- front end instructions to fetch data from youtube
     | FetchChannelsFromYoutube String
     | FetchPlaylistsFromYoutube String
     | FetchVideosFromYoutube String
-      -- normal fetches from backend to frontend
     | AttemptGetChannelAndPlaylists String
     | AttemptGetVideos String
     | AttemptGetLogs Int Int
     | AttemptYeetLogs
     | AttemptYeetVideos
-    --
     | AttemptBatch_RefreshAccessTokens
     | AttemptBatch_RefreshAllChannels
     | AttemptBatch_RefreshAllPlaylists
@@ -37,8 +33,6 @@ type ToBackend
     | AttemptBatch_GetVideoDailyReports
     | AttemptBatch_GetChatMessages
     | AttemptBatch_GetVideoStatisticsAtTime
-    -- update from frontend
-    | UpdateSchedule Schedule
-    | UpdatePlaylist Playlist
-    -- no op for migrations
+    | UpdateSchedule Evergreen.V22.Api.YoutubeModel.Schedule
+    | UpdatePlaylist Evergreen.V22.Api.YoutubeModel.Playlist
     | NoOpToBackend
