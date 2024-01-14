@@ -258,6 +258,7 @@ view model =
                                         v.reportAfter24Hours
                                             |> Maybe.map (\r -> r.averageViewPercentage |> String.fromFloat)
                                             |> Maybe.withDefault "..."
+                                            |> String.left 5
                                             |> wrappedText
                                     )
                                , Column

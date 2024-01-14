@@ -11,11 +11,14 @@ import Element.Input
 import Gen.Params.Channel.Id_ exposing (Params)
 import Gen.Route as Route
 import Html.Attributes
+import Iso8601
 import Lamdera exposing (sendToBackend)
+import MoreDict
 import Page
 import Request
 import Shared
 import Styles.Colors
+import Time
 import UI.Helpers exposing (..)
 import View exposing (View)
 
@@ -38,6 +41,7 @@ type alias Model =
     { channelId : String
     , channel : Maybe Channel
     , playlists : Dict String Playlist
+    , latestVideos : Dict String Int
     , schedules : Dict String Schedule
     }
 
@@ -47,6 +51,7 @@ init { params } =
     ( { channelId = params.id
       , channel = Nothing
       , playlists = Dict.empty
+      , latestVideos = Dict.empty
       , schedules = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetChannelAndPlaylists params.id
@@ -58,7 +63,7 @@ init { params } =
 
 
 type Msg
-    = GotChannelAndPlaylists Channel (Dict String Playlist) (Dict String Schedule)
+    = GotChannelAndPlaylists Channel (Dict String Playlist) (Dict String Int) (Dict String Schedule)
     | GetPlaylists
     | Schedule_UpdateSchedule Schedule
     | MonitorPlaylist Playlist Bool
@@ -137,8 +142,14 @@ updateSchedule schedule model =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotChannelAndPlaylists channel playlists schedules ->
-            ( { model | channel = Just channel, playlists = playlists, schedules = schedules }
+        GotChannelAndPlaylists channel playlists latestVideos schedules ->
+            ( { model
+                | channel =
+                    Just channel
+                , playlists = playlists
+                , latestVideos = latestVideos
+                , schedules = schedules
+              }
             , Effect.none
             )
 
@@ -258,7 +269,36 @@ view model =
                     (Element.text <| (model.channel |> Maybe.map .title |> Maybe.withDefault "impossibruu!"))
                 , Element.table
                     tableStyle
-                    { data = model.playlists |> Dict.values |> List.sortBy (\p -> (if p.monitor then 0 else 1, p.title))
+                    { data =
+                        let
+                            x =
+                                model.playlists
+                                    |> MoreDict.rightOuterJoin model.latestVideos
+                                    |> Dict.values
+                                    |> List.map
+                                        (\( latestVideo, p ) ->
+                                            { id = p.id
+                                            , title = p.title
+                                            , description = p.description
+                                            , channelId = p.channelId
+                                            , monitor = p.monitor
+                                            , latestVideo = latestVideo |> Maybe.withDefault 0
+                                            , p = p
+                                            }
+                                        )
+                                    |> List.sortBy
+                                        (\p ->
+                                            ( if p.monitor then
+                                                0
+
+                                              else
+                                                1
+                                            , -p.latestVideo
+                                            , p.title
+                                            )
+                                        )
+                        in
+                        x
                     , columns =
                         [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
@@ -268,36 +308,14 @@ view model =
                             (px 100)
                             (\p ->
                                 Element.Input.checkbox [ paddingXY 35 35, width fill, centerX, centerY ]
-                                    { onChange = \c -> MonitorPlaylist p c
+                                    { onChange = \c -> MonitorPlaylist p.p c
                                     , icon = tickOrUntick
                                     , checked = p.monitor
                                     , label = "Monitor" |> Element.Input.labelHidden
                                     }
-                                |> UI.Helpers.wrappedCell
+                                    |> UI.Helpers.wrappedCell
                             )
-                        -- , Column
-                        --     (columnHeader "Schedule")
-                        --     (px 350)
-                        --     (\p ->
-                        --         model.schedules
-                        --             |> Dict.get p.id
-                        --             |> Maybe.withDefault
-                        --                 -- also acts to initialize one if none exists
-                        --                 { playlistId = p.id
-                        --                 , hour = 0
-                        --                 , minute = 0
-                        --                 , days =
-                        --                     { monday = False
-                        --                     , tuesday = False
-                        --                     , wednesday = False
-                        --                     , thursday = False
-                        --                     , friday = False
-                        --                     , saturday = False
-                        --                     , sunday = False
-                        --                     }
-                        --                 }
-                        --             |> scheduleComponent
-                        --  )
+                        , Column (columnHeader "Latest Video") (px 200) (.latestVideo >> Time.millisToPosix >> Iso8601.fromTime >> String.left 16 >> wrappedText)
                         , Column
                             (Element.text "")
                             (px 200)

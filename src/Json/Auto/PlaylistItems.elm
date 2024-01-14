@@ -36,6 +36,8 @@ type alias RootItemsObjectSnippet =
     , resourceId : RootItemsObjectSnippetResourceId
     , thumbnails : Maybe RootItemsObjectSnippetThumbnails
     , title : String
+    , videoOwnerChannelId : String
+    , videoOwnerChannelTitle : String
     }
 
 
@@ -97,9 +99,11 @@ rootItemsObjectSnippetDecoder =
                 (Json.Decode.field "resourceId" rootItemsObjectSnippetResourceIdDecoder)
                 (Json.Decode.maybe <| Json.Decode.field "thumbnails" rootItemsObjectSnippetThumbnailsDecoder)
     in
-    Json.Decode.map2 (<|)
+    Json.Decode.map4 (<|)
         fieldSet0
         (Json.Decode.field "title" Json.Decode.string)
+        (Json.Decode.field "videoOwnerChannelId" Json.Decode.string)
+        (Json.Decode.field "videoOwnerChannelTitle" Json.Decode.string)
 
 rootItemsObjectSnippetResourceIdDecoder : Json.Decode.Decoder RootItemsObjectSnippetResourceId
 rootItemsObjectSnippetResourceIdDecoder =

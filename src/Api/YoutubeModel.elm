@@ -81,7 +81,8 @@ type alias Video =
     { id : String
     , title : String
     , description : String
-    , channelId : String
+    , videoOwnerChannelId : String
+    , videoOwnerChannelTitle : String
     , playlistId : String
     , thumbnailUrl : Maybe String
     , publishedAt : String

@@ -26,6 +26,16 @@ type ToBackend
     | AttemptGetVideos String
     | AttemptGetLogs Int Int
     | AttemptYeetLogs
+    --
+    | AttemptBatch_RefreshAccessTokens
+    | AttemptBatch_RefreshAllChannels
+    | AttemptBatch_RefreshAllPlaylists
+    | AttemptBatch_RefreshAllVideosFromPlaylists
+    | AttemptBatch_GetLiveVideoStreamData
+    | AttemptBatch_GetVideoStats
+    | AttemptBatch_GetVideoDailyReports
+    | AttemptBatch_GetChatMessages
+    | AttemptBatch_GetVideoStatisticsAtTime
     -- update from frontend
     | UpdateSchedule Schedule
     | UpdatePlaylist Playlist
