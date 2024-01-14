@@ -68,7 +68,7 @@ type alias DaysOfWeek =
 
 type LiveStatus
     = Unknown
-    | NeverLive
+    | Uploaded
     | Scheduled String
     | Expired
     | Old

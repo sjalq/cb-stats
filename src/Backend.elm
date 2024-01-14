@@ -94,9 +94,9 @@ subscriptions model =
         , Time.every minute Batch_RefreshAllVideosFromPlaylists
         , Time.every pollingInterval Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
-        , Time.every (10 * second) Batch_GetVideoDailyReports
-        , Time.every (10 * second) Batch_GetChatMessages
-        , Time.every (10 * second) Batch_GetVideoStatisticsAtTime
+        , Time.every hour Batch_GetVideoDailyReports
+        --, Time.every (10 * second) Batch_GetChatMessages
+        , Time.every pollingInterval Batch_GetVideoStatisticsAtTime
         , onConnect OnConnect
         ]
 
@@ -592,7 +592,7 @@ update msg model =
                                     (\currentVideoRecord ->
                                         case ( wasNeverLive, isScheduled, ( isLive, wasLive, whenScheduled ) ) of
                                             ( True, _, ( _, _, _ ) ) ->
-                                                { currentVideoRecord | liveStatus = Api.YoutubeModel.NeverLive }
+                                                { currentVideoRecord | liveStatus = Api.YoutubeModel.Uploaded }
 
                                             ( _, True, ( _, _, Ok whenScheduled_ ) ) ->
                                                 -- if the scheduled time is more than 150 minutes ago, then we stop monitoring it
@@ -909,14 +909,21 @@ update msg model =
                     model.videos
                         |> Dict.filter
                             (\_ v ->
-                                case ( v.liveStatus, v.reportAfter24Hours ) of
-                                    ( Api.YoutubeModel.Ended endDateStr, Nothing ) ->
+                                case ( v.publishedAt, v.liveStatus, v.reportAfter24Hours ) of
+                                    ( _, Api.YoutubeModel.Ended endDateStr, Nothing ) ->
                                         ((endDateStr |> strToIntTime) + day) <= (time |> Time.posixToMillis)
+
+                                    (publishedAt, Api.YoutubeModel.Uploaded, Nothing ) ->
+                                        let
+                                            _ = Debug.log "publishedAt_lt_d" publishedAt
+                                        in
+                                        ((publishedAt |> strToIntTime) + day) <=  (time |> Time.posixToMillis) |> Debug.log "publishedAt_lt"
 
                                     _ ->
                                         False
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
+                        |> fnLog "publishedAt_lt_s" Dict.size
 
                 fetches =
                     videosWithout24HrReport
@@ -1004,8 +1011,7 @@ update msg model =
                         |> List.map .videoId
 
                 videosWithNoStatsAtAll =
-                    model.videos 
-                        |> Dict.filter (\_ v -> video_isNew v)
+                    videosThatConcludedInPast24Hrs
                         |> Dict.keys
                         |> List.filter (\videoId -> 
                             model.videoStatisticsAtTime
@@ -1243,12 +1249,13 @@ updateFromFrontend sessionId clientId msg model =
                 Nothing ->
                     ( model, Cmd.none ) |> log ("Failed to find channel with id: " ++ channelId) Error
 
-        AttemptGetLogs ->
+        AttemptGetLogs latest numberToFetch->
             ( model
             , sendToPage clientId <|
                 Gen.Msg.Log <|
-                    Pages.Log.GotLogs <|
-                        model.logs
+                    (Pages.Log.GotLogs 
+                        latest
+                        (model.logs |> List.drop latest |> List.take numberToFetch))
             )
 
         FetchChannelsFromYoutube email ->
@@ -1309,6 +1316,9 @@ updateFromFrontend sessionId clientId msg model =
                 Gen.Msg.Playlist__Id_ <|
                     Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels
             )
+
+        AttemptYeetLogs ->
+            ( { model | logs = [] }, Cmd.none )
 
 
 randomSalt : Random.Generator String

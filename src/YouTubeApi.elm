@@ -256,6 +256,9 @@ getVideoDailyReportCmd videoId date accessToken =
                 ++ (date |> String.left 10 |> Url.percentEncode)
                 ++ "&endDate="
                 ++ (date |> String.left 10 |> Url.percentEncode)
+            |> Debug.log ("access_token " ++ accessToken ++ " url") 
+
+       
     in
     Http.request
         { method = "GET"

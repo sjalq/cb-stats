@@ -9,15 +9,13 @@ import Element exposing (..)
 import Element.Border
 import Element.Font
 import Gen.Params.Playlist.Id_ exposing (Params)
-import Html exposing (video)
 import Page
 import Request
 import Shared
 import Styles.Colors
-import Time exposing (Posix, posixToMillis)
+import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import View exposing (View)
-import Html.Attributes exposing (title)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -103,7 +101,7 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -127,7 +125,7 @@ view model =
                     tableStyle
                     { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) |> List.reverse
                     , columns =
-                        [ Column (columnHeader "") (px 10) (\v -> text "")
+                        [ Column (columnHeader "") (px 10) (\_ -> text "")
 
                         --, Column (columnHeader "Id") (px 290) (.id >> wrappedText)
                         , Column (columnHeader "Published at") (px 120) (.publishedAt >> String.left 16 >> String.right 14 >> (++) "\"" >> wrappedText)
@@ -187,7 +185,7 @@ view model =
                                                 Expired ->
                                                     "Schedule expired"
 
-                                                NeverLive ->
+                                                Uploaded ->
                                                     "Uploaded"
 
                                                 Impossibru ->
@@ -201,7 +199,7 @@ view model =
                                     (px 75)
                                     (\v ->
                                         model.currentViewers
-                                            |> Dict.filter (\( vId, time ) cv -> vId == v.id)
+                                            |> Dict.filter (\( vId, _ ) _ -> vId == v.id)
                                             |> Dict.values
                                             |> List.sortBy (.timestamp >> posixToMillis)
                                             |> List.reverse
@@ -265,7 +263,7 @@ view model =
                                , Column
                                     (columnHeader "Copy row")
                                     (px 80)
-                                    (\v ->
+                                    (\_ ->
                                         msgButton "Copy" (Just GetVideos)
                                     )
 

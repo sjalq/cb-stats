@@ -24,7 +24,8 @@ type ToBackend
       -- normal fetches from backend to frontend
     | AttemptGetChannelAndPlaylists String
     | AttemptGetVideos String
-    | AttemptGetLogs
+    | AttemptGetLogs Int Int
+    | AttemptYeetLogs
     -- update from frontend
     | UpdateSchedule Schedule
     | UpdatePlaylist Playlist

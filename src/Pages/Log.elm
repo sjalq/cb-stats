@@ -1,19 +1,18 @@
 module Pages.Log exposing (Model, Msg(..), page)
 
+import Api.Logging exposing (LogEntry, logLevelToString, posixToString)
+import Bridge exposing (ToBackend(..), sendToBackend)
 import Effect exposing (Effect)
+import Element exposing (..)
+import Element.Input
 import Gen.Params.Log exposing (Params)
+import Lamdera.Debug exposing (posixToMillis)
+import List exposing (length)
 import Page
 import Request
 import Shared
-import View exposing (View)
-import Page
-import Api.Logging exposing (LogEntry)
-import Bridge exposing (sendToBackend, ToBackend(..))
-import Element exposing (..)
 import UI.Helpers exposing (..)
-import Api.Logging exposing (logLevelToString)
-import Lamdera.Debug exposing (posixToMillis)
-import Api.Logging exposing (posixToString)
+import View exposing (View)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -26,16 +25,23 @@ page shared req =
         }
 
 
+
 -- INIT
 
 
 type alias Model =
-    { logs : List LogEntry}
+    { logs : List LogEntry
+    , logIndex : Int
+    }
 
 
 init : ( Model, Effect Msg )
 init =
-    ( { logs = [] }, Effect.fromCmd <| sendToBackend <| AttemptGetLogs )
+    ( { logs = []
+      , logIndex = 0
+      }
+    , Effect.fromCmd <| sendToBackend <| AttemptGetLogs 0 100
+    )
 
 
 
@@ -43,14 +49,27 @@ init =
 
 
 type Msg
-    = GotLogs (List LogEntry)
+    = GotLogs Int (List LogEntry)
+    | GetLogPage Int Int
+    | YeetLogs
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotLogs logs ->
-            ( { model | logs = logs }, Effect.none )
+        GotLogs index logs ->
+            ( { model
+                | logs = logs
+                , logIndex = index
+              }
+            , Effect.none
+            )
+
+        GetLogPage index number ->
+            ( model, Effect.fromCmd <| sendToBackend <| AttemptGetLogs index number )
+
+        YeetLogs ->
+            ( model, Effect.fromCmd <| sendToBackend <| AttemptYeetLogs )
 
 
 
@@ -86,6 +105,23 @@ view model =
                         , Column (Element.text "Message") (px 600) (.message >> wrappedText)
                         ]
                     }
+                , Element.row []
+                    [ Element.Input.button
+                        (UI.Helpers.buttonStyleMedium ++ [ Element.width (px 100), Element.paddingXY 10 10 ])
+                        { onPress = GetLogPage (model.logIndex - 100) 100 |> Just
+                        , label = Element.text "Previous"
+                        }
+                    , Element.Input.button
+                        (UI.Helpers.buttonStyleMedium ++ [ Element.width (px 100), Element.paddingXY 10 10 ])
+                        { onPress = GetLogPage (model.logIndex + 100) 100 |> Just
+                        , label = Element.text "Next"
+                        }
+                    , Element.Input.button
+                        (UI.Helpers.buttonStyleMedium ++ [ Element.width (px 100), Element.paddingXY 10 10 ])
+                        { onPress = YeetLogs |> Just
+                        , label = Element.text "Yeet logs"
+                        }
+                    ]
                 ]
             )
     }
