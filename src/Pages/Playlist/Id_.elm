@@ -16,6 +16,7 @@ import Styles.Colors
 import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import View exposing (View)
+import Api.YoutubeModel exposing (VideoStatisticsAtTime)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -66,14 +67,20 @@ init { params } =
 
 
 type Msg
-    = GotVideos (Dict String Playlist) (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers) (Dict String String)
+    = GotVideos 
+        (Dict String Playlist) 
+        (Dict String Video) 
+        (Dict String LiveVideoDetails) 
+        (Dict ( String, Int ) CurrentViewers) 
+        (Dict String String)
+        (Dict (String, Int) VideoStatisticsAtTime)
     | GetVideos
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotVideos playlists videos liveVideoDetails currentViewers videoChannels ->
+        GotVideos playlists videos liveVideoDetails currentViewers videoChannels videoStats ->
             ( { model
                 | videos = videos
                 , playlistTitle =

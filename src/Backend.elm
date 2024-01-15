@@ -13,6 +13,7 @@ import Dict
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
+import Html exposing (time)
 import Http exposing (Error(..))
 import Iso8601
 import Lamdera exposing (..)
@@ -1333,7 +1334,7 @@ updateFromFrontend sessionId clientId msg model =
         AttemptGetVideos playlistId ->
             let
                 playlists =
-                    case playlistId of
+                    (case playlistId of
                         "*" ->
                             model.playlists
                                 |> Dict.filter (\_ v -> v.monitor)
@@ -1341,10 +1342,13 @@ updateFromFrontend sessionId clientId msg model =
                         playlistId_ ->
                             model.playlists
                                 |> Dict.filter (\_ v -> v.id == playlistId_)
+                    )
+                        |> Dict.map (\_ p -> { p | description = "" })
 
                 videos =
                     model.videos
                         |> Dict.filter (\_ v -> v.playlistId == playlistId || (playlistId == "*" && Dict.member v.playlistId playlists))
+                        |> Dict.map (\_ v -> { v | description = "" })
 
                 liveVideoDetails =
                     model.liveVideoDetails
@@ -1354,6 +1358,15 @@ updateFromFrontend sessionId clientId msg model =
                     model.currentViewers
                         |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
 
+                videoStats =
+                    model.videoStatisticsAtTime
+                        |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
+                        |> Dict.values
+                        |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                        |> List.take 24
+                        |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
+                        |> Dict.fromList
+
                 videoChannels =
                     model.videos
                         |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
@@ -1361,7 +1374,7 @@ updateFromFrontend sessionId clientId msg model =
             ( model
             , sendToPage clientId <|
                 Gen.Msg.Playlist__Id_ <|
-                    Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels
+                    Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels videoStats
             )
 
         AttemptYeetLogs ->
