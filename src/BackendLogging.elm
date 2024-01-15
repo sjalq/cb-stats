@@ -13,5 +13,5 @@ logCmd msg lvl =
 
 log : String -> LogLevel -> ( a, Cmd BackendMsg ) -> ( a, Cmd BackendMsg )
 log msg lvl ( model, cmd ) =
-    --( model, Cmd.batch [ cmd, logCmd msg lvl ] )
-    ( model, cmd )
+    ( model, Cmd.batch [ cmd, logCmd msg lvl ] )
+    --( model, cmd )

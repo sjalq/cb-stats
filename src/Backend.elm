@@ -491,6 +491,7 @@ update msg model =
                     ( newModel
                     , fetchMore
                     )
+                        |> log ("Got videos for playlist : " ++ playlistId ++ " " ++ (newVideos |> Dict.size |> String.fromInt) ) Info
 
                 Err error ->
                     ( model
@@ -676,13 +677,13 @@ update msg model =
                     ( newModel
                     , Cmd.none
                     )
-                        |> log ("Got live video stream data for video : " ++ videoId) Info
+                        --|> log ("Got live video stream data for video : " ++ videoId) Info
 
                 Err error ->
                     ( model
                     , Cmd.none
                     )
-                        |> log ("Failed to fetch live video data for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+                        --|> log ("Failed to fetch live video data for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
         Batch_GetVideoStats time ->
             let
@@ -782,7 +783,7 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        |> log ("Failed to fetch stats on conclusion for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+                        --|> log ("Failed to fetch stats on conclusion for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
         GotVideoStatsAfter24Hrs time videoId videoWithStatsResponse ->
             case videoWithStatsResponse of
@@ -821,7 +822,7 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        |> log ("Failed to fetch stats after 24 hours for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+                        --|> log ("Failed to fetch stats after 24 hours for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
         Batch_GetChatMessages time ->
             let
@@ -902,7 +903,7 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        |> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
+                        --|> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
 
         Batch_GetVideoDailyReports time ->
             let
@@ -995,7 +996,7 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        |> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+                        --|> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
         Batch_GetVideoStatisticsAtTime time ->
             -- for the first 24 hours after a video ends, we fetch the stats every hour
@@ -1266,10 +1267,10 @@ updateFromFrontend sessionId clientId msg model =
                         Gen.Msg.Channel__Id_ <|
                             Pages.Channel.Id_.GotChannelAndPlaylists channel_ playlists latestVideoTimes schedules
                     )
-                        |> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ (playlists |> Dict.size |> String.fromInt)) Info
+                        --|> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ (playlists |> Dict.size |> String.fromInt)) Info
 
                 Nothing ->
-                    ( model, Cmd.none ) |> log ("Failed to find channel with id: " ++ channelId) Error
+                    ( model, Cmd.none ) --|> log ("Failed to find channel with id: " ++ channelId) Error
 
         AttemptGetLogs latest numberToFetch ->
             ( model
@@ -1364,7 +1365,15 @@ updateFromFrontend sessionId clientId msg model =
             ( model, performNowWithTime Batch_GetVideoStatisticsAtTime )
 
         AttemptYeetVideos ->
-            ( { model | videos = Dict.empty }, Cmd.none )
+            ( { model 
+                | videos = Dict.empty 
+                -- , channels = Dict.empty
+                -- , channelAssociations = Dict.empty
+                -- , playlists = Dict.empty
+                -- , schedules = Dict.empty
+                -- , videoStatisticsAtTime = Dict.empty
+                -- , liveVideoDetails = Dict.empty
+            }, Cmd.none )
 
 
 randomSalt : Random.Generator String
