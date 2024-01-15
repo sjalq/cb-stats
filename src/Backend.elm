@@ -1351,6 +1351,7 @@ updateFromFrontend sessionId clientId msg model =
                 videos =
                     model.videos
                         |> Dict.filter (\_ v -> v.playlistId == playlistId || (playlistId == "*" && Dict.member v.playlistId playlists))
+                        |> Dict.filter (\_ v -> video_isNew v)
                         |> Dict.map (\_ v -> { v | description = "" })
 
                 liveVideoDetails =
