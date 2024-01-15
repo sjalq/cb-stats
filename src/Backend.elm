@@ -94,7 +94,7 @@ subscriptions model =
         , Time.every hour Batch_RefreshAllPlaylists
         , Time.every pollingInterval Batch_RefreshAllVideosFromPlaylists
         , Time.every minute Batch_GetLiveVideoStreamData
-        , Time.every pollingInterval Batch_GetVideoStats
+        , Time.every minute Batch_GetVideoStats
         , Time.every hour Batch_GetVideoDailyReports
 
         --, Time.every (10 * second) Batch_GetChatMessages
@@ -1134,6 +1134,7 @@ update msg model =
                         --|> Debug.log "newModel"
                     in
                     ( newModel, Cmd.none )
+                        |> log ("Got stats on the hour for video : " ++ videoId ++ " " ++ (retrievedStats |> Maybe.map .viewCount |> Maybe.withDefault "") ) Info
 
                 Err error ->
                     let
@@ -1141,6 +1142,7 @@ update msg model =
                             Debug.log "GotVideoStatsOnTheHour error" error
                     in
                     ( model, Cmd.none )
+                        |> log ("Failed to fetch stats on the hour for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
