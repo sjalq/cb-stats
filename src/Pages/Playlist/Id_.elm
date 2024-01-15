@@ -201,7 +201,7 @@ view model =
                                     (columnHeader "Lobby")
                                     (px 75)
                                     (\v ->
-                                        Api.YoutubeModel.video_viewersAtXminuteMark model.liveVideoDetails model.currentViewers 3 v.id
+                                        Api.YoutubeModel.video_viewersAtXminuteMark model.liveVideoDetails model.currentViewers 1 v.id
                                             |> Maybe.map (String.fromInt >> wrappedText)
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
