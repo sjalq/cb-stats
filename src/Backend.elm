@@ -1028,12 +1028,19 @@ update msg model =
                     model.videos
                         |> Dict.filter
                             (\_ v ->
-                                case v.liveStatus of
-                                    Api.YoutubeModel.Ended endTime ->
-                                        (endTime |> strToIntTime) + day >= (time |> Time.posixToMillis)
+                                let
+                                    checkTime =
+                                        case ( v.liveStatus, v.publishedAt ) of
+                                            ( Api.YoutubeModel.Ended endTime, _ ) ->
+                                                endTime |> strToIntTime
 
-                                    _ ->
-                                        False
+                                            ( Api.YoutubeModel.Uploaded, publishedAt ) ->
+                                                publishedAt |> strToIntTime
+
+                                            _ ->
+                                                0
+                                in
+                                checkTime + day >= (time |> Time.posixToMillis)
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
 
@@ -1042,7 +1049,7 @@ update msg model =
                         |> Dict.filter (\_ s -> Dict.member s.videoId videosThatConcludedInPast24Hrs)
                         |> Dict.values
                         |> List.Extra.groupWhile (\a b -> a.videoId == b.videoId)
-                        |> List.map (\( g, l ) -> l |> List.sortBy (.timestamp >> Time.posixToMillis) |> List.reverse |> List.head)
+                        |> List.map (\( g, l ) -> l |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1) |> List.head)
                         |> List.filterMap identity
                         |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour <= (time |> Time.posixToMillis))
                         |> List.map .videoId
