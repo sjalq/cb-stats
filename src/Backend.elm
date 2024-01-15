@@ -709,7 +709,7 @@ update msg model =
                         |> List.map
                             (\videoId ->
                                 video_getAccesToken model videoId
-                                    |> Maybe.map (YouTubeApi.getVideoStatsOnConclusionCmd time videoId)
+                                    |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsOnConclusion)
                             )
                         |> List.filterMap identity
                         |> fnLog "fetchConcluded" List.length
@@ -741,7 +741,7 @@ update msg model =
                         |> List.map
                             (\videoId ->
                                 video_getAccesToken model videoId
-                                    |> Maybe.map (YouTubeApi.getVideoStatsAfter24HrsCmd time videoId)
+                                    |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsAfter24Hrs)
                             )
                         |> List.filterMap identity
                         |> fnLog "fetch24HrStats" List.length
@@ -768,8 +768,8 @@ update msg model =
                                                     | statsOnConclusion =
                                                         Just
                                                             { commentCount = retrievedStats_.commentCount |> Maybe.andThen String.toInt |> Maybe.withDefault 0
-                                                            , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt 
-                                                            , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt 
+                                                            , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt
+                                                            , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt
                                                             , likeCount = retrievedStats_.likeCount |> String.toInt |> Maybe.withDefault 0
                                                             , viewCount = retrievedStats_.viewCount |> String.toInt |> Maybe.withDefault 0
                                                             }
@@ -816,8 +816,8 @@ update msg model =
                                                     | statsAfter24Hours =
                                                         Just
                                                             { commentCount = retrievedStats_.commentCount |> Maybe.andThen String.toInt |> Maybe.withDefault 0
-                                                            , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt 
-                                                            , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt 
+                                                            , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt
+                                                            , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt
                                                             , likeCount = retrievedStats_.likeCount |> String.toInt |> Maybe.withDefault 0
                                                             , viewCount = retrievedStats_.viewCount |> String.toInt |> Maybe.withDefault 0
                                                             }

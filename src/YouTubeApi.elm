@@ -188,43 +188,6 @@ getVideoStats timestamp videoId msg accessToken =
         }
 
 
-getVideoStatsOnConclusionCmd : Posix -> String -> String -> Cmd BackendMsg
-getVideoStatsOnConclusionCmd timestamp videoId accessToken =
-    let
-        url =
-            "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
-                ++ videoId
-            |> Debug.log "stats_url"
-    in
-    Http.request
-        { method = "GET"
-        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
-        , url = url
-        , body = Http.emptyBody
-        , expect = Http.expectJson (GotVideoStatsOnConclusion timestamp videoId) Json.Auto.VideoStats.rootDecoder
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
-getVideoStatsAfter24HrsCmd : Posix -> String -> String -> Cmd BackendMsg
-getVideoStatsAfter24HrsCmd timestamp videoId accessToken =
-    let
-        url =
-            "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
-                ++ videoId
-    in
-    Http.request
-        { method = "GET"
-        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
-        , url = url
-        , body = Http.emptyBody
-        , expect = Http.expectJson (GotVideoStatsAfter24Hrs timestamp videoId) Json.Auto.VideoStats.rootDecoder
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
 getChatMessagesCmd pageToken liveBroadcastId accessToken =
     let
         url =
