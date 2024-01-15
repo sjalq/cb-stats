@@ -72,6 +72,7 @@ type LiveStatus
     = Unknown
     | Uploaded
     | Scheduled String
+    | Expired
     | Old
     | Live
     | Ended String

@@ -193,6 +193,9 @@ view model =
 
                                                 Unknown ->
                                                     "Checking..."
+
+                                                Expired ->
+                                                    "Expired"
                                     )
                                , Column
                                     (columnHeader "Lobby")

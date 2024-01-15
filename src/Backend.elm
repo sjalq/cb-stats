@@ -598,15 +598,20 @@ update msg model =
                                 |> Dict.get videoId
                                 |> Maybe.map
                                     (\currentVideoRecord ->
-                                        case ( wasNeverLive, isScheduled, ( isLive, wasLive, whenScheduled ) ) of
+                                        case ( wasNeverLive, isLive, ( isScheduled, wasLive, whenScheduled ) ) of
                                             ( True, _, ( _, _, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Uploaded }
 
-                                            ( _, True, ( _, _, Ok _ ) ) ->
-                                                { currentVideoRecord | liveStatus = Api.YoutubeModel.Scheduled whenScheduledStr }
-
-                                            ( _, _, ( True, _, _ ) ) ->
+                                            ( _, True, ( _, _, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Live }
+
+                                            ( _, _, ( True, _, Ok whenScheduled_ ) ) ->
+                                                -- if the scheduled time is more than 35 minutes ago, then we stop monitoring it
+                                                if (timestamp |> Time.posixToMillis) - (whenScheduled_ |> Time.posixToMillis) < (35 * minute) then
+                                                    { currentVideoRecord | liveStatus = Api.YoutubeModel.Scheduled whenScheduledStr }
+
+                                                else
+                                                    { currentVideoRecord | liveStatus = Api.YoutubeModel.Expired }
 
                                             ( _, _, ( _, True, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Ended whenEndedStr }
