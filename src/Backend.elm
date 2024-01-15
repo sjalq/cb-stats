@@ -704,7 +704,6 @@ update msg model =
                                         False
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
-                        |> fnLog "concludedVideosWithNoStats" Dict.size
 
                 fetchConcluded =
                     concludedVideosWithNoStats
@@ -715,7 +714,6 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsOnConclusion)
                             )
                         |> List.filterMap identity
-                        |> fnLog "fetchConcluded" List.length
 
                 concludedVideosThatNeed24HrStats =
                     model.videos
@@ -736,7 +734,6 @@ update msg model =
                                         False
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
-                        |> fnLog "concludedVideosThatNeed24HrStats" Dict.size
 
                 fetch24HrStats =
                     concludedVideosThatNeed24HrStats
@@ -747,7 +744,6 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsAfter24Hrs)
                             )
                         |> List.filterMap identity
-                        |> fnLog "fetch24HrStats" List.length
             in
             ( model
             , Cmd.batch (fetchConcluded ++ fetch24HrStats)
@@ -1038,9 +1034,8 @@ update msg model =
                                 checkTime + day >= (time |> Time.posixToMillis)
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
-                        |> fnLog "videosThatConcludedInPast24Hrs" Dict.size
 
-                videosWithNoStatsInPastMinute =
+                videosWithNoStatsInPastHour =
                     model.videoStatisticsAtTime
                         |> Dict.filter (\_ s -> Dict.member s.videoId videosThatConcludedInPast24Hrs)
                         |> Dict.values
@@ -1052,9 +1047,8 @@ update msg model =
                                     |> List.head
                             )
                         |> List.filterMap identity
-                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + minute <= (time |> Time.posixToMillis))
+                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour <= (time |> Time.posixToMillis))
                         |> List.map .videoId
-                        |> fnLog "videosWithNoStatsInPastMinute" List.length
 
                 videosWithNoStatsAtAll =
                     videosThatConcludedInPast24Hrs
@@ -1067,10 +1061,9 @@ update msg model =
                                     |> List.member videoId
                                     |> not
                             )
-                        |> fnLog "videosWithNoStatsAtAll" List.length
 
                 videosToFetch =
-                    videosWithNoStatsInPastMinute
+                    videosWithNoStatsInPastHour
                         ++ videosWithNoStatsAtAll
                         |> List.Extra.unique
 
@@ -1082,7 +1075,6 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsOnTheHour)
                             )
                         |> List.filterMap identity
-                        |> fnLog "videosToFetch" List.length
 
                 -- |> List.take 1
             in
@@ -1357,7 +1349,6 @@ updateFromFrontend sessionId clientId msg model =
 
                 videoStats =
                     model.videoStatisticsAtTime
-                        |> fnLog "videoStats" Dict.size
                         |> Dict.filter (\_ s -> Dict.member s.videoId videos)
                         |> Dict.values
                         |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
