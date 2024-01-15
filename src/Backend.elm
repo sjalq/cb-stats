@@ -514,8 +514,11 @@ update msg model =
                                     Api.YoutubeModel.Live ->
                                         True
 
-                                    Api.YoutubeModel.Scheduled _ ->
-                                        True
+                                    Api.YoutubeModel.Scheduled scheduledTimeStr ->
+                                        -- we offset this by 2 minutes to allow for the the timer to pick up that it is live
+                                        -- and to allow for the fact that the timer in which this runs might not
+                                        -- trigger on the exact scheduled time
+                                        (scheduledTimeStr |> strToIntTime) - (2 * minute) <= (time |> Time.posixToMillis)
 
                                     _ ->
                                         False
@@ -599,13 +602,8 @@ update msg model =
                                             ( True, _, ( _, _, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Uploaded }
 
-                                            ( _, True, ( _, _, Ok whenScheduled_ ) ) ->
-                                                -- if the scheduled time is more than 150 minutes ago, then we stop monitoring it
-                                                if (timestamp |> Time.posixToMillis) - (whenScheduled_ |> Time.posixToMillis) < (150 * minute) then
-                                                    { currentVideoRecord | liveStatus = Api.YoutubeModel.Scheduled whenScheduledStr }
-
-                                                else
-                                                    { currentVideoRecord | liveStatus = Api.YoutubeModel.Expired }
+                                            ( _, True, ( _, _, Ok _ ) ) ->
+                                                { currentVideoRecord | liveStatus = Api.YoutubeModel.Scheduled whenScheduledStr }
 
                                             ( _, _, ( True, _, _ ) ) ->
                                                 { currentVideoRecord | liveStatus = Api.YoutubeModel.Live }

@@ -1,7 +1,7 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.Time exposing (..)
-import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video)
+import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
@@ -16,7 +16,6 @@ import Styles.Colors
 import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import View exposing (View)
-import Api.YoutubeModel exposing (VideoStatisticsAtTime)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -67,13 +66,7 @@ init { params } =
 
 
 type Msg
-    = GotVideos 
-        (Dict String Playlist) 
-        (Dict String Video) 
-        (Dict String LiveVideoDetails) 
-        (Dict ( String, Int ) CurrentViewers) 
-        (Dict String String)
-        (Dict (String, Int) VideoStatisticsAtTime)
+    = GotVideos (Dict String Playlist) (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers) (Dict String String) (Dict ( String, Int ) VideoStatisticsAtTime)
     | GetVideos
 
 
@@ -142,7 +135,8 @@ view model =
                             (\v ->
                                 Element.link [ Element.Font.underline ]
                                     { url = "https://www.youtube.com/watch?v=" ++ v.id
-                                    , label =  Element.image
+                                    , label =
+                                        Element.image
                                             [ Element.width fill
                                             , Element.height fill
                                             , Element.Border.solid
@@ -157,15 +151,17 @@ view model =
                         , Column (columnHeader "Channel") (px 90) (\v -> model.videoChannels |> Dict.get v.id |> Maybe.withDefault "Unknown" |> wrappedText)
                         ]
                             ++ (if model.playlistId == "*" then
-                                    [ Column 
-                                        (columnHeader "Playlist") 
-                                        (px 90) 
-                                        (\v -> 
-                                            model.playlists 
-                                            |> Dict.get v.playlistId
-                                            |> Maybe.map .title
-                                            |> Maybe.withDefault "Impossubru!"
-                                            |> wrappedText ) ]
+                                    [ Column
+                                        (columnHeader "Playlist")
+                                        (px 90)
+                                        (\v ->
+                                            model.playlists
+                                                |> Dict.get v.playlistId
+                                                |> Maybe.map .title
+                                                |> Maybe.withDefault "Impossubru!"
+                                                |> wrappedText
+                                        )
+                                    ]
 
                                 else
                                     []
@@ -184,13 +180,10 @@ view model =
                                                     "Ended at " ++ strIme
 
                                                 Scheduled strTime ->
-                                                    "Scheduled for " ++ strTime
+                                                    "Scheduled for " ++ strTime 
 
                                                 Old ->
                                                     "Old..."
-
-                                                Expired ->
-                                                    "Schedule expired"
 
                                                 Uploaded ->
                                                     "Uploaded"
@@ -209,7 +202,7 @@ view model =
                                             |> Maybe.map (String.fromInt >> wrappedText)
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
-                                , Column
+                               , Column
                                     (columnHeader "Peak")
                                     (px 75)
                                     (\v ->

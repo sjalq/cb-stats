@@ -48,12 +48,14 @@ type alias Schedule =
     , days : DaysOfWeek
     }
 
+
 type alias Report =
     { averageViewPercentage : Float
     , subscribersGained : Int
     , subscribersLost : Int
     , views : Int
     }
+
 
 type alias DaysOfWeek =
     { monday : Bool
@@ -70,7 +72,6 @@ type LiveStatus
     = Unknown
     | Uploaded
     | Scheduled String
-    | Expired
     | Old
     | Live
     | Ended String
@@ -93,8 +94,6 @@ type alias Video =
     , reportAfter24Hours : Maybe Report
     , chatMsgCount : Maybe Int
     }
-
-
 
 
 type alias LiveVideoDetails =
