@@ -534,7 +534,6 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd time v.id)
                             )
                         |> Dict.values
-                        |> fnLog "fetches" List.length
                         |> List.filterMap identity
 
                 -- this updates the videos to old so that we know why they didn't update
@@ -945,19 +944,11 @@ update msg model =
                                         ((endDateStr |> strToIntTime) + day) <= (time |> Time.posixToMillis)
 
                                     ( publishedAt, Api.YoutubeModel.Uploaded, Nothing ) ->
-                                        let
-                                            _ =
-                                                Debug.log "publishedAt_lt_d" publishedAt
-
-                                            _ =
-                                                Debug.log "id" v.id
-                                        in
-                                        ((publishedAt |> strToIntTime) + day) <= (time |> Time.posixToMillis) |> Debug.log "publishedAt_lt"
+                                        ((publishedAt |> strToIntTime) + day) <= (time |> Time.posixToMillis)
 
                                     _ ->
                                         False
                             )
-                        |> fnLog "publishedAt_lt_s" Dict.size
 
                 fetches =
                     videosWithout24HrReport
@@ -1047,16 +1038,23 @@ update msg model =
                                 checkTime + day >= (time |> Time.posixToMillis)
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
+                        |> fnLog "videosThatConcludedInPast24Hrs" Dict.size
 
-                videosWithNoStatsInPastHour =
+                videosWithNoStatsInPastMinute =
                     model.videoStatisticsAtTime
                         |> Dict.filter (\_ s -> Dict.member s.videoId videosThatConcludedInPast24Hrs)
                         |> Dict.values
-                        |> List.Extra.groupWhile (\a b -> a.videoId == b.videoId)
-                        |> List.map (\( g, l ) -> l |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1) |> List.head)
+                        |> groupByComparable (\s -> s.videoId)
+                        |> List.map
+                            (\( _, s ) ->
+                                s
+                                    |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                                    |> List.head
+                            )
                         |> List.filterMap identity
-                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour <= (time |> Time.posixToMillis))
+                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + minute <= (time |> Time.posixToMillis))
                         |> List.map .videoId
+                        |> fnLog "videosWithNoStatsInPastMinute" List.length
 
                 videosWithNoStatsAtAll =
                     videosThatConcludedInPast24Hrs
@@ -1069,13 +1067,13 @@ update msg model =
                                     |> List.member videoId
                                     |> not
                             )
+                        |> fnLog "videosWithNoStatsAtAll" List.length
 
                 videosToFetch =
-                    videosWithNoStatsInPastHour
+                    videosWithNoStatsInPastMinute
                         ++ videosWithNoStatsAtAll
                         |> List.Extra.unique
 
-                --|> fnLog "videosToFetch" List.length
                 fetches =
                     videosToFetch
                         |> List.map
@@ -1100,7 +1098,6 @@ update msg model =
                         retrievedStats =
                             statsResponse_.items |> List.head |> Maybe.map .statistics
 
-                        --|> Debug.log "retrievedStats"
                         -- type alias VideoStatisticsAtTime =
                         --     { videoId : String
                         --     , timestamp : Posix
@@ -1130,17 +1127,11 @@ update msg model =
                                         }
                                     )
                                 |> Maybe.withDefault model
-
-                        --|> Debug.log "newModel"
                     in
                     ( newModel, Cmd.none )
-                        |> log ("Got stats on the hour for video : " ++ videoId ++ " " ++ (retrievedStats |> Maybe.map .viewCount |> Maybe.withDefault "") ) Info
+                        |> log ("Got stats on the hour for video : " ++ videoId ++ " " ++ (retrievedStats |> Maybe.map .viewCount |> Maybe.withDefault "")) Info
 
                 Err error ->
-                    let
-                        _ =
-                            Debug.log "GotVideoStatsOnTheHour error" error
-                    in
                     ( model, Cmd.none )
                         |> log ("Failed to fetch stats on the hour for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
@@ -1366,10 +1357,11 @@ updateFromFrontend sessionId clientId msg model =
 
                 videoStats =
                     model.videoStatisticsAtTime
-                        |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
+                        |> fnLog "videoStats" Dict.size
+                        |> Dict.filter (\_ s -> Dict.member s.videoId videos)
                         |> Dict.values
                         |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
-                        |> List.take 24
+                        --|> List.take 24
                         |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
                         |> Dict.fromList
 
@@ -1584,3 +1576,17 @@ fnLog msg fn thing =
                 |> Debug.log msg
     in
     thing
+
+
+groupByComparable toComparable list =
+    list
+        |> List.sortBy toComparable
+        |> List.foldr
+            (\item acc ->
+                Dict.insert
+                    (toComparable item)
+                    (item :: Maybe.withDefault [] (Dict.get (toComparable item) acc))
+                    acc
+            )
+            Dict.empty
+        |> Dict.toList
