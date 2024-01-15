@@ -89,8 +89,8 @@ type BackendMsg
     | GetVideosByPlaylist (Maybe String) String 
     | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
     | GotLiveVideoStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
-    | GotVideoStatsOnConclusion Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
-    | GotVideoStatsAfter24Hrs Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
+    | GotVideoStatsOnConclusion Posix String (Result Http.Error Json.Auto.VideoStats.Root)
+    | GotVideoStatsAfter24Hrs Posix String (Result Http.Error Json.Auto.VideoStats.Root)
     | GotVideoStatsOnTheHour Posix String (Result Http.Error Json.Auto.VideoStats.Root)
     | GotChatMessages String (Result Http.Error Json.Bespoke.LiveBroadcastDecoder.Root)
     | GotVideoDailyReport String (Result Http.Error Json.Bespoke.ReportDecoder.YouTubeAnalyticsRecord)

@@ -194,13 +194,14 @@ getVideoStatsOnConclusionCmd timestamp videoId accessToken =
         url =
             "https://www.googleapis.com/youtube/v3/videos?part=statistics&id="
                 ++ videoId
+            |> Debug.log "stats_url"
     in
     Http.request
         { method = "GET"
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotVideoStatsOnConclusion timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , expect = Http.expectJson (GotVideoStatsOnConclusion timestamp videoId) Json.Auto.VideoStats.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -218,7 +219,7 @@ getVideoStatsAfter24HrsCmd timestamp videoId accessToken =
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotVideoStatsAfter24Hrs timestamp videoId) Json.Bespoke.VideoDecoder.rootDecoder
+        , expect = Http.expectJson (GotVideoStatsAfter24Hrs timestamp videoId) Json.Auto.VideoStats.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

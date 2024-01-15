@@ -93,7 +93,7 @@ subscriptions model =
         , Time.every hour Batch_RefreshAllPlaylists
         , Time.every pollingInterval Batch_RefreshAllVideosFromPlaylists
         , Time.every minute Batch_GetLiveVideoStreamData
-        , Time.every minute Batch_GetVideoStats
+        , Time.every pollingInterval Batch_GetVideoStats
         , Time.every hour Batch_GetVideoDailyReports
 
         --, Time.every (10 * second) Batch_GetChatMessages
@@ -491,7 +491,7 @@ update msg model =
                     ( newModel
                     , fetchMore
                     )
-                        |> log ("Got videos for playlist : " ++ playlistId ++ " " ++ (newVideos |> Dict.size |> String.fromInt) ) Info
+                        |> log ("Got videos for playlist : " ++ playlistId ++ " " ++ (newVideos |> Dict.size |> String.fromInt)) Info
 
                 Err error ->
                     ( model
@@ -534,13 +534,13 @@ update msg model =
                         |> List.filterMap identity
 
                 -- this updates the videos to old so that we know why they didn't update
-                newVideos =
+                updatedVideoList =
                     oldLiveOrScheduledVideos
                         |> Dict.map (\_ v -> { v | liveStatus = Api.YoutubeModel.Old })
 
                 newModel =
                     { model
-                        | videos = Dict.union newVideos model.videos
+                        | videos = Dict.union updatedVideoList model.videos
                     }
             in
             ( newModel
@@ -677,14 +677,14 @@ update msg model =
                     ( newModel
                     , Cmd.none
                     )
-                        --|> log ("Got live video stream data for video : " ++ videoId) Info
 
+                --|> log ("Got live video stream data for video : " ++ videoId) Info
                 Err error ->
                     ( model
                     , Cmd.none
                     )
-                        --|> log ("Failed to fetch live video data for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
+        --|> log ("Failed to fetch live video data for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         Batch_GetVideoStats time ->
             let
                 -- fetch the stats for all the videos that have concluded, but don't have stats yet
@@ -701,6 +701,7 @@ update msg model =
                                         False
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
+                        |> fnLog "concludedVideosWithNoStats" Dict.size
 
                 fetchConcluded =
                     concludedVideosWithNoStats
@@ -711,6 +712,7 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoStatsOnConclusionCmd time videoId)
                             )
                         |> List.filterMap identity
+                        |> fnLog "fetchConcluded" List.length
 
                 concludedVideosThatNeed24HrStats =
                     model.videos
@@ -731,6 +733,7 @@ update msg model =
                                         False
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
+                        |> fnLog "concludedVideosThatNeed24HrStats" Dict.size
 
                 fetch24HrStats =
                     concludedVideosThatNeed24HrStats
@@ -741,6 +744,7 @@ update msg model =
                                     |> Maybe.map (YouTubeApi.getVideoStatsAfter24HrsCmd time videoId)
                             )
                         |> List.filterMap identity
+                        |> fnLog "fetch24HrStats" List.length
             in
             ( model
             , Cmd.batch (fetchConcluded ++ fetch24HrStats)
@@ -751,7 +755,7 @@ update msg model =
                 Ok videoWithStats ->
                     let
                         retrievedStats =
-                            videoWithStats.items |> List.head |> Maybe.andThen .statistics
+                            videoWithStats.items |> List.head |> Maybe.map .statistics
 
                         newVideo =
                             model.videos
@@ -760,7 +764,16 @@ update msg model =
                                     (\currentVideoRecord ->
                                         case retrievedStats of
                                             Just retrievedStats_ ->
-                                                { currentVideoRecord | statsOnConclusion = Just retrievedStats_ }
+                                                { currentVideoRecord
+                                                    | statsOnConclusion =
+                                                        Just
+                                                            { commentCount = retrievedStats_.commentCount |> Maybe.andThen String.toInt |> Maybe.withDefault 0
+                                                            , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt 
+                                                            , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt 
+                                                            , likeCount = retrievedStats_.likeCount |> String.toInt |> Maybe.withDefault 0
+                                                            , viewCount = retrievedStats_.viewCount |> String.toInt |> Maybe.withDefault 0
+                                                            }
+                                                }
 
                                             Nothing ->
                                                 { currentVideoRecord | statsOnConclusion = Nothing }
@@ -783,14 +796,14 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        --|> log ("Failed to fetch stats on conclusion for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
+        --|> log ("Failed to fetch stats on conclusion for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         GotVideoStatsAfter24Hrs time videoId videoWithStatsResponse ->
             case videoWithStatsResponse of
                 Ok videoWithStats ->
                     let
                         retrievedStats =
-                            videoWithStats.items |> List.head |> Maybe.andThen .statistics
+                            videoWithStats.items |> List.head |> Maybe.map .statistics
 
                         newVideo =
                             model.videos
@@ -799,7 +812,16 @@ update msg model =
                                     (\currentVideoRecord ->
                                         case retrievedStats of
                                             Just retrievedStats_ ->
-                                                { currentVideoRecord | statsAfter24Hours = Just retrievedStats_ }
+                                                { currentVideoRecord
+                                                    | statsAfter24Hours =
+                                                        Just
+                                                            { commentCount = retrievedStats_.commentCount |> Maybe.andThen String.toInt |> Maybe.withDefault 0
+                                                            , dislikeCount = retrievedStats_.dislikeCount |> Maybe.andThen String.toInt 
+                                                            , favoriteCount = retrievedStats_.favoriteCount |> Maybe.andThen String.toInt 
+                                                            , likeCount = retrievedStats_.likeCount |> String.toInt |> Maybe.withDefault 0
+                                                            , viewCount = retrievedStats_.viewCount |> String.toInt |> Maybe.withDefault 0
+                                                            }
+                                                }
 
                                             Nothing ->
                                                 { currentVideoRecord | statsAfter24Hours = Nothing }
@@ -822,8 +844,8 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        --|> log ("Failed to fetch stats after 24 hours for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
+        --|> log ("Failed to fetch stats after 24 hours for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         Batch_GetChatMessages time ->
             let
                 -- immediately when a video has concluded, we fetch the chat messages, the chat message value is only available for a few minutes after it ends
@@ -903,8 +925,8 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        --|> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
 
+        --|> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
         Batch_GetVideoDailyReports time ->
             let
                 -- note this implies that only videos that were live and were picked up by the app will be tracked.
@@ -996,8 +1018,8 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        --|> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
+        --|> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         Batch_GetVideoStatisticsAtTime time ->
             -- for the first 24 hours after a video ends, we fetch the stats every hour
             -- store these stats in the model.videoStatisticsAtTime
@@ -1267,11 +1289,12 @@ updateFromFrontend sessionId clientId msg model =
                         Gen.Msg.Channel__Id_ <|
                             Pages.Channel.Id_.GotChannelAndPlaylists channel_ playlists latestVideoTimes schedules
                     )
-                        --|> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ (playlists |> Dict.size |> String.fromInt)) Info
 
+                --|> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ (playlists |> Dict.size |> String.fromInt)) Info
                 Nothing ->
-                    ( model, Cmd.none ) --|> log ("Failed to find channel with id: " ++ channelId) Error
+                    ( model, Cmd.none )
 
+        --|> log ("Failed to find channel with id: " ++ channelId) Error
         AttemptGetLogs latest numberToFetch ->
             ( model
             , sendToPage clientId <|
@@ -1365,15 +1388,18 @@ updateFromFrontend sessionId clientId msg model =
             ( model, performNowWithTime Batch_GetVideoStatisticsAtTime )
 
         AttemptYeetVideos ->
-            ( { model 
-                | videos = Dict.empty 
+            ( { model
+                | videos = Dict.empty
+
                 -- , channels = Dict.empty
                 -- , channelAssociations = Dict.empty
                 -- , playlists = Dict.empty
                 -- , schedules = Dict.empty
                 -- , videoStatisticsAtTime = Dict.empty
                 -- , liveVideoDetails = Dict.empty
-            }, Cmd.none )
+              }
+            , Cmd.none
+            )
 
 
 randomSalt : Random.Generator String
@@ -1481,7 +1507,6 @@ playlist_lastPublishDate model playlistId =
         |> playlist_latestVideo playlistId
         |> Maybe.map .publishedAt
         |> Maybe.withDefault "1970-01-01T00:00:00Z"
-
 
 
 video_getAccesToken model videoId =
