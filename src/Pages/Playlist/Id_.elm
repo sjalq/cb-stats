@@ -13,6 +13,8 @@ import Page
 import Request
 import Shared
 import Styles.Colors
+import Svg
+import Svg.Attributes
 import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import View exposing (View)
@@ -40,8 +42,7 @@ type alias Model =
     , currentViewers : Dict ( String, Int ) CurrentViewers
     , videoChannels : Dict String String
     , playlists : Dict String Playlist
-
-    --, videoStats : Dict String Api.YoutubeModel.VideoStats
+    , videoStats : Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
     }
 
 
@@ -54,8 +55,7 @@ init { params } =
       , currentViewers = Dict.empty
       , videoChannels = Dict.empty
       , playlists = Dict.empty
-
-      --, videoStats = Dict.empty
+      , videoStats = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
     )
@@ -180,7 +180,7 @@ view model =
                                                     "Ended at " ++ strIme
 
                                                 Scheduled strTime ->
-                                                    "Scheduled for " ++ strTime 
+                                                    "Scheduled for " ++ strTime
 
                                                 Old ->
                                                     "Old..."
@@ -264,14 +264,24 @@ view model =
                                             |> String.left 5
                                             |> wrappedText
                                     )
-                               , Column
-                                    (columnHeader "Copy row")
-                                    (px 80)
-                                    (\_ ->
-                                        msgButton "Copy" (Just GetVideos)
-                                    )
 
-                               -- , Columns
+                               --    , Column
+                               --         (columnHeader "Copy row")
+                               --         (px 80)
+                               --         (\_ ->
+                               --             msgButton "Copy" (Just GetVideos)
+                               --         )
+                               , Column
+                                    (columnHeader "Sparkline")
+                                    (px 100)
+                                    (\v ->
+                                        model.videoStats
+                                            |> Dict.values
+                                            |> List.filter (\s -> s.videoId == v.id)
+                                            |> List.map (\s -> s.viewCount)
+                                            |> viewSparkLine
+                                        -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
+                                    )
                                ]
                     }
                 , el
@@ -280,3 +290,188 @@ view model =
                 ]
             )
     }
+
+
+type alias Point =
+    { x : Float, y : Float }
+
+
+
+--viewSparkLine : List Int -> Svg.Svg msg
+-- viewSparkLine dataList =
+--     let
+--         width = 240
+--         height = 100
+--         maxData = Maybe.withDefault 1 (List.maximum dataList)
+--         scaledData = List.map (\n -> toFloat n / toFloat maxData * height) dataList
+--         points =
+--             scaledData
+--                 |> List.indexedMap (\i n -> Just { x = toFloat i / 23 * width, y = height - n })
+--                 |> List.filterMap identity
+--     in
+--     Svg.svg [ Svg.Attributes.width (String.fromInt width), Svg.Attributes.height (String.fromInt height) ]
+--         [ Svg.polyline
+--             [ Svg.Attributes.points <| String.join " " <| List.map (\{ x, y } -> String.fromFloat x ++ "," ++ String.fromFloat y) points
+--             , Svg.Attributes.fill "none"
+--             , Svg.Attributes.stroke "black"
+--             , Svg.Attributes.strokeWidth "2"
+--             ]
+--             []
+--         ] |> Element.html
+-- viewSparkLine dataList =
+--     let
+--         width = 240
+--         height = 100
+--         maxData = Maybe.withDefault 1 (List.maximum dataList)
+--         scaledData = List.map (\n -> toFloat n / toFloat maxData * height) dataList
+--         points =
+--             scaledData
+--                 |> List.indexedMap (\i n -> Just { x = toFloat i / 23 * width, y = height - n })
+--                 |> List.filterMap identity
+--         gradientId = "rainbowGradient"
+--     in
+--     Svg.svg [ Svg.Attributes.width (String.fromInt width), Svg.Attributes.height (String.fromInt height) ]
+--         [ Svg.defs []
+--             [ Svg.linearGradient [ Svg.Attributes.id gradientId, Svg.Attributes.x1 "0%", Svg.Attributes.y1 "0%", Svg.Attributes.x2 "100%", Svg.Attributes.y2 "0%" ]
+--                 [ Svg.stop [ Svg.Attributes.offset "0%", Svg.Attributes.stopColor "red" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "16.66%", Svg.Attributes.stopColor "orange" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "33.33%", Svg.Attributes.stopColor "yellow" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "50%", Svg.Attributes.stopColor "green" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "66.66%", Svg.Attributes.stopColor "blue" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "83.33%", Svg.Attributes.stopColor "indigo" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "100%", Svg.Attributes.stopColor "violet" ] []
+--                 ]
+--             ]
+--         , Svg.polyline
+--             [ Svg.Attributes.points <| String.join " " <| List.map (\{ x, y } -> String.fromFloat x ++ "," ++ String.fromFloat y) points
+--             , Svg.Attributes.fill "none"
+--             , Svg.Attributes.stroke ("url(#" ++ gradientId ++ ")")
+--             , Svg.Attributes.strokeWidth "2"
+--             ]
+--             []
+--         ] |> Element.html
+viewSparkLine dataList =
+    let
+        width =
+            100
+        height =
+            100
+        maxData =
+            Maybe.withDefault 1 (List.maximum dataList)
+        scaledData =
+            List.map (\n -> toFloat n / toFloat maxData * height) dataList
+        points =
+            scaledData
+                |> List.indexedMap (\i n -> Just { x = toFloat i / 23 * width, y = height - n })
+                |> List.filterMap identity
+        gradientId =
+            "rainbowGradient"
+        lastPoint =
+            List.head <| List.reverse points
+        isDataIncomplete =
+            List.length dataList < 24
+        pulsatingCircle point =
+            Svg.circle [ Svg.Attributes.cx (String.fromFloat point.x), Svg.Attributes.cy (String.fromFloat point.y), Svg.Attributes.r "3", Svg.Attributes.fill "green" ]
+                [ Svg.animate [ Svg.Attributes.attributeName "r", Svg.Attributes.from "3", Svg.Attributes.to "6", Svg.Attributes.dur "1s", Svg.Attributes.repeatCount "indefinite" ] []
+                ]
+    in
+    Svg.svg [ Svg.Attributes.width (String.fromInt width), Svg.Attributes.height (String.fromInt height) ]
+        ([ Svg.defs []
+            [ Svg.linearGradient [ Svg.Attributes.id gradientId, Svg.Attributes.x1 "0%", Svg.Attributes.y1 "0%", Svg.Attributes.x2 "100%", Svg.Attributes.y2 "0%" ]
+                [ Svg.stop [ Svg.Attributes.offset "0%", Svg.Attributes.stopColor "red" ] []
+                , Svg.stop [ Svg.Attributes.offset "16.66%", Svg.Attributes.stopColor "orange" ] []
+                , Svg.stop [ Svg.Attributes.offset "33.33%", Svg.Attributes.stopColor "yellow" ] []
+                , Svg.stop [ Svg.Attributes.offset "50%", Svg.Attributes.stopColor "green" ] []
+                , Svg.stop [ Svg.Attributes.offset "66.66%", Svg.Attributes.stopColor "blue" ] []
+                , Svg.stop [ Svg.Attributes.offset "83.33%", Svg.Attributes.stopColor "indigo" ] []
+                , Svg.stop [ Svg.Attributes.offset "100%", Svg.Attributes.stopColor "violet" ] []
+                ]
+            ]
+         , Svg.polyline
+            [ Svg.Attributes.points <| String.join " " <| List.map (\{ x, y } -> String.fromFloat x ++ "," ++ String.fromFloat y) points
+            , Svg.Attributes.fill "none"
+            , Svg.Attributes.stroke ("url(#" ++ gradientId ++ ")")
+            , Svg.Attributes.strokeWidth "2"
+            ]
+            []
+         ]
+            ++ (if isDataIncomplete && lastPoint /= Nothing then
+                    [ pulsatingCircle (Maybe.withDefault { x = 0, y = 0 } lastPoint) ]
+                else
+                    []
+               )
+        ) |> Element.html
+-- module Main exposing (main)
+-- import Svg
+-- import Svg.Attributes
+-- import List.Extra exposing (zip)
+-- import Maybe exposing (..)
+-- type alias Point =
+--     { x : Float, y : Float }
+
+
+-- viewSparkLine dataList =
+--     let
+--         padding =
+--             6
+
+--         -- Padding equal to the maximum radius of the pulsating ball
+--         width =
+--             240 + (2 * padding)
+
+--         height =
+--             100 + (2 * padding)
+
+--         maxData =
+--             Maybe.withDefault 1 (List.maximum dataList)
+
+--         scaledData =
+--             List.map (\n -> toFloat n / toFloat maxData * height) dataList
+
+--         points =
+--             scaledData
+--                 |> List.indexedMap (\i n -> Just { x = (toFloat i / 23 * (width - 2 * padding)) + padding, y = height - padding - n })
+--                 |> List.filterMap identity
+
+--         gradientId =
+--             "rainbowGradient"
+
+--         lastPoint =
+--             List.head <| List.reverse points
+
+--         isDataIncomplete =
+--             List.length dataList < 24
+
+--         pulsatingCircle point =
+--             Svg.circle [ Svg.Attributes.cx (String.fromFloat point.x), Svg.Attributes.cy (String.fromFloat point.y), Svg.Attributes.r "3", Svg.Attributes.fill "red" ]
+--                 [ Svg.animate [ Svg.Attributes.attributeName "r", Svg.Attributes.from "3", Svg.Attributes.to "6", Svg.Attributes.dur "1s", Svg.Attributes.repeatCount "indefinite" ] []
+--                 ]
+--     in
+--     Svg.svg [ Svg.Attributes.width (String.fromInt width), Svg.Attributes.height (String.fromInt height) ]
+--         ([ Svg.defs []
+--             [ Svg.linearGradient [ Svg.Attributes.id gradientId, Svg.Attributes.x1 "0%", Svg.Attributes.y1 "0%", Svg.Attributes.x2 "100%", Svg.Attributes.y2 "0%" ]
+--                 [ Svg.stop [ Svg.Attributes.offset "0%", Svg.Attributes.stopColor "red" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "16.66%", Svg.Attributes.stopColor "orange" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "33.33%", Svg.Attributes.stopColor "yellow" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "50%", Svg.Attributes.stopColor "green" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "66.66%", Svg.Attributes.stopColor "blue" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "83.33%", Svg.Attributes.stopColor "indigo" ] []
+--                 , Svg.stop [ Svg.Attributes.offset "100%", Svg.Attributes.stopColor "violet" ] []
+--                 ]
+--             ]
+--          , Svg.polyline
+--             [ Svg.Attributes.points <| String.join " " <| List.map (\{ x, y } -> String.fromFloat x ++ "," ++ String.fromFloat y) points
+--             , Svg.Attributes.fill "none"
+--             , Svg.Attributes.stroke ("url(#" ++ gradientId ++ ")")
+--             , Svg.Attributes.strokeWidth "2"
+--             ]
+--             []
+--          ]
+--             ++ (if isDataIncomplete && lastPoint /= Nothing then
+--                     [ pulsatingCircle (Maybe.withDefault { x = 0, y = 0 } lastPoint) ]
+
+--                 else
+--                     []
+--                )
+--         ) |> Element.html
+ 
