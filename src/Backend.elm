@@ -82,7 +82,7 @@ pollingInterval =
             60 * minute
 
         Env.Production ->
-            1 * minute
+            15 * minute
 
 
 subscriptions : Model -> Sub BackendMsg

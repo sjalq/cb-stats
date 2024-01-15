@@ -198,6 +198,14 @@ view model =
                                     (columnHeader "Lobby")
                                     (px 75)
                                     (\v ->
+                                        Api.YoutubeModel.video_viewersAtXminuteMark model.liveVideoDetails model.currentViewers 3 v.id
+                                            |> Maybe.map (String.fromInt >> wrappedText)
+                                            |> Maybe.withDefault (wrappedText "Unknown")
+                                    )
+                                , Column
+                                    (columnHeader "Peak")
+                                    (px 75)
+                                    (\v ->
                                         model.currentViewers
                                             |> Dict.filter (\( vId, _ ) _ -> vId == v.id)
                                             |> Dict.values
@@ -205,14 +213,6 @@ view model =
                                             |> List.reverse
                                             |> List.head
                                             |> Maybe.map (\cv -> cv.value |> String.fromInt |> wrappedText)
-                                            |> Maybe.withDefault (wrappedText "Unknown")
-                                    )
-                               , Column
-                                    (columnHeader "Peak")
-                                    (px 75)
-                                    (\v ->
-                                        Api.YoutubeModel.video_viewersAtXminuteMark model.liveVideoDetails model.currentViewers 3 v.id
-                                            |> Maybe.map (String.fromInt >> wrappedText)
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
                                , Column
