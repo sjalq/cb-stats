@@ -63,6 +63,7 @@ type Msg
     | Batch_GetVideoDailyReports
     | Batch_GetChatMessages
     | Batch_GetVideoStatisticsAtTime
+    | Batch_GetCompetitorVideos
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -111,6 +112,9 @@ update msg model =
 
         Batch_GetVideoStatisticsAtTime ->
             ( model, Effect.fromCmd <| sendToBackend <| AttemptBatch_GetVideoStatisticsAtTime )
+
+        Batch_GetCompetitorVideos ->
+            ( model, Effect.fromCmd <| sendToBackend <| AttemptBatch_GetCompetitorVideos )
 
 
 
@@ -162,6 +166,7 @@ view model =
                         , msgButton "Get video daily reports" (Just Batch_GetVideoDailyReports)
                         , msgButton "Get chat messages" (Just Batch_GetChatMessages)
                         , msgButton "Get video statistics at time" (Just Batch_GetVideoStatisticsAtTime)
+                        , msgButton "Get competitor videos" (Just Batch_GetCompetitorVideos)
                         ]
                             |> List.map (\x -> Element.row [ Element.paddingXY 1 1, width (px 400) ] [ x ])
                        )

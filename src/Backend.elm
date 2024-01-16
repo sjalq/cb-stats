@@ -3,7 +3,6 @@ module Backend exposing (..)
 import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
-import Api.Time exposing (..)
 import Api.User
 import Api.YoutubeModel
 import BackendLogging exposing (log)
@@ -29,14 +28,15 @@ import Pages.Register
 import Random
 import Random.Char
 import Random.String
+import Set
 import Shared exposing (Msg(..))
 import String exposing (fromInt)
 import Task
 import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
+import Utils.Time exposing (..)
 import YouTubeApi
-import Set
 
 
 
@@ -98,6 +98,7 @@ subscriptions model =
         , Time.every minute Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
         , Time.every hour Batch_GetVideoDailyReports
+        , Time.every (8 * hour) Batch_GetCompetitorVideos
 
         --, Time.every (10 * second) Batch_GetChatMessages
         , Time.every (10 * minute) Batch_GetVideoStatisticsAtTime
@@ -333,7 +334,7 @@ update msg model =
                                           , description = p.snippet.description
                                           , channelId = p.snippet.channelId
                                           , monitor = False
-                                          , competitorChannels = Set.empty
+                                          , competitorHandles = Set.empty
                                           }
                                         )
                                     )
@@ -495,7 +496,6 @@ update msg model =
                     ( newModel
                     , fetchMore
                     )
-                        |> log ("Got videos for playlist : " ++ playlistId ++ " " ++ (newVideos |> Dict.size |> String.fromInt)) Info
 
                 Err error ->
                     ( model
@@ -1118,11 +1118,105 @@ update msg model =
                                 |> Maybe.withDefault model
                     in
                     ( newModel, Cmd.none )
-                        |> log ("Got stats on the hour for video : " ++ videoId ++ " " ++ (retrievedStats |> Maybe.map .viewCount |> Maybe.withDefault "")) Info
 
                 Err error ->
                     ( model, Cmd.none )
                         |> log ("Failed to fetch stats on the hour for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
+
+        Batch_GetCompetitorVideos time ->
+            -- fetch the competitor channelId from https://yt.lemnoslife.com/channels?
+            -- use the youtube search API to get videos from a competitor for the current day
+            -- add these videos to the videos to monitor
+            -- indicate that these videos need to be accessed with another access token
+            let
+                competitorHandles =
+                    model.playlists
+                        |> Dict.values
+                        |> List.map
+                            (\p ->
+                                p.competitorHandles |> Debug.log "competitorHandles"
+                                    |> Set.toList
+                                    |> List.map
+                                        (\handle ->
+                                            case playlist_getAccessToken model p.id of
+                                                Just accessToken ->
+                                                    performNow <|
+                                                        GetChannelId handle accessToken time
+
+                                                Nothing ->
+                                                    Cmd.none
+                                        )
+                            )
+                        |> List.concat
+            in
+            ( model, Cmd.batch competitorHandles )
+
+        GetChannelId channelHandle accessToken time ->
+            ( model
+            , YouTubeApi.getChannelIdCmd channelHandle time accessToken
+            )
+
+        GotChannelId channelHandle accessToken time channelIdResponse ->
+            case channelIdResponse of
+                Ok channelIdResponse_ ->
+                    let
+                        channelId =
+                            channelIdResponse_.items
+                                |> List.head
+                                |> Maybe.map .id
+
+                        fetch =
+                            Maybe.map
+                                (\channelId_ ->
+                                    YouTubeApi.getCompetitorVideosCmd channelId_ accessToken time
+                                )
+                                channelId
+                                |> Maybe.withDefault Cmd.none
+                    in
+                    ( model, fetch )
+
+                Err error ->
+                    ( model, Cmd.none )
+                        |> log ("Failed to fetch channel id for handle : " ++ channelHandle ++ "\n" ++ httpErrToString error) Error
+
+        GotCompetitorVideos channelId time searchResponse ->
+            case searchResponse of
+                Ok searchResponse_ ->
+                    let
+                        newVideos =
+                            searchResponse_.items
+                                |> List.filter (\v -> model.videos |> Dict.member v.id.videoId |> not)
+                                |> List.map
+                                    (\v ->
+                                        { id = v.id.videoId
+                                        , title = v.snippet.title
+                                        , description = v.snippet.description
+                                        , videoOwnerChannelId = v.snippet.channelId
+                                        , videoOwnerChannelTitle = v.snippet.channelTitle
+                                        , playlistId = ""
+                                        , thumbnailUrl = Nothing
+                                        , publishedAt = v.snippet.publishedAt
+                                        , liveStatus = Api.YoutubeModel.Unknown
+                                        , statsOnConclusion = Nothing
+                                        , statsAfter24Hours = Nothing
+                                        , reportAfter24Hours = Nothing
+                                        , liveChatId = Nothing
+                                        , chatMsgCount = Nothing
+                                        }
+                                    )
+                                |> List.map (\v -> ( v.id, v ))
+                                |> Dict.fromList
+
+                        newModel =
+                            { model
+                                | videos = Dict.union newVideos model.videos
+                            }
+                    in
+                    ( newModel, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
+                        |> log ("Failed to fetch competitor videos for channel : " ++ channelId ++ "\n" ++ httpErrToString error) Error
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -1394,16 +1488,12 @@ updateFromFrontend sessionId clientId msg model =
         AttemptYeetVideos ->
             ( { model
                 | videos = Dict.empty
-
-                -- , channels = Dict.empty
-                -- , channelAssociations = Dict.empty
-                -- , playlists = Dict.empty
-                -- , schedules = Dict.empty
-                -- , videoStatisticsAtTime = Dict.empty
-                -- , liveVideoDetails = Dict.empty
               }
             , Cmd.none
             )
+
+        AttemptBatch_GetCompetitorVideos ->
+            ( model, performNowWithTime Batch_GetCompetitorVideos )
 
 
 randomSalt : Random.Generator String
@@ -1517,6 +1607,25 @@ video_getAccesToken model videoId =
     model.videos
         |> Dict.get videoId
         |> Maybe.map .videoOwnerChannelId
+        |> Maybe.andThen
+            (\channelId ->
+                model.channelAssociations
+                    |> List.filter (\c -> c.channelId == channelId)
+                    |> List.head
+                    |> Maybe.map .email
+            )
+        |> Maybe.andThen
+            (\email ->
+                model.clientCredentials
+                    |> Dict.get email
+                    |> Maybe.map .accessToken
+            )
+
+
+playlist_getAccessToken model playlistId =
+    model.playlists
+        |> Dict.get playlistId
+        |> Maybe.map .channelId
         |> Maybe.andThen
             (\channelId ->
                 model.channelAssociations

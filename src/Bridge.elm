@@ -37,6 +37,7 @@ type ToBackend
     | AttemptBatch_GetVideoDailyReports
     | AttemptBatch_GetChatMessages
     | AttemptBatch_GetVideoStatisticsAtTime
+    | AttemptBatch_GetCompetitorVideos
     --| AttemptYeetAll
     -- update from frontend
     | UpdateSchedule Schedule

@@ -1,0 +1,11 @@
+{
+    "kind": "youtube#channelListResponse",
+    "etag": "NotImplemented",
+    "items": [
+        {
+            "kind": "youtube#channel",
+            "etag": "NotImplemented",
+            "id": "UCrYmtJBtLdtm2ov84ulV-yg"
+        }
+    ]
+}

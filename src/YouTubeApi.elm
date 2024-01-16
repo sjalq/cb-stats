@@ -1,12 +1,13 @@
 module YouTubeApi exposing (..)
 
-import Api.Time exposing (..)
 import Http
 import Json.Auto.AccessToken
+import Json.Auto.ChannelHandle
 import Json.Auto.Channels
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
 import Json.Auto.VideoStats
+import Json.Auto.Search
 import Json.Bespoke.LiveBroadcastDecoder
 import Json.Bespoke.ReportDecoder
 import Json.Bespoke.VideoDecoder
@@ -16,6 +17,7 @@ import Task exposing (Task)
 import Time exposing (..)
 import Types exposing (BackendMsg(..))
 import Url
+import Utils.Time exposing (..)
 
 
 
@@ -219,8 +221,6 @@ getVideoDailyReportCmd videoId date accessToken =
                 ++ (date |> String.left 10 |> Url.percentEncode)
                 ++ "&endDate="
                 ++ (date |> String.left 10 |> Url.percentEncode)
-
-       
     in
     Http.request
         { method = "GET"
@@ -228,6 +228,61 @@ getVideoDailyReportCmd videoId date accessToken =
         , url = url
         , body = Http.emptyBody
         , expect = Http.expectJson (GotVideoDailyReport videoId) Json.Bespoke.ReportDecoder.youtubeAnalyticsDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+getChannelIdCmd channelHandle time accessToken =
+    let
+        atHandle =
+            case channelHandle |> String.toList of
+                '@' :: _ ->
+                    channelHandle
+
+                _ ->
+                    "@" ++ channelHandle
+
+        url =
+            "https://yt.lemnoslife.com/channels?handle="
+                ++ atHandle
+    in
+    Http.request
+        { method = "GET"
+        , headers = []
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotChannelId channelHandle accessToken time) Json.Auto.ChannelHandle.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+getCompetitorVideosCmd channelId accessToken time =
+    -- fetch the vidoes that were published 12 hours before or after the current time from the youtube
+    -- search api
+    let
+        publishedAfter =
+            ((time |> Time.posixToMillis) - (2 * day)) |> intTimeToStr
+
+        publishedBefore =
+            (time |> Time.posixToMillis) |> intTimeToStr
+
+        url =
+            "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
+                ++ channelId
+                ++ "&type=video&publishedAfter="
+                ++ publishedAfter
+                -- ++ "&publishedBefore="
+                -- ++ publishedBefore
+                |> Debug.log "search url"
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotCompetitorVideos channelId time) Json.Auto.Search.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

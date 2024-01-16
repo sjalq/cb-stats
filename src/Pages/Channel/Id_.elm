@@ -176,7 +176,7 @@ update msg model =
         Competitors playlist competitors ->
             let
                 newPlaylist =
-                    { playlist | competitorChannels = competitors |> String.split "," |> Set.fromList }
+                    { playlist | competitorHandles = competitors |> String.split "," |> Set.fromList }
             in
             ( { model | playlists = model.playlists |> Dict.insert playlist.id newPlaylist }
             , Effect.fromCmd <| sendToBackend <| UpdatePlaylist newPlaylist
@@ -332,7 +332,7 @@ view model =
                                 Element.Input.multiline 
                                     [height (px 100), Element.Border.color Styles.Colors.skyBlue, Element.Border.width 1, paddingXY 5 5]
                                     { onChange = Competitors p.p
-                                    , text = p.p.competitorChannels |> Set.toList |> String.join ", "
+                                    , text = p.p.competitorHandles |> Set.toList |> String.join ", "
                                     , placeholder = Nothing
                                     , label = Element.Input.labelHidden "Competitors"
                                     , spellcheck = False

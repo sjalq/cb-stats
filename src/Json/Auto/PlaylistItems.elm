@@ -1,7 +1,6 @@
 module Json.Auto.PlaylistItems exposing (..)
 
 import Json.Decode
-import Json.Encode
 
 
 

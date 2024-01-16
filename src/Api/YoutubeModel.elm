@@ -1,13 +1,12 @@
 module Api.YoutubeModel exposing (..)
 
-import Api.Time exposing (..)
 import Dict exposing (Dict)
 import Iso8601
 import Json.Bespoke.VideoDecoder exposing (Statistics)
 import Lamdera.Debug exposing (Posix)
 import Set exposing (Set)
 import Time
-
+import Utils.Time exposing (..)
 
 type alias ClientCredentials =
     { displayName : String
@@ -38,7 +37,7 @@ type alias Playlist =
     , description : String
     , channelId : String
     , monitor : Bool -- this will check the playlist for live videos every 10 minutes
-    , competitorChannels : Set String 
+    , competitorHandles : Set String 
     }
 
 

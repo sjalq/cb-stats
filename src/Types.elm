@@ -10,18 +10,20 @@ import Dict exposing (Dict)
 import Gen.Pages as Pages
 import Http
 import Json.Auto.AccessToken
+import Json.Auto.ChannelHandle
 import Json.Auto.Channels
-import Json.Auto.Playlists
 import Json.Auto.PlaylistItems
+import Json.Auto.Playlists
 import Json.Auto.VideoStats
+import Json.Auto.Search
+import Json.Bespoke.LiveBroadcastDecoder
+import Json.Bespoke.ReportDecoder
+import Json.Bespoke.VideoDecoder
 import Lamdera exposing (ClientId, SessionId)
 import Set exposing (..)
 import Shared
 import Time exposing (Posix)
 import Url exposing (Url)
-import Json.Bespoke.VideoDecoder
-import Json.Bespoke.LiveBroadcastDecoder
-import Json.Bespoke.ReportDecoder
 
 
 type alias FrontendModel =
@@ -41,12 +43,12 @@ type alias BackendModel =
     , channels : Dict String Channel
     , channelAssociations : List ChannelAssociation
     , playlists : Dict String Playlist
-    , competitors : Set (String, String)
+    , competitors : Set ( String, String )
     , schedules : Dict String Schedule
     , videos : Dict String Video
-    , videoStatisticsAtTime : Dict (String, Int) VideoStatisticsAtTime
+    , videoStatisticsAtTime : Dict ( String, Int ) VideoStatisticsAtTime
     , liveVideoDetails : Dict String LiveVideoDetails
-    , currentViewers : Dict (String, Int) CurrentViewers
+    , currentViewers : Dict ( String, Int ) CurrentViewers
     , apiCallCount : Int
     }
 
@@ -80,6 +82,8 @@ type BackendMsg
     | Batch_GetVideoStats Time.Posix
     | Batch_GetVideoDailyReports Time.Posix
     | Batch_GetVideoStatisticsAtTime Time.Posix
+    | Batch_GetCompetitorVideos Time.Posix
+    | GetChannelId String String Time.Posix
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
@@ -87,7 +91,7 @@ type BackendMsg
     | GotChannels String (Result Http.Error Json.Auto.Channels.Root)
     | GetPlaylistsByChannel String
     | GotPlaylists String (Result Http.Error Json.Auto.Playlists.Root)
-    | GetVideosByPlaylist (Maybe String) String 
+    | GetVideosByPlaylist (Maybe String) String
     | GotVideosFromPlaylist String (Result Http.Error Json.Auto.PlaylistItems.Root)
     | GotLiveVideoStreamData Posix String (Result Http.Error Json.Bespoke.VideoDecoder.Root)
     | GotVideoStatsOnConclusion Posix String (Result Http.Error Json.Auto.VideoStats.Root)
@@ -95,6 +99,8 @@ type BackendMsg
     | GotVideoStatsOnTheHour Posix String (Result Http.Error Json.Auto.VideoStats.Root)
     | GotChatMessages String (Result Http.Error Json.Bespoke.LiveBroadcastDecoder.Root)
     | GotVideoDailyReport String (Result Http.Error Json.Bespoke.ReportDecoder.YouTubeAnalyticsRecord)
+    | GotChannelId String String Time.Posix (Result Http.Error Json.Auto.ChannelHandle.Root)
+    | GotCompetitorVideos String Time.Posix (Result Http.Error Json.Auto.Search.Root)
       -- other
     | NoOpBackendMsg
 
