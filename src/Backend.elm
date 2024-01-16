@@ -1448,11 +1448,16 @@ updateFromFrontend sessionId clientId msg model =
                 videoChannels =
                     model.videos
                         |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
+
+                competitorVideos = 
+                    videos 
+                        |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
+
             in
             ( model
             , sendToPage clientId <|
                 Gen.Msg.Playlist__Id_ <|
-                    Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels videoStats
+                    Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels videoStats competitorVideos
             )
 
         AttemptYeetLogs ->
@@ -1672,6 +1677,73 @@ fnLog msg fn thing =
     in
     thing
 
+
+video_lookupCompetingVideo : Model -> Api.YoutubeModel.Video -> Dict.Dict String Api.YoutubeModel.Video
+video_lookupCompetingVideo model video =
+    let
+        competingChannels : List String
+        competingChannels =
+            model.playlists
+                |> Dict.filter (\_ p -> p.id == video.playlistId)
+                |> Dict.values
+                |> List.map (.competitorHandles >> Set.toList)
+                |> List.concat
+                |> Set.fromList
+                |> Set.toList
+
+        vLiveVideoDetails = 
+            model.liveVideoDetails
+                |> Dict.get video.id
+
+        competitorVideos : Dict.Dict String Api.YoutubeModel.Video
+        competitorVideos =
+            model.videos
+                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelTitle competingChannels)
+
+        competingLiveVideoDetails : Dict.Dict String Api.YoutubeModel.LiveVideoDetails
+        competingLiveVideoDetails =
+            model.liveVideoDetails
+                |> Dict.filter (\_ c -> Dict.member c.videoId competitorVideos)
+                |> Dict.filter (\_ c -> 
+                    case vLiveVideoDetails of
+                        Just vLiveVideoDetails_ ->
+                            timespansOverlap
+                                (video_actualStartTime model vLiveVideoDetails_)
+                                (video_actualEndTime model vLiveVideoDetails_)
+                                (video_actualStartTime model c)
+                                (video_actualEndTime model c)
+
+                        Nothing ->
+                            False
+                )
+
+
+        competitorVideoToReturn =
+            model.videos
+                |> Dict.filter (\_ v -> Dict.member v.id competingLiveVideoDetails)
+    in
+    competitorVideoToReturn
+
+video_actualStartTime model liveVideoDetails =
+    model.liveVideoDetails
+        |> Dict.get liveVideoDetails.videoId
+        |> Maybe.andThen .actualStartTime
+        |> Maybe.map strToIntTime
+        |> Maybe.withDefault 0
+
+video_actualEndTime model liveVideoDetails =
+    model.liveVideoDetails
+        |> Dict.get liveVideoDetails.videoId
+        |> Maybe.andThen .actualEndTime
+        |> Maybe.map strToIntTime
+        |> Maybe.withDefault 0
+
+timespansOverlap aStart aEnd bStart bEnd =
+    (aStart <= bStart && bStart <= aEnd)
+        || (aStart <= bEnd && bEnd <= aEnd)
+        || (bStart <= aStart && aStart <= bEnd)
+        || (bStart <= aEnd && aEnd <= bEnd)
+    
 
 groupByComparable toComparable list =
     list
