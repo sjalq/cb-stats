@@ -16,12 +16,13 @@ import Lamdera exposing (sendToBackend)
 import MoreDict
 import Page
 import Request
+import Set
 import Shared
 import Styles.Colors
 import Time
 import UI.Helpers exposing (..)
 import View exposing (View)
-import Set
+
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -43,6 +44,7 @@ type alias Model =
     , playlists : Dict String Playlist
     , latestVideos : Dict String Int
     , schedules : Dict String Schedule
+    , tmpCompetitors : Dict String String
     }
 
 
@@ -53,6 +55,7 @@ init { params } =
       , playlists = Dict.empty
       , latestVideos = Dict.empty
       , schedules = Dict.empty
+      , tmpCompetitors = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetChannelAndPlaylists params.id
     )
@@ -150,6 +153,7 @@ update msg model =
                 , playlists = playlists
                 , latestVideos = latestVideos
                 , schedules = schedules
+                , tmpCompetitors = playlists |> Dict.map (\_ p -> p.competitorHandles |> Set.toList |> String.join ",")
               }
             , Effect.none
             )
@@ -176,9 +180,20 @@ update msg model =
         Competitors playlist competitors ->
             let
                 newPlaylist =
-                    { playlist | competitorHandles = competitors |> String.split "," |> Set.fromList }
+                    { playlist
+                        | competitorHandles = 
+                            competitors 
+                            |> String.split "," 
+                            |> List.map String.trim
+                            |> List.filter (\c -> c /= "")
+                            |> Set.fromList
+                    }
             in
-            ( { model | playlists = model.playlists |> Dict.insert playlist.id newPlaylist }
+            ( { model
+                | playlists = model.playlists |> Dict.insert playlist.id newPlaylist
+                , tmpCompetitors =
+                    model.tmpCompetitors |> Dict.insert playlist.id competitors
+              }
             , Effect.fromCmd <| sendToBackend <| UpdatePlaylist newPlaylist
             )
 
@@ -325,14 +340,14 @@ view model =
                                     |> UI.Helpers.wrappedCell
                             )
                         , Column (columnHeader "Latest Video") (px 200) (.latestVideo >> Time.millisToPosix >> Iso8601.fromTime >> String.left 16 >> wrappedText)
-                        , Column 
+                        , Column
                             (columnHeader "Competitor Channel Ids")
                             (px 200)
                             (\p ->
-                                Element.Input.multiline 
-                                    [height (px 100), Element.Border.color Styles.Colors.skyBlue, Element.Border.width 1, paddingXY 5 5]
+                                Element.Input.multiline
+                                    [ height (px 100), Element.Border.color Styles.Colors.skyBlue, Element.Border.width 1, paddingXY 5 5 ]
                                     { onChange = Competitors p.p
-                                    , text = p.p.competitorHandles |> Set.toList |> String.join ", "
+                                    , text = model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault ""
                                     , placeholder = Nothing
                                     , label = Element.Input.labelHidden "Competitors"
                                     , spellcheck = False
@@ -357,4 +372,3 @@ view model =
                 ]
             )
     }
-
