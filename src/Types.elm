@@ -41,6 +41,7 @@ type alias BackendModel =
     , channels : Dict String Channel
     , channelAssociations : List ChannelAssociation
     , playlists : Dict String Playlist
+    , competitors : Set (String, String)
     , schedules : Dict String Schedule
     , videos : Dict String Video
     , videoStatisticsAtTime : Dict (String, Int) VideoStatisticsAtTime

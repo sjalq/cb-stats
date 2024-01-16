@@ -36,6 +36,7 @@ import Time
 import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import YouTubeApi
+import Set
 
 
 
@@ -66,6 +67,7 @@ init =
       , channels = Dict.empty
       , channelAssociations = []
       , playlists = Dict.empty
+      , competitors = Set.empty
       , schedules = Dict.empty
       , videos = Dict.empty
       , videoStatisticsAtTime = Dict.empty
@@ -331,6 +333,7 @@ update msg model =
                                           , description = p.snippet.description
                                           , channelId = p.snippet.channelId
                                           , monitor = False
+                                          , competitorChannels = Set.empty
                                           }
                                         )
                                     )
@@ -681,13 +684,11 @@ update msg model =
                     , Cmd.none
                     )
 
-                --|> log ("Got live video stream data for video : " ++ videoId) Info
                 Err error ->
                     ( model
                     , Cmd.none
                     )
 
-        --|> log ("Failed to fetch live video data for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         Batch_GetVideoStats time ->
             let
                 -- fetch the stats for all the videos that have concluded, but don't have stats yet
@@ -796,7 +797,6 @@ update msg model =
                 Err error ->
                     ( model, Cmd.none )
 
-        --|> log ("Failed to fetch stats on conclusion for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         GotVideoStatsAfter24Hrs time videoId videoWithStatsResponse ->
             case videoWithStatsResponse of
                 Ok videoWithStats ->
@@ -844,7 +844,6 @@ update msg model =
                 Err error ->
                     ( model, Cmd.none )
 
-        --|> log ("Failed to fetch stats after 24 hours for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         Batch_GetChatMessages time ->
             let
                 -- immediately when a video has concluded, we fetch the chat messages, the chat message value is only available for a few minutes after it ends
@@ -925,7 +924,6 @@ update msg model =
                 Err error ->
                     ( model, Cmd.none )
 
-        --|> log ("Failed to fetch chat messages for live chat id : " ++ liveChatId ++ "\n" ++ httpErrToString error) Error
         Batch_GetVideoDailyReports time ->
             let
                 -- note this implies that only videos that were live and were picked up by the app will be tracked.
@@ -1010,7 +1008,6 @@ update msg model =
                 Err error ->
                     ( model, Cmd.none )
 
-        --|> log ("Failed to fetch daily report for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
         Batch_GetVideoStatisticsAtTime time ->
             -- for the first 24 hours after a video ends, we fetch the stats every hour
             -- store these stats in the model.videoStatisticsAtTime
@@ -1286,11 +1283,9 @@ updateFromFrontend sessionId clientId msg model =
                             Pages.Channel.Id_.GotChannelAndPlaylists channel_ playlists latestVideoTimes schedules
                     )
 
-                --|> log ("Found channel with id: " ++ channelId ++ " Playlists retrieved = " ++ (playlists |> Dict.size |> String.fromInt)) Info
                 Nothing ->
                     ( model, Cmd.none )
 
-        --|> log ("Failed to find channel with id: " ++ channelId) Error
         AttemptGetLogs latest numberToFetch ->
             ( model
             , sendToPage clientId <|

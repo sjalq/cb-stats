@@ -38,6 +38,7 @@ type alias Playlist =
     , description : String
     , channelId : String
     , monitor : Bool -- this will check the playlist for live videos every 10 minutes
+    , competitorChannels : Set String 
     }
 
 
@@ -121,6 +122,11 @@ type alias VideoStatisticsAtTime =
     , favoriteCount : Maybe Int
     , commentCount : Maybe Int
     }
+
+-- competitors
+-- competitors are playlists that contain the videos of other creators
+-- we have to take the daily stats from that playlist and compare them to our own
+-- so we have to look at videos that went were published or went live over the same time we went live
 
 
 video_peakViewers currentViewers videoId =

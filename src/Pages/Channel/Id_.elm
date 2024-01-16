@@ -21,7 +21,7 @@ import Styles.Colors
 import Time
 import UI.Helpers exposing (..)
 import View exposing (View)
-
+import Set
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
@@ -67,6 +67,7 @@ type Msg
     | GetPlaylists
     | Schedule_UpdateSchedule Schedule
     | MonitorPlaylist Playlist Bool
+    | Competitors Playlist String
 
 
 schedule_selectDaysOfWeek dayCaseInsesitive schedule selected =
@@ -172,6 +173,15 @@ update msg model =
             , Effect.fromCmd <| sendToBackend <| UpdatePlaylist newPlaylist
             )
 
+        Competitors playlist competitors ->
+            let
+                newPlaylist =
+                    { playlist | competitorChannels = competitors |> String.split "," |> Set.fromList }
+            in
+            ( { model | playlists = model.playlists |> Dict.insert playlist.id newPlaylist }
+            , Effect.fromCmd <| sendToBackend <| UpdatePlaylist newPlaylist
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -195,7 +205,6 @@ tickOrUntick ticked =
         Element.text "❌"
 
 
-scheduleComponent : Schedule -> Element Msg
 scheduleComponent schedule =
     let
         days =
@@ -300,7 +309,7 @@ view model =
                         in
                         x
                     , columns =
-                        [ Column (columnHeader "Id") (px 450) (.id >> wrappedText)
+                        [ Column (columnHeader "Id") (px 250) (.id >> wrappedText)
                         , Column (columnHeader "Title") (px 275) (.title >> wrappedText)
                         , Column (columnHeader "Description") (px 400 |> maximum 100) (.description >> String.left 200 >> wrappedText)
                         , Column
@@ -316,9 +325,22 @@ view model =
                                     |> UI.Helpers.wrappedCell
                             )
                         , Column (columnHeader "Latest Video") (px 200) (.latestVideo >> Time.millisToPosix >> Iso8601.fromTime >> String.left 16 >> wrappedText)
+                        , Column 
+                            (columnHeader "Competitor Channel Ids")
+                            (px 200)
+                            (\p ->
+                                Element.Input.multiline 
+                                    [height (px 100), Element.Border.color Styles.Colors.skyBlue, Element.Border.width 1, paddingXY 5 5]
+                                    { onChange = Competitors p.p
+                                    , text = p.p.competitorChannels |> Set.toList |> String.join ", "
+                                    , placeholder = Nothing
+                                    , label = Element.Input.labelHidden "Competitors"
+                                    , spellcheck = False
+                                    }
+                            )
                         , Column
                             (Element.text "")
-                            (px 200)
+                            (px 100)
                             (\c ->
                                 linkButton
                                     "Videos"
@@ -335,3 +357,4 @@ view model =
                 ]
             )
     }
+
