@@ -44,6 +44,7 @@ type alias Model =
     , playlists : Dict String Playlist
     , videoStats : Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
     , competitorVideos : Dict String (Dict String Video)
+    , currentIntTime : Int
     }
 
 
@@ -58,6 +59,7 @@ init { params } =
       , playlists = Dict.empty
       , videoStats = Dict.empty
       , competitorVideos = Dict.empty
+      , currentIntTime = 0
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
     )
@@ -70,6 +72,7 @@ init { params } =
 type Msg
     = GotVideos (Dict String Playlist) (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers) (Dict String String) (Dict ( String, Int ) VideoStatisticsAtTime) (Dict String (Dict String Video))
     | GetVideos
+    | Tick Time.Posix
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -99,6 +102,11 @@ update msg model =
             , Effect.fromCmd <| sendToBackend <| FetchVideosFromYoutube model.playlistId
             )
 
+        Tick time ->
+            ( { model | currentIntTime = time |> posixToMillis }
+            , Effect.none
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -106,7 +114,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Sub.batch [ Time.every second Tick ]
 
 
 
@@ -244,10 +252,31 @@ view model =
                                     (columnHeader "24hr views")
                                     (px 90)
                                     (\v ->
-                                        v.statsAfter24Hours
-                                            |> Maybe.map (\r -> r.viewCount |> String.fromInt)
-                                            |> Maybe.withDefault "..."
-                                            |> wrappedText
+                                        let
+                                            stats =
+                                                model.videoStats
+                                                    |> Dict.filter (\_ s -> s.videoId == v.id)
+                                                    |> Dict.map (\_ s -> s.viewCount)
+                                                    |> Dict.values
+
+                                            stillFetching =
+                                                strToIntTime v.publishedAt + day > model.currentIntTime
+
+                                            max =
+                                                stats
+                                                    |> List.maximum
+                                                    |> Maybe.map String.fromInt
+                                                    |> Maybe.withDefault ""
+                                        in
+                                        if stillFetching then
+                                            wrappedText "..."
+
+                                        else
+                                            wrappedText max
+                                     -- v.statsAfter24Hours
+                                     --     |> Maybe.map (\r -> r.viewCount |> String.fromInt)
+                                     --     |> Maybe.withDefault "..."
+                                     --     |> wrappedText
                                     )
                                , Column
                                     (columnHeader "Subs gained")
@@ -287,8 +316,7 @@ view model =
                                      -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
                                     )
                                ]
-
-                       ++ (competitorVideoColums model get24HrCompetitorStats)
+                            ++ competitorVideoColums model get24HrCompetitorStats
                     }
                 , el
                     ([ Element.width (px 150), paddingXY 10 10 ] ++ centerCenter)

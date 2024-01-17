@@ -233,7 +233,7 @@ getVideoDailyReportCmd videoId date accessToken =
         }
 
 
-getChannelIdCmd channelHandle time accessToken =
+getChannelIdCmd channelHandle  =
     let
         atHandle =
             case channelHandle |> String.toList of
@@ -252,7 +252,7 @@ getChannelIdCmd channelHandle time accessToken =
         , headers = []
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotChannelId channelHandle accessToken time) Json.Auto.ChannelHandle.rootDecoder
+        , expect = Http.expectJson (GotChannelId channelHandle) Json.Auto.ChannelHandle.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -265,16 +265,12 @@ getCompetitorVideosCmd channelId accessToken time =
         publishedAfter =
             ((time |> Time.posixToMillis) - (2 * day)) |> intTimeToStr
 
-        publishedBefore =
-            (time |> Time.posixToMillis) |> intTimeToStr
-
         url =
             "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
                 ++ channelId
                 ++ "&type=video&publishedAfter="
                 ++ publishedAfter
-                -- ++ "&publishedBefore="
-                -- ++ publishedBefore
+
                 |> Debug.log "search url"
     in
     Http.request

@@ -3,13 +3,12 @@ module UI.Helpers exposing (..)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border
-import Element.Font
+import Element.Font exposing (light)
 import Element.Input
 import Gen.Route as Route
 import Html.Attributes
 import Styles.Colors exposing (..)
 import Styles.Element.Extra as Element
-import Element.Font exposing (light)
 
 
 enlist : a -> List a
@@ -24,12 +23,12 @@ wrappedCell =
             [ Element.width <| Element.px 200
             , Element.Font.size 15
             , Element.Border.width 1
-            , Element.Border.widthEach {
-                bottom = 1
+            , Element.Border.widthEach
+                { bottom = 1
                 , left = 1
                 , right = 1
                 , top = 1
-            }
+                }
             , Element.height <| Element.fill
             , Element.htmlAttribute (Html.Attributes.style "marginLeft" "auto")
             , Element.htmlAttribute (Html.Attributes.style "marginRight" "auto")
@@ -41,6 +40,15 @@ wrappedText =
     Element.text >> wrappedCell
 
 
+pulsingText : String -> Element.Element msg
+pulsingText text =
+    el
+        [ htmlAttribute <| Html.Attributes.style "@keyframes pulse" "0% { color: black; } 100% { color: white; }"
+        , htmlAttribute <| Html.Attributes.style "animation" "pulse 0.5s infinite alternate"
+        ]
+        (Element.text text)
+    
+
 tableStyle : List (Element.Attribute msg)
 tableStyle =
     [ Element.centerX
@@ -48,8 +56,9 @@ tableStyle =
     , Element.spacingXY 5 5
     , Element.paddingXY 10 20
     , Element.Border.width 2
-    , Element.Border.rounded 5 
+    , Element.Border.rounded 5
     ]
+
 
 columnHeader : String -> Element.Element msg
 columnHeader =
@@ -64,9 +73,9 @@ columnHeader =
             , Element.centerY
             ]
     in
-    Element.el 
-        columnHeaderStyle 
-        << Element.text 
+    Element.el
+        columnHeaderStyle
+        << Element.text
 
 
 idLink linkRouteMsg id text =
@@ -118,6 +127,7 @@ buttonStyleBig =
     , Element.Border.color black
     ]
 
+
 buttonStyleMedium =
     [ Element.centerX
     , Element.centerY
@@ -161,6 +171,7 @@ linkButton text url =
         { label = Element.el centerCenter (Element.text text)
         , url = url
         }
+
 
 msgButton : String -> Maybe msg -> Element.Element msg
 msgButton text msg =

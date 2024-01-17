@@ -49,6 +49,7 @@ type alias BackendModel =
     , videoStatisticsAtTime : Dict ( String, Int ) VideoStatisticsAtTime
     , liveVideoDetails : Dict String LiveVideoDetails
     , currentViewers : Dict ( String, Int ) CurrentViewers
+    , channelHandleMap : List (String, String)
     , apiCallCount : Int
     }
 
@@ -82,8 +83,10 @@ type BackendMsg
     | Batch_GetVideoStats Time.Posix
     | Batch_GetVideoDailyReports Time.Posix
     | Batch_GetVideoStatisticsAtTime Time.Posix
+    | Batch_GetCompetitorChannelIds Time.Posix
     | Batch_GetCompetitorVideos Time.Posix
-    | GetChannelId String String Time.Posix
+      -- api calls
+    | GetChannelId String 
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
@@ -99,7 +102,7 @@ type BackendMsg
     | GotVideoStatsOnTheHour Posix String (Result Http.Error Json.Auto.VideoStats.Root)
     | GotChatMessages String (Result Http.Error Json.Bespoke.LiveBroadcastDecoder.Root)
     | GotVideoDailyReport String (Result Http.Error Json.Bespoke.ReportDecoder.YouTubeAnalyticsRecord)
-    | GotChannelId String String Time.Posix (Result Http.Error Json.Auto.ChannelHandle.Root)
+    | GotChannelId String (Result Http.Error Json.Auto.ChannelHandle.Root)
     | GotCompetitorVideos String Time.Posix (Result Http.Error Json.Auto.Search.Root)
       -- other
     | NoOpBackendMsg

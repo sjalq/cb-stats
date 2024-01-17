@@ -73,6 +73,7 @@ init =
       , videoStatisticsAtTime = Dict.empty
       , liveVideoDetails = Dict.empty
       , currentViewers = Dict.empty
+      , channelHandleMap = []
       , apiCallCount = 0
       }
     , Cmd.none
@@ -98,7 +99,7 @@ subscriptions model =
         , Time.every minute Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
         , Time.every hour Batch_GetVideoDailyReports
-        , Time.every (8 * hour) Batch_GetCompetitorVideos
+        , Time.every (8 * hour) Batch_GetCompetitorChannelIds
 
         --, Time.every (10 * second) Batch_GetChatMessages
         , Time.every (10 * minute) Batch_GetVideoStatisticsAtTime
@@ -1123,7 +1124,7 @@ update msg model =
                     ( model, Cmd.none )
                         |> log ("Failed to fetch stats on the hour for video : " ++ videoId ++ "\n" ++ httpErrToString error) Error
 
-        Batch_GetCompetitorVideos time ->
+        Batch_GetCompetitorChannelIds time ->
             -- fetch the competitor channelId from https://yt.lemnoslife.com/channels?
             -- use the youtube search API to get videos from a competitor for the current day
             -- add these videos to the videos to monitor
@@ -1134,14 +1135,23 @@ update msg model =
                         |> Dict.values
                         |> List.map
                             (\p ->
-                                p.competitorHandles |> Debug.log "competitorHandles"
+                                p.competitorHandles
+                                    |> Debug.log "competitorHandles"
                                     |> Set.toList
+                                    |> List.filter
+                                        (\handle ->
+                                            (model.channelHandleMap
+                                                |> List.filter (\( h, _ ) -> h == handle)
+                                                |> List.length
+                                            )
+                                                == 0
+                                        )
                                     |> List.map
                                         (\handle ->
                                             case playlist_getAccessToken model p.id of
                                                 Just accessToken ->
                                                     performNow <|
-                                                        GetChannelId handle accessToken time
+                                                        GetChannelId handle
 
                                                 Nothing ->
                                                     Cmd.none
@@ -1151,33 +1161,41 @@ update msg model =
             in
             ( model, Cmd.batch competitorHandles )
 
-        GetChannelId channelHandle accessToken time ->
+        GetChannelId channelHandle ->
             ( model
-            , YouTubeApi.getChannelIdCmd channelHandle time accessToken
+            , YouTubeApi.getChannelIdCmd channelHandle
             )
 
-        GotChannelId channelHandle accessToken time channelIdResponse ->
+        GotChannelId channelHandle channelIdResponse ->
             case channelIdResponse of
                 Ok channelIdResponse_ ->
                     let
-                        channelId =
+                        newModel =
                             channelIdResponse_.items
                                 |> List.head
-                                |> Maybe.map .id
-
-                        fetch =
-                            Maybe.map
-                                (\channelId_ ->
-                                    YouTubeApi.getCompetitorVideosCmd channelId_ accessToken time
-                                )
-                                channelId
-                                |> Maybe.withDefault Cmd.none
+                                |> Maybe.map
+                                    (\c ->
+                                        { model
+                                            | channelHandleMap =
+                                                ( channelHandle, c.id )
+                                                    :: model.channelHandleMap
+                                                    |> List.Extra.unique
+                                        }
+                                    )
+                                |> Maybe.withDefault model
                     in
-                    ( model, fetch )
+                    ( newModel, Cmd.none )
 
                 Err error ->
                     ( model, Cmd.none )
                         |> log ("Failed to fetch channel id for handle : " ++ channelHandle ++ "\n" ++ httpErrToString error) Error
+
+        Batch_GetCompetitorVideos time ->
+            let
+                channelIdAccessToken : List ( String, String )
+                channelIdAccessToken = []
+            in
+            (model, Cmd.none)
 
         GotCompetitorVideos channelId time searchResponse ->
             case searchResponse of
@@ -1449,10 +1467,9 @@ updateFromFrontend sessionId clientId msg model =
                     model.videos
                         |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
 
-                competitorVideos = 
-                    videos 
+                competitorVideos =
+                    videos
                         |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
-
             in
             ( model
             , sendToPage clientId <|
@@ -1498,7 +1515,7 @@ updateFromFrontend sessionId clientId msg model =
             )
 
         AttemptBatch_GetCompetitorVideos ->
-            ( model, performNowWithTime Batch_GetCompetitorVideos )
+            ( model, performNowWithTime Batch_GetCompetitorChannelIds )
 
         AttemptYeetCredentials email ->
             ( { model
@@ -1508,6 +1525,7 @@ updateFromFrontend sessionId clientId msg model =
               }
             , Cmd.none
             )
+
 
 randomSalt : Random.Generator String
 randomSalt =
@@ -1689,48 +1707,57 @@ fnLog msg fn thing =
 video_lookupCompetingVideo : Model -> Api.YoutubeModel.Video -> Dict.Dict String Api.YoutubeModel.Video
 video_lookupCompetingVideo model video =
     let
-        competingChannels : List String
-        competingChannels =
+        competingChannelIds : List String
+        competingChannelIds =
             model.playlists
                 |> Dict.filter (\_ p -> p.id == video.playlistId)
                 |> Dict.values
                 |> List.map (.competitorHandles >> Set.toList)
                 |> List.concat
+                |> List.map
+                    (\handle ->
+                        model.channelHandleMap
+                            |> List.filter (\( h, _ ) -> h == handle)
+                            |> List.map Tuple.second
+                    )
+                |> List.concat
                 |> Set.fromList
                 |> Set.toList
+                |> Debug.log "competingChannelIds"
 
-        vLiveVideoDetails = 
+        vLiveVideoDetails =
             model.liveVideoDetails
                 |> Dict.get video.id
 
         competitorVideos : Dict.Dict String Api.YoutubeModel.Video
         competitorVideos =
             model.videos
-                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelTitle competingChannels)
+                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelId competingChannelIds)
 
         competingLiveVideoDetails : Dict.Dict String Api.YoutubeModel.LiveVideoDetails
         competingLiveVideoDetails =
             model.liveVideoDetails
                 |> Dict.filter (\_ c -> Dict.member c.videoId competitorVideos)
-                |> Dict.filter (\_ c -> 
-                    case vLiveVideoDetails of
-                        Just vLiveVideoDetails_ ->
-                            timespansOverlap
-                                (video_actualStartTime model vLiveVideoDetails_)
-                                (video_actualEndTime model vLiveVideoDetails_)
-                                (video_actualStartTime model c)
-                                (video_actualEndTime model c)
+                |> Dict.filter
+                    (\_ c ->
+                        case vLiveVideoDetails of
+                            Just vLiveVideoDetails_ ->
+                                timespansOverlap
+                                    (video_actualStartTime model vLiveVideoDetails_)
+                                    (video_actualEndTime model vLiveVideoDetails_)
+                                    (video_actualStartTime model c)
+                                    (video_actualEndTime model c)
 
-                        Nothing ->
-                            False
-                )
-
+                            Nothing ->
+                                False
+                    )
 
         competitorVideoToReturn =
             model.videos
                 |> Dict.filter (\_ v -> Dict.member v.id competingLiveVideoDetails)
     in
     competitorVideoToReturn
+
 
 video_actualStartTime model liveVideoDetails =
     model.liveVideoDetails
@@ -1739,6 +1766,7 @@ video_actualStartTime model liveVideoDetails =
         |> Maybe.map strToIntTime
         |> Maybe.withDefault 0
 
+
 video_actualEndTime model liveVideoDetails =
     model.liveVideoDetails
         |> Dict.get liveVideoDetails.videoId
@@ -1746,12 +1774,13 @@ video_actualEndTime model liveVideoDetails =
         |> Maybe.map strToIntTime
         |> Maybe.withDefault 0
 
+
 timespansOverlap aStart aEnd bStart bEnd =
     (aStart <= bStart && bStart <= aEnd)
         || (aStart <= bEnd && bEnd <= aEnd)
         || (bStart <= aStart && aStart <= bEnd)
         || (bStart <= aEnd && aEnd <= bEnd)
-    
+
 
 groupByComparable toComparable list =
     list
