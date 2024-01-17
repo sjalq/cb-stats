@@ -17,6 +17,7 @@ type ToBackend
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
+    | AttemptYeetCredentials String
       -- front end instructions to fetch data from youtube
     | FetchChannelsFromYoutube String
     | FetchPlaylistsFromYoutube String

@@ -1500,6 +1500,14 @@ updateFromFrontend sessionId clientId msg model =
         AttemptBatch_GetCompetitorVideos ->
             ( model, performNowWithTime Batch_GetCompetitorVideos )
 
+        AttemptYeetCredentials email ->
+            ( { model
+                | clientCredentials =
+                    model.clientCredentials
+                        |> Dict.remove email
+              }
+            , Cmd.none
+            )
 
 randomSalt : Random.Generator String
 randomSalt =

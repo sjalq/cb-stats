@@ -62,6 +62,7 @@ init =
 type Msg
     = GotCredentials (Dict String ClientCredentials)
     | GetChannels String
+    | Yeet String
     | Tick Time.Posix
 
 
@@ -87,6 +88,13 @@ update msg model =
             , Effect.fromCmd <|
                 sendToBackend <|
                     AttemptGetChannels email
+            )
+
+        Yeet email ->
+            ( { model | clientCredentials = Dict.remove email model.clientCredentials }
+            , Effect.fromCmd <|
+                sendToBackend <|
+                    AttemptYeetCredentials email
             )
 
         Tick posixTime ->
@@ -129,13 +137,17 @@ view model =
                         tableStyle
                         { data = model.clientCredentials |> Dict.values
                         , columns =
-                            [ Column (columnHeader "Display Name") (px 200) (.displayName >> wrappedText)
+                            [ Column (columnHeader "Display Name") (px 150) (.displayName >> wrappedText)
                             , Column (columnHeader "Email Address") (px 275) (.email >> wrappedText)
                             ]
-                                ++ (if (not model.noAccessKeysIncluded) then
+                                ++ (if not model.noAccessKeysIncluded then
                                         [ Column (columnHeader "Refresh Token") (px 300 |> maximum 100) (.refreshToken >> wrappedText)
                                         , Column (columnHeader "Access Token") (px 400) (.accessToken >> wrappedText)
-                                   ] else [])
+                                        ]
+
+                                    else
+                                        []
+                                   )
                                 ++ [ Column
                                         (columnHeader "Remaining time")
                                         (px 200)
@@ -158,7 +170,7 @@ view model =
                                         )
                                    , Column
                                         (Element.text "")
-                                        (px 200)
+                                        (px 150)
                                         (\cred ->
                                             linkButton
                                                 "Channels"
@@ -168,6 +180,16 @@ view model =
                                                         { email = cred.email |> Base64.encode }
                                         )
                                    ]
+                                ++ (if not model.noAccessKeysIncluded then
+                                        [ Column
+                                            (Element.text "Yeet")
+                                            (px 100)
+                                            (\cred -> msgButton "Yeet" (Yeet cred.email |> Just))
+                                        ]
+
+                                    else
+                                        []
+                                   )
                         }
                 ]
             )
