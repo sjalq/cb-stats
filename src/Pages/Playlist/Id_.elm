@@ -260,7 +260,15 @@ view model =
                                                     |> Dict.values
 
                                             stillFetching =
-                                                strToIntTime v.publishedAt + day > model.currentIntTime
+                                                case v.liveStatus of
+                                                    Ended strTime ->
+                                                        strToIntTime strTime + day > model.currentIntTime
+
+                                                    Uploaded ->
+                                                        strToIntTime v.publishedAt + day > model.currentIntTime
+
+                                                    _ ->
+                                                        False
 
                                             max =
                                                 stats

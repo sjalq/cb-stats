@@ -278,7 +278,7 @@ getCompetitorVideosCmd channelId accessToken time =
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotCompetitorVideos channelId time) Json.Auto.Search.rootDecoder
+        , expect = Http.expectJson (GotCompetitorVideos channelId) Json.Auto.Search.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

@@ -103,7 +103,7 @@ type BackendMsg
     | GotChatMessages String (Result Http.Error Json.Bespoke.LiveBroadcastDecoder.Root)
     | GotVideoDailyReport String (Result Http.Error Json.Bespoke.ReportDecoder.YouTubeAnalyticsRecord)
     | GotChannelId String (Result Http.Error Json.Auto.ChannelHandle.Root)
-    | GotCompetitorVideos String Time.Posix (Result Http.Error Json.Auto.Search.Root)
+    | GotCompetitorVideos String (Result Http.Error Json.Auto.Search.Root)
       -- other
     | NoOpBackendMsg
 

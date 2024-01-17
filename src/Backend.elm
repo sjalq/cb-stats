@@ -100,6 +100,7 @@ subscriptions model =
         , Time.every minute Batch_GetVideoStats
         , Time.every hour Batch_GetVideoDailyReports
         , Time.every (8 * hour) Batch_GetCompetitorChannelIds
+        , Time.every (8 * hour) Batch_GetCompetitorVideos
 
         --, Time.every (10 * second) Batch_GetChatMessages
         , Time.every (10 * minute) Batch_GetVideoStatisticsAtTime
@@ -1193,11 +1194,25 @@ update msg model =
         Batch_GetCompetitorVideos time ->
             let
                 channelIdAccessToken : List ( String, String )
-                channelIdAccessToken = []
-            in
-            (model, Cmd.none)
+                channelIdAccessToken = 
+                    model.channelHandleMap 
+                        |> List.map 
+                            (\(handle, channelId) -> 
+                                competitorHandle_getAccessToken model handle |> Maybe.map (\accessToken -> (channelId, accessToken))
+                            )
+                        |> List.filterMap identity
 
-        GotCompetitorVideos channelId time searchResponse ->
+                fetches = 
+                    channelIdAccessToken
+                        |> List.map
+                            (\(channelId, accessToken) ->
+                                YouTubeApi.getCompetitorVideosCmd channelId accessToken time
+                            )
+                        |> Debug.log "fetches"
+            in
+            (model, Cmd.batch fetches)
+
+        GotCompetitorVideos channelId searchResponse ->
             case searchResponse of
                 Ok searchResponse_ ->
                     let
@@ -1773,6 +1788,13 @@ video_actualEndTime model liveVideoDetails =
         |> Maybe.andThen .actualEndTime
         |> Maybe.map strToIntTime
         |> Maybe.withDefault 0
+
+competitorHandle_getAccessToken model handle =
+    model.playlists 
+        |> Dict.filter (\_ p -> Set.member handle p.competitorHandles)
+        |> Dict.values
+        |> List.head
+        |> Maybe.andThen (\p -> playlist_getAccessToken model p.id)
 
 
 timespansOverlap aStart aEnd bStart bEnd =
