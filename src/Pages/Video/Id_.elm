@@ -5,6 +5,7 @@ import Bridge exposing (ToBackend(..))
 import Dict
 import Effect exposing (Effect)
 import Element exposing (..)
+import Element.Border
 import Element.Input as Input
 import Gen.Params.Video.Id_ exposing (Params)
 import Iso8601
@@ -15,6 +16,7 @@ import Maybe.Extra exposing (prev)
 import Page
 import Request
 import Shared
+import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
 
@@ -90,66 +92,84 @@ subscriptions model =
 
 drawField : String -> String -> Element msg
 drawField label value =
-    row []
-        [ el [ width <| px 200 ] <| text label
-        , el [] <| text value
+    column [ paddingTop ]
+        [ row
+            [ Element.Border.width 1
+            , Element.Border.color <| rgb 0.8 0.8 0.8
+            , Element.paddingXY 10 10
+            ]
+            [ el [ width <| px 200 ] <| text label
+            , el [] <| text value
+            ]
         ]
 
 
 drawMultilineFieldWithScrollbar : String -> String -> Element Msg
 drawMultilineFieldWithScrollbar label value =
-    row []
-        [ el [ width <| px 200 ] <| text label
-        , Input.multiline [ height <| px 200, width <| px 700 ]
-            { onChange = \_ -> ReplaceMe
-            , placeholder = Nothing
-            , label = Input.labelHidden label
-            , text = value
-            , spellcheck = False
-            }
+    column [ paddingTop ]
+        [ row
+            [ Element.Border.width 1
+            , Element.Border.color <| rgb 0.8 0.8 0.8
+            , Element.paddingXY 10 10
+            ]
+            [ el [ width <| px 200 ] <| text label
+            , Input.multiline [ height <| px 200, width <| px 700 ]
+                { onChange = \_ -> ReplaceMe
+                , placeholder = Nothing
+                , label = Input.labelHidden label
+                , text = value
+                , spellcheck = False
+                }
+            ]
         ]
 
 
 draw24HourViews videoStatisticsAtTime =
-    Element.table []
-        { data =
-            videoStatisticsAtTime
-                |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
-                |> Dict.values
-                |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
-                |> statsDiff
-        , columns =
-            [ Column (text "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> Element.text)
-            , Column (text "Views") (px 100) (.current >> .viewCount >> String.fromInt >> Element.text) 
-            , Column (text "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault 0 >> String.fromInt >> Element.text)
-            , Column (text "Likes") (px 100) (.current >> .likeCount >> String.fromInt >> Element.text)
-            , Column (text "Dislikes") (px 100) (.current >> .dislikeCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> Element.text)
-            , Column (text "Comments") (px 100) (.current >> .commentCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> Element.text)
-            ]
-        }
+    column [ paddingTop ]
+        [ drawField "24hr Statistics" ""
+        , Element.table tableStyle
+            { data =
+                videoStatisticsAtTime
+                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+                    |> Dict.values
+                    |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
+                    |> statsDiff
+            , columns =
+                [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> wrappedText)
+                , Column (columnHeader "Views") (px 100) (.current >> .viewCount >> String.fromInt >> wrappedText)
+                , Column (columnHeader "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
+                , Column (columnHeader "Likes") (px 100) (.current >> .likeCount >> String.fromInt >> wrappedText)
+                , Column (columnHeader "Dislikes") (px 100) (.current >> .dislikeCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> wrappedText)
+                , Column (columnHeader "Comments") (px 100) (.current >> .commentCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> wrappedText)
+                ]
+            }
+        ]
 
 
 drawLiveViewers currentViewers =
-    Element.table []
-        { data =
-            currentViewers
-                |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
-                |> Dict.values
-                |> List.filterMap (List.sortBy .value >> List.head)
-                |> viewsDiff
-        , columns =
-            [ Column (text "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> Element.text)
-            , Column (text "Viewers") (px 100) (.current >> .value >> String.fromInt >> Element.text)
-            , Column (text "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> Element.text)
-            ]
-        }
+    column [ paddingTop ]
+        [ drawField "Live Viewers" ""
+        , Element.table tableStyle
+            { data =
+                currentViewers
+                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+                    |> Dict.values
+                    |> List.filterMap (List.sortBy .value >> List.head)
+                    |> viewsDiff
+            , columns =
+                [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> wrappedText)
+                , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
+                , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
+                ]
+            }
+        ]
 
 
 view : Model -> View Msg
 view model =
     { title = "Video"
     , body =
-        column [ width <| px 300 ]
+        column [ width <| fill ]
             [ drawField "Title" <| Maybe.withDefault "" <| Maybe.map .title model.video
             , drawMultilineFieldWithScrollbar "Description" <| Maybe.withDefault "" <| Maybe.map .description model.video
             , el [] (Element.image [] { src = Maybe.withDefault "" <| Maybe.andThen .thumbnailUrl model.video, description = "" })
@@ -158,9 +178,7 @@ view model =
             , model.liveVideoDetails |> Maybe.map .scheduledStartTime |> Maybe.withDefault "" |> drawField "Scheduled Start Time"
             , model.liveVideoDetails |> Maybe.andThen .actualStartTime |> Maybe.withDefault "" |> drawField "Actual Start Time"
             , model.liveVideoDetails |> Maybe.andThen .actualEndTime |> Maybe.withDefault "" |> drawField "Actual End Time"
-            , drawField "24hr Statistics" ""
             , draw24HourViews model.videoStatisticsAtTime
-            , drawField "Live Viewers" ""
             , drawLiveViewers model.currentViewers
             ]
     }
@@ -240,3 +258,7 @@ getFirstTwoLines string =
         |> String.split "\n"
         |> List.take 2
         |> String.join "\n"
+
+
+paddingTop =
+    paddingEach { top = 20, bottom = 0, left = 0, right = 0 }
