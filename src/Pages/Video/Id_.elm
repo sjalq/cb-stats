@@ -5,17 +5,18 @@ import Bridge exposing (ToBackend(..))
 import Dict
 import Effect exposing (Effect)
 import Element exposing (..)
+import Element.Input as Input
 import Gen.Params.Video.Id_ exposing (Params)
 import Iso8601
 import Lamdera exposing (sendToBackend)
 import Lamdera.Debug exposing (posixToMillis)
 import List.Extra exposing (group)
+import Maybe.Extra exposing (prev)
 import Page
 import Request
 import Shared
 import Utils.Time exposing (..)
 import View exposing (View)
-import Element.Input as Input
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -94,12 +95,13 @@ drawField label value =
         , el [] <| text value
         ]
 
+
 drawMultilineFieldWithScrollbar : String -> String -> Element Msg
 drawMultilineFieldWithScrollbar label value =
     row []
         [ el [ width <| px 200 ] <| text label
-        , Input.multiline [ height <| px 200, width <| px 700]
-            { onChange = (\_ -> ReplaceMe)
+        , Input.multiline [ height <| px 200, width <| px 700 ]
+            { onChange = \_ -> ReplaceMe
             , placeholder = Nothing
             , label = Input.labelHidden label
             , text = value
@@ -108,7 +110,6 @@ drawMultilineFieldWithScrollbar label value =
         ]
 
 
-draw24HourViews : List VideoStatisticsAtTime -> Element msg
 draw24HourViews videoStatisticsAtTime =
     Element.table []
         { data =
@@ -116,17 +117,18 @@ draw24HourViews videoStatisticsAtTime =
                 |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
                 |> Dict.values
                 |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
+                |> statsDiff
         , columns =
-            [ Column (text "Time") (px 300) (.timestamp >> Iso8601.fromTime >> String.left 13 >> (\t -> t ++ ":00 ") >> Element.text)
-            , Column (text "Views") (px 100) (.viewCount >> String.fromInt >> Element.text)
-            , Column (text "Likes") (px 100) (.likeCount >> String.fromInt >> Element.text)
-            , Column (text "Dislikes") (px 100) (.dislikeCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> Element.text)
-            , Column (text "Comments") (px 100) (.commentCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> Element.text)
+            [ Column (text "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> Element.text)
+            , Column (text "Views") (px 100) (.current >> .viewCount >> String.fromInt >> Element.text) 
+            , Column (text "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault 0 >> String.fromInt >> Element.text)
+            , Column (text "Likes") (px 100) (.current >> .likeCount >> String.fromInt >> Element.text)
+            , Column (text "Dislikes") (px 100) (.current >> .dislikeCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> Element.text)
+            , Column (text "Comments") (px 100) (.current >> .commentCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> Element.text)
             ]
         }
 
 
-drawLiveViewers : List CurrentViewers -> Element msg
 drawLiveViewers currentViewers =
     Element.table []
         { data =
@@ -134,9 +136,11 @@ drawLiveViewers currentViewers =
                 |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
                 |> Dict.values
                 |> List.filterMap (List.sortBy .value >> List.head)
+                |> viewsDiff
         , columns =
-            [ Column (text "Time") (px 300) (.timestamp >> Iso8601.fromTime >> String.left 16 >> Element.text)
-            , Column (text "Viewers") (px 100) (.value >> String.fromInt >> Element.text)
+            [ Column (text "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> Element.text)
+            , Column (text "Viewers") (px 100) (.current >> .value >> String.fromInt >> Element.text)
+            , Column (text "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> Element.text)
             ]
         }
 
@@ -153,8 +157,10 @@ view model =
             , drawField "Playlist" model.playlistTitle
             , model.liveVideoDetails |> Maybe.map .scheduledStartTime |> Maybe.withDefault "" |> drawField "Scheduled Start Time"
             , model.liveVideoDetails |> Maybe.andThen .actualStartTime |> Maybe.withDefault "" |> drawField "Actual Start Time"
-            , model.liveVideoDetails |> Maybe.andThen .actualEndTime |> Maybe.withDefault "" |> drawField "Current Viewers"
+            , model.liveVideoDetails |> Maybe.andThen .actualEndTime |> Maybe.withDefault "" |> drawField "Actual End Time"
+            , drawField "24hr Statistics" ""
             , draw24HourViews model.videoStatisticsAtTime
+            , drawField "Live Viewers" ""
             , drawLiveViewers model.currentViewers
             ]
     }
@@ -168,6 +174,51 @@ groupBySlow mapping list =
 
 
 --groupByFast : (a -> comparable) -> List a -> Dict.Dict comparable (List a)
+
+
+diffWithPrev diffFn list =
+    list
+        |> List.indexedMap
+            (\i item ->
+                { current = item
+                , prev = getIndex (i - 1) list
+                , diff = getIndex (i - 1) list |> Maybe.map (\prev_ -> diffFn item prev_)
+                }
+            )
+
+
+statsDiff list =
+    list
+        |> diffWithPrev
+            (\thisHr prev_ ->
+                { timestamp = thisHr.timestamp
+                , viewCount = thisHr.viewCount
+                , viewCountDelta = thisHr.viewCount - prev_.viewCount
+                , likeCount = thisHr.likeCount - prev_.likeCount
+                , dislikeCount = Maybe.map2 (-) thisHr.dislikeCount prev_.dislikeCount
+                , favoriteCount = Maybe.map2 (-) thisHr.favoriteCount prev_.favoriteCount
+                , commentCount = Maybe.map2 (-) thisHr.commentCount prev_.commentCount
+                }
+            )
+
+
+viewsDiff list =
+    list
+        |> diffWithPrev
+            (\thisViewerCount prev_ ->
+                { valueDelta = thisViewerCount.value - prev_.value
+                }
+            )
+
+
+getIndex i list =
+    if i < 0 then
+        Nothing
+
+    else
+        list
+            |> List.drop i
+            |> List.head
 
 
 groupBy mapping list =
