@@ -17,6 +17,7 @@ type ToBackend
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
+    | AttemptGetVideos String
     | AttemptYeetCredentials String
       -- front end instructions to fetch data from youtube
     | FetchChannelsFromYoutube String
@@ -24,10 +25,10 @@ type ToBackend
     | FetchVideosFromYoutube String
       -- normal fetches from backend to frontend
     | AttemptGetChannelAndPlaylists String
-    | AttemptGetVideos String
     | AttemptGetLogs Int Int
     | AttemptYeetLogs
     | AttemptYeetVideos
+    | AttemptGetVideoDetails String
     --
     | AttemptBatch_RefreshAccessTokens
     | AttemptBatch_RefreshAllChannels

@@ -25,6 +25,7 @@ import Pages.Log
 import Pages.Login
 import Pages.Playlist.Id_
 import Pages.Register
+import Pages.Video.Id_
 import Random
 import Random.Char
 import Random.String
@@ -1127,9 +1128,6 @@ update msg model =
 
         Batch_GetCompetitorChannelIds time ->
             -- fetch the competitor channelId from https://yt.lemnoslife.com/channels?
-            -- use the youtube search API to get videos from a competitor for the current day
-            -- add these videos to the videos to monitor
-            -- indicate that these videos need to be accessed with another access token
             let
                 competitorHandles =
                     model.playlists
@@ -1148,15 +1146,7 @@ update msg model =
                                                 == 0
                                         )
                                     |> List.map
-                                        (\handle ->
-                                            case playlist_getAccessToken model p.id of
-                                                Just accessToken ->
-                                                    performNow <|
-                                                        GetChannelId handle
-
-                                                Nothing ->
-                                                    Cmd.none
-                                        )
+                                        (\handle -> performNow <| GetChannelId handle)
                             )
                         |> List.concat
             in
@@ -1194,23 +1184,23 @@ update msg model =
         Batch_GetCompetitorVideos time ->
             let
                 channelIdAccessToken : List ( String, String )
-                channelIdAccessToken = 
-                    model.channelHandleMap 
-                        |> List.map 
-                            (\(handle, channelId) -> 
-                                competitorHandle_getAccessToken model handle |> Maybe.map (\accessToken -> (channelId, accessToken))
+                channelIdAccessToken =
+                    model.channelHandleMap
+                        |> List.map
+                            (\( handle, channelId ) ->
+                                competitorHandle_getAccessToken model handle |> Maybe.map (\accessToken -> ( channelId, accessToken ))
                             )
                         |> List.filterMap identity
 
-                fetches = 
+                fetches =
                     channelIdAccessToken
                         |> List.map
-                            (\(channelId, accessToken) ->
+                            (\( channelId, accessToken ) ->
                                 YouTubeApi.getCompetitorVideosCmd channelId accessToken time
                             )
                         |> Debug.log "fetches"
             in
-            (model, Cmd.batch fetches)
+            ( model, Cmd.batch fetches )
 
         GotCompetitorVideos channelId searchResponse ->
             case searchResponse of
@@ -1530,7 +1520,12 @@ updateFromFrontend sessionId clientId msg model =
             )
 
         AttemptBatch_GetCompetitorVideos ->
-            ( model, performNowWithTime Batch_GetCompetitorChannelIds )
+            ( model
+            , Cmd.batch
+                [ performNowWithTime Batch_GetCompetitorChannelIds
+                , performNowWithTime Batch_GetCompetitorVideos
+                ]
+            )
 
         AttemptYeetCredentials email ->
             ( { model
@@ -1539,6 +1534,53 @@ updateFromFrontend sessionId clientId msg model =
                         |> Dict.remove email
               }
             , Cmd.none
+            )
+
+        AttemptGetVideoDetails videoId ->
+            let
+                video =
+                    model.videos
+                        |> Dict.get videoId
+
+                liveVideoDetails =
+                    video
+                        |> Maybe.andThen (\v -> model.liveVideoDetails |> Dict.get v.id)
+
+                currentViewers =
+                    model.currentViewers
+                        |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
+                        |> Dict.values
+
+                videoStats =
+                    model.videoStatisticsAtTime
+                        |> Dict.filter (\_ s -> s.videoId == videoId)
+                        |> Dict.values
+                        |> List.sortBy (.timestamp >> Time.posixToMillis)
+
+                channelTitle =
+                    model.videos
+                        |> Dict.get videoId
+                        |> Maybe.map .videoOwnerChannelTitle
+                        |> Maybe.withDefault ""
+
+                playlistTitle =
+                    video
+                        |> Maybe.map .playlistId
+                        |> Maybe.andThen (\playlistId -> model.playlists |> Dict.get playlistId)
+                        |> Maybe.map .title
+                        |> Maybe.withDefault ""
+            in
+            ( model
+            , sendToPage clientId <|
+                Gen.Msg.Video__Id_ <|
+                    Pages.Video.Id_.GotVideoDetails
+                        { channelTitle = channelTitle
+                        , playlistTitle = playlistTitle
+                        , video = video
+                        , liveVideoDetails = liveVideoDetails
+                        , currentViewers = currentViewers
+                        , videoStatisticsAtTime = videoStats
+                        }
             )
 
 
@@ -1789,8 +1831,9 @@ video_actualEndTime model liveVideoDetails =
         |> Maybe.map strToIntTime
         |> Maybe.withDefault 0
 
+
 competitorHandle_getAccessToken model handle =
-    model.playlists 
+    model.playlists
         |> Dict.filter (\_ p -> Set.member handle p.competitorHandles)
         |> Dict.values
         |> List.head

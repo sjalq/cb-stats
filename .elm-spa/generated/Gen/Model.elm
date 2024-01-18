@@ -11,6 +11,7 @@ import Gen.Params.Register
 import Gen.Params.Channel.Id_
 import Gen.Params.Ga.Email_
 import Gen.Params.Playlist.Id_
+import Gen.Params.Video.Id_
 import Pages.Admin
 import Pages.End
 import Pages.Example
@@ -22,6 +23,7 @@ import Pages.Register
 import Pages.Channel.Id_
 import Pages.Ga.Email_
 import Pages.Playlist.Id_
+import Pages.Video.Id_
 
 
 type Model
@@ -37,4 +39,5 @@ type Model
     | Channel__Id_ Gen.Params.Channel.Id_.Params Pages.Channel.Id_.Model
     | Ga__Email_ Gen.Params.Ga.Email_.Params Pages.Ga.Email_.Model
     | Playlist__Id_ Gen.Params.Playlist.Id_.Params Pages.Playlist.Id_.Model
+    | Video__Id_ Gen.Params.Video.Id_.Params Pages.Video.Id_.Model
 

@@ -14,6 +14,7 @@ import Gen.Params.Register
 import Gen.Params.Channel.Id_
 import Gen.Params.Ga.Email_
 import Gen.Params.Playlist.Id_
+import Gen.Params.Video.Id_
 import Gen.Model as Model
 import Gen.Msg as Msg
 import Gen.Route as Route exposing (Route)
@@ -29,6 +30,7 @@ import Pages.Register
 import Pages.Channel.Id_
 import Pages.Ga.Email_
 import Pages.Playlist.Id_
+import Pages.Video.Id_
 import Request exposing (Request)
 import Shared
 import Task
@@ -79,6 +81,9 @@ init route =
     
         Route.Playlist__Id_ params ->
             pages.playlist__id_.init params
+    
+        Route.Video__Id_ params ->
+            pages.video__id_.init params
 
 
 update : Msg -> Model -> Shared.Model -> Url -> Key -> ( Model, Effect Msg )
@@ -113,6 +118,9 @@ update msg_ model_ =
     
         ( Msg.Playlist__Id_ msg, Model.Playlist__Id_ params model ) ->
             pages.playlist__id_.update params msg model
+    
+        ( Msg.Video__Id_ msg, Model.Video__Id_ params model ) ->
+            pages.video__id_.update params msg model
 
         _ ->
             \_ _ _ -> ( model_, Effect.none )
@@ -156,6 +164,9 @@ view model_ =
     
         Model.Playlist__Id_ params model ->
             pages.playlist__id_.view params model
+    
+        Model.Video__Id_ params model ->
+            pages.video__id_.view params model
 
 
 subscriptions : Model -> Shared.Model -> Url -> Key -> Sub Msg
@@ -196,6 +207,9 @@ subscriptions model_ =
     
         Model.Playlist__Id_ params model ->
             pages.playlist__id_.subscriptions params model
+    
+        Model.Video__Id_ params model ->
+            pages.video__id_.subscriptions params model
 
 
 
@@ -214,6 +228,7 @@ pages :
     , channel__id_ : Bundle Gen.Params.Channel.Id_.Params Pages.Channel.Id_.Model Pages.Channel.Id_.Msg
     , ga__email_ : Bundle Gen.Params.Ga.Email_.Params Pages.Ga.Email_.Model Pages.Ga.Email_.Msg
     , playlist__id_ : Bundle Gen.Params.Playlist.Id_.Params Pages.Playlist.Id_.Model Pages.Playlist.Id_.Msg
+    , video__id_ : Bundle Gen.Params.Video.Id_.Params Pages.Video.Id_.Model Pages.Video.Id_.Msg
     }
 pages =
     { admin = bundle Pages.Admin.page Model.Admin Msg.Admin
@@ -227,6 +242,7 @@ pages =
     , channel__id_ = bundle Pages.Channel.Id_.page Model.Channel__Id_ Msg.Channel__Id_
     , ga__email_ = bundle Pages.Ga.Email_.page Model.Ga__Email_ Msg.Ga__Email_
     , playlist__id_ = bundle Pages.Playlist.Id_.page Model.Playlist__Id_ Msg.Playlist__Id_
+    , video__id_ = bundle Pages.Video.Id_.page Model.Video__Id_ Msg.Video__Id_
     }
 
 

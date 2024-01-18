@@ -1,6 +1,6 @@
 module Pages.Channel.Id_ exposing (Model, Msg(..), page)
 
-import Api.YoutubeModel exposing (Channel, DaysOfWeek, Playlist, Schedule)
+import Api.YoutubeModel exposing (Channel, Playlist, Schedule)
 import Bridge exposing (ToBackend(..))
 import Dict exposing (..)
 import Effect exposing (Effect)
@@ -10,7 +10,6 @@ import Element.Font exposing (..)
 import Element.Input
 import Gen.Params.Channel.Id_ exposing (Params)
 import Gen.Route as Route
-import Html.Attributes
 import Iso8601
 import Lamdera exposing (sendToBackend)
 import MoreDict
@@ -22,6 +21,7 @@ import Styles.Colors
 import Time
 import UI.Helpers exposing (..)
 import View exposing (View)
+import Bridge exposing (ToBackend(..))
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -191,8 +191,7 @@ update msg model =
             in
             ( { model
                 | playlists = model.playlists |> Dict.insert playlist.id newPlaylist
-                , tmpCompetitors =
-                    model.tmpCompetitors |> Dict.insert playlist.id competitors
+                , tmpCompetitors = model.tmpCompetitors |> Dict.insert playlist.id competitors
               }
             , Effect.fromCmd <| sendToBackend <| UpdatePlaylist newPlaylist
             )
@@ -347,7 +346,11 @@ view model =
                                 Element.Input.multiline
                                     [ height (px 100), Element.Border.color Styles.Colors.skyBlue, Element.Border.width 1, paddingXY 5 5 ]
                                     { onChange = Competitors p.p
-                                    , text = model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault ""
+                                    , text = 
+                                        if (model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault "") == "" then
+                                            p.p.competitorHandles |> Set.toList |> String.join ","
+                                        else
+                                            model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault ""
                                     , placeholder = Nothing
                                     , label = Element.Input.labelHidden "Competitors"
                                     , spellcheck = False

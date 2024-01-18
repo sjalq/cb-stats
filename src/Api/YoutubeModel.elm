@@ -8,6 +8,7 @@ import Set exposing (Set)
 import Time
 import Utils.Time exposing (..)
 
+
 type alias ClientCredentials =
     { displayName : String
     , email : String
@@ -37,7 +38,7 @@ type alias Playlist =
     , description : String
     , channelId : String
     , monitor : Bool -- this will check the playlist for live videos every 10 minutes
-    , competitorHandles : Set String 
+    , competitorHandles : Set String
     }
 
 
@@ -121,6 +122,8 @@ type alias VideoStatisticsAtTime =
     , favoriteCount : Maybe Int
     , commentCount : Maybe Int
     }
+
+
 
 -- competitors
 -- competitors are playlists that contain the videos of other creators

@@ -15,6 +15,7 @@ import Gen.Params.Register
 import Gen.Params.Channel.Id_
 import Gen.Params.Ga.Email_
 import Gen.Params.Playlist.Id_
+import Gen.Params.Video.Id_
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser)
 
@@ -31,6 +32,7 @@ type Route
     | Channel__Id_ { id : String }
     | Ga__Email_ { email : String }
     | Playlist__Id_ { id : String }
+    | Video__Id_ { id : String }
 
 
 fromUrl : Url -> Route
@@ -51,6 +53,7 @@ routes =
     , Parser.map Ga__Email_ Gen.Params.Ga.Email_.parser
     , Parser.map Channel__Id_ Gen.Params.Channel.Id_.parser
     , Parser.map Playlist__Id_ Gen.Params.Playlist.Id_.parser
+    , Parser.map Video__Id_ Gen.Params.Video.Id_.parser
     ]
 
 
@@ -94,4 +97,7 @@ toHref route =
     
         Playlist__Id_ params ->
             joinAsHref [ "playlist", params.id ]
+    
+        Video__Id_ params ->
+            joinAsHref [ "video", params.id ]
 

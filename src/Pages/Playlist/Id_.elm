@@ -18,6 +18,7 @@ import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
+import Gen.Route as Route 
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -304,6 +305,16 @@ view model =
                                             |> Maybe.withDefault "..."
                                             |> String.left 5
                                             |> wrappedText
+                                    )
+                               , Column
+                                    (columnHeader "Details")
+                                    (px 90)
+                                    (\v -> linkButton
+                                        "Details"
+                                     <|
+                                        Route.toHref <|
+                                            Route.Video__Id_
+                                                { id = v.id }
                                     )
 
                                --    , Column
