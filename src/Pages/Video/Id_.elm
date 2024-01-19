@@ -5,6 +5,7 @@ import Bridge exposing (ToBackend(..))
 import Dict
 import Effect exposing (Effect)
 import Element exposing (..)
+import Element.Background
 import Element.Border
 import Element.Input as Input
 import Gen.Params.Video.Id_ exposing (Params)
@@ -90,18 +91,54 @@ subscriptions model =
 -- VIEW
 
 
-drawField : String -> String -> Element msg
-drawField label value =
+lightBlue =
+    rgb 0.9 0.9 1
+
+
+labelSide str =
+    el
+        [ width <| px 200
+        , height <| fill
+        , Element.Background.color lightBlue
+        , Element.paddingXY 10 10
+        , centerY
+        ]
+    <|
+        text str
+
+
+leftLabeledElement str el_ =
     column [ paddingTop ]
         [ row
             [ Element.Border.width 1
             , Element.Border.color <| rgb 0.8 0.8 0.8
-            , Element.paddingXY 10 10
             ]
-            [ el [ width <| px 200 ] <| text label
-            , el [] <| text value
+            [ labelSide str
+            , el_
             ]
         ]
+
+labelOnly str =
+        column [ paddingTop ]
+        [ row
+            [ Element.Border.width 1
+            , Element.Border.color <| rgb 0.8 0.8 0.8
+            ]
+            [ labelSide str
+            ]
+        ]
+
+
+drawField : String -> String -> Element msg
+drawField label value =
+    leftLabeledElement label (el [ Element.paddingXY 10 10 ] <| text value)
+
+
+drawImage : String -> String -> Element msg
+drawImage label value =
+    leftLabeledElement
+        label
+        (el [  ] <| Element.image [] { src = value, description = "" })
 
 
 drawMultilineFieldWithScrollbar : String -> String -> Element Msg
@@ -110,10 +147,9 @@ drawMultilineFieldWithScrollbar label value =
         [ row
             [ Element.Border.width 1
             , Element.Border.color <| rgb 0.8 0.8 0.8
-            , Element.paddingXY 10 10
             ]
-            [ el [ width <| px 200 ] <| text label
-            , Input.multiline [ height <| px 200, width <| px 700 ]
+            [ labelSide label
+            , Input.multiline [ height <| px 200, width <| px 640 ]
                 { onChange = \_ -> ReplaceMe
                 , placeholder = Nothing
                 , label = Input.labelHidden label
@@ -126,7 +162,7 @@ drawMultilineFieldWithScrollbar label value =
 
 draw24HourViews videoStatisticsAtTime =
     column [ paddingTop ]
-        [ drawField "24hr Statistics" ""
+        [ labelOnly "24hr Statistics"
         , Element.table tableStyle
             { data =
                 videoStatisticsAtTime
@@ -148,7 +184,7 @@ draw24HourViews videoStatisticsAtTime =
 
 drawLiveViewers currentViewers =
     column [ paddingTop ]
-        [ drawField "Live Viewers" ""
+        [ labelOnly "Live Viewers"
         , Element.table tableStyle
             { data =
                 currentViewers
@@ -172,22 +208,26 @@ view model =
         column [ width <| fill ]
             [ drawField "Title" <| Maybe.withDefault "" <| Maybe.map .title model.video
             , drawMultilineFieldWithScrollbar "Description" <| Maybe.withDefault "" <| Maybe.map .description model.video
-            , el [] (Element.image [] { src = Maybe.withDefault "" <| Maybe.andThen .thumbnailUrl model.video, description = "" })
+            , drawImage "Image" (Maybe.withDefault "" <| Maybe.andThen .thumbnailUrl model.video)
             , drawField "Channel" model.channelTitle
             , drawField "Playlist" model.playlistTitle
             , model.liveVideoDetails |> Maybe.map .scheduledStartTime |> Maybe.withDefault "" |> drawField "Scheduled Start Time"
             , model.liveVideoDetails |> Maybe.andThen .actualStartTime |> Maybe.withDefault "" |> drawField "Actual Start Time"
             , model.liveVideoDetails |> Maybe.andThen .actualEndTime |> Maybe.withDefault "" |> drawField "Actual End Time"
+            , model.currentViewers |> List.map .value |> List.maximum |> Maybe.map String.fromInt |> Maybe.withDefault "" |> drawField "Max Live Viewers"
+            , model.currentViewers
+                |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+                |> Dict.values
+                |> List.filterMap (List.sortBy .value >> List.head)
+                |> List.map .value
+                |> List.head
+                |> Maybe.map String.fromInt
+                |> Maybe.withDefault ""
+                |> drawField "1 Min Mark Viewers"
             , draw24HourViews model.videoStatisticsAtTime
             , drawLiveViewers model.currentViewers
             ]
     }
-
-
-groupBySlow mapping list =
-    list
-        |> List.map (\l -> ( mapping l, list |> List.filter (\l2 -> mapping l == mapping l2) ))
-        |> Dict.fromList
 
 
 
@@ -251,13 +291,6 @@ groupBy mapping list =
             Dict.update key (\maybeValues -> Just (value :: Maybe.withDefault [] maybeValues)) acc
     in
     List.foldl groupAccumulator Dict.empty sortedList
-
-
-getFirstTwoLines string =
-    string
-        |> String.split "\n"
-        |> List.take 2
-        |> String.join "\n"
 
 
 paddingTop =

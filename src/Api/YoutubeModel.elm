@@ -141,7 +141,7 @@ video_peakViewers currentViewers videoId =
         |> Maybe.map .value
 
 
-video_viewersAtXminuteMark liveVideoDetails currentViewers minuteMark videoId =
+video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark videoId =
     let
         liveStreamingDetails =
             liveVideoDetails
@@ -166,6 +166,33 @@ video_viewersAtXminuteMark liveVideoDetails currentViewers minuteMark videoId =
         viewersAtMinuteOffset =
             listViewers
                 |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < minuteOffset)
+                |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
+                |> List.reverse
+                |> List.head
+                |> Maybe.map .value
+    in
+    viewersAtMinuteOffset
+
+video_viewersAtXminuteMark liveStreamingDetails listViewers minuteMark =
+    let
+        actualStartTime =
+            liveStreamingDetails
+                |> Maybe.andThen .actualStartTime
+                |> Maybe.andThen (Iso8601.toTime >> Result.toMaybe)
+                |> Maybe.map Time.posixToMillis
+                |> Debug.log "actualStartTime"
+
+        minuteOffset =
+            actualStartTime
+                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (minuteMark * minute))
+                |> Maybe.withDefault 0
+                |> Debug.log "minuteOffset"
+
+        viewersAtMinuteOffset =
+            listViewers
+                |> Debug.log "listViewers"
+                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < minuteOffset)
+                |> Debug.log "filter"
                 |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
                 |> List.reverse
                 |> List.head
