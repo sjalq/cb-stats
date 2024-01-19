@@ -131,7 +131,7 @@ view model =
                 Html.Attributes.style "min-height" "calc(100vh - 60px)"
             , Element.spacing 50
             ]
-            [ Element.el [ Font.size 36, Font.bold, Font.center, Element.centerX, Element.centerY ] <| Element.text "Wecome Back"
+            [ Element.el [ Font.size 36, Font.bold, Font.center, Element.centerX, Element.centerY ] <| Element.text "Welcome Back"
             , Element.column [ Element.spacing 15, Element.width Element.fill ]
                 [ Input.email
                     [ Element.centerY
