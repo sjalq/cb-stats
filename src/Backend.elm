@@ -492,7 +492,7 @@ update msg model =
                                     YouTubeApi.getVideosCmd (Just nextPageToken) playlistId accessToken_
                                 )
                                 validResponse.nextPageToken
-                                (video_getAccesToken newModel playlistId)
+                                (video_getAccessToken newModel playlistId)
                                 |> Maybe.withDefault Cmd.none
                     in
                     ( newModel
@@ -535,7 +535,7 @@ update msg model =
                     liveOrScheduledVideos
                         |> Dict.map
                             (\_ v ->
-                                video_getAccesToken model v.id
+                                video_getAccessToken model v.id
                                     |> Maybe.map (YouTubeApi.getVideoLiveStreamDataCmd time v.id)
                             )
                         |> Dict.values
@@ -713,7 +713,7 @@ update msg model =
                         |> Dict.keys
                         |> List.map
                             (\videoId ->
-                                video_getAccesToken model videoId
+                                video_getAccessToken model videoId
                                     |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsOnConclusion)
                             )
                         |> List.filterMap identity
@@ -743,7 +743,7 @@ update msg model =
                         |> Dict.keys
                         |> List.map
                             (\videoId ->
-                                video_getAccesToken model videoId
+                                video_getAccessToken model videoId
                                     |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsAfter24Hrs)
                             )
                         |> List.filterMap identity
@@ -867,7 +867,7 @@ update msg model =
                             (\videoId v ->
                                 Maybe.map2
                                     (YouTubeApi.getChatMessagesCmd Nothing)
-                                    (video_getAccesToken model videoId)
+                                    (video_getAccessToken model videoId)
                                     v.liveChatId
                             )
                         |> Dict.values
@@ -910,7 +910,7 @@ update msg model =
 
                         accessToken =
                             newVideo
-                                |> Maybe.andThen (\v -> video_getAccesToken model v.id)
+                                |> Maybe.andThen (\v -> video_getAccessToken model v.id)
 
                         fetchMore =
                             Maybe.map2
@@ -966,7 +966,7 @@ update msg model =
                                     YouTubeApi.getVideoDailyReportCmd
                                     (Just videoId)
                                     checkDateStr
-                                    (video_getAccesToken model videoId)
+                                    (video_getAccessToken model videoId)
                             )
                         |> Dict.values
                         |> List.filterMap identity
@@ -1070,7 +1070,7 @@ update msg model =
                     videosToFetch
                         |> List.map
                             (\videoId ->
-                                video_getAccesToken model videoId
+                                video_getAccessToken model videoId
                                     |> Maybe.map (YouTubeApi.getVideoStats time videoId GotVideoStatsOnTheHour)
                             )
                         |> List.filterMap identity
@@ -1193,6 +1193,11 @@ update msg model =
                         |> Debug.log "channelIdAccessToken"
                         |> List.filterMap identity
 
+                channelIdStr =
+                    channelIdAccessToken
+                        |> List.map Tuple.first
+                        |> String.join ","
+
                 fetches =
                     channelIdAccessToken
                         |> List.map
@@ -1202,6 +1207,7 @@ update msg model =
                         |> Debug.log "fetches"
             in
             ( model, Cmd.batch fetches )
+                |> log ("Fetching Competitor Videos - " ++ channelIdStr) Info
 
         GotCompetitorVideos channelId searchResponse ->
             case searchResponse of
@@ -1722,23 +1728,42 @@ playlist_lastPublishDate model playlistId =
         |> Maybe.withDefault "1970-01-01T00:00:00Z"
 
 
-video_getAccesToken model videoId =
-    model.videos
-        |> Dict.get videoId
-        |> Maybe.map .videoOwnerChannelId
-        |> Maybe.andThen
-            (\channelId ->
-                model.channelAssociations
-                    |> List.filter (\c -> c.channelId == channelId)
-                    |> List.head
-                    |> Maybe.map .email
-            )
-        |> Maybe.andThen
-            (\email ->
-                model.clientCredentials
-                    |> Dict.get email
-                    |> Maybe.map .accessToken
-            )
+video_getAccessToken model videoId =
+    let
+        accessToken =
+            model.videos
+                |> Dict.get videoId
+                |> Maybe.map .videoOwnerChannelId
+                |> Maybe.andThen
+                    (\channelId ->
+                        model.channelAssociations
+                            |> List.filter (\c -> c.channelId == channelId)
+                            |> List.head
+                            |> Maybe.map .email
+                    )
+                |> Maybe.andThen
+                    (\email ->
+                        model.clientCredentials
+                            |> Dict.get email
+                            |> Maybe.map .accessToken
+                    )
+
+        altAccessToken =
+            model.clientCredentials
+                |> Dict.values
+                --|> List.filter (\cc -> cc.accessToken)
+                |> List.head
+                |> Maybe.map .accessToken
+    in
+    case ( accessToken, altAccessToken ) of
+        ( Just accessToken_, _ ) ->
+            Just accessToken_
+
+        ( Nothing, Just altAccessToken_ ) ->
+            Just altAccessToken_
+
+        ( Nothing, Nothing ) ->
+            Nothing
 
 
 playlist_getAccessToken model playlistId =

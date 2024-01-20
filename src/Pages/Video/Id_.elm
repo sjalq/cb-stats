@@ -12,7 +12,7 @@ import Gen.Params.Video.Id_ exposing (Params)
 import Iso8601
 import Lamdera exposing (sendToBackend)
 import Lamdera.Debug exposing (posixToMillis)
- 
+import MoreDict exposing (groupBy)
 import Page
 import Request
 import Shared
@@ -117,8 +117,9 @@ leftLabeledElement str el_ =
             ]
         ]
 
+
 labelOnly str =
-        column [ paddingTop ]
+    column [ paddingTop ]
         [ row
             [ Element.Border.width 1
             , Element.Border.color <| rgb 0.8 0.8 0.8
@@ -137,7 +138,7 @@ drawImage : String -> String -> Element msg
 drawImage label value =
     leftLabeledElement
         label
-        (el [  ] <| Element.image [] { src = value, description = "" })
+        (el [] <| Element.image [] { src = value, description = "" })
 
 
 drawMultilineFieldWithScrollbar : String -> String -> Element Msg
@@ -276,20 +277,6 @@ getIndex i list =
         list
             |> List.drop i
             |> List.head
-
-
-groupBy mapping list =
-    let
-        mappedList =
-            List.map (\item -> ( mapping item, item )) list
-
-        sortedList =
-            List.sortBy Tuple.first mappedList
-
-        groupAccumulator ( key, value ) acc =
-            Dict.update key (\maybeValues -> Just (value :: Maybe.withDefault [] maybeValues)) acc
-    in
-    List.foldl groupAccumulator Dict.empty sortedList
 
 
 paddingTop =

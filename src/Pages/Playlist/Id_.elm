@@ -19,6 +19,7 @@ import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
+import MoreDict
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -336,7 +337,7 @@ view model =
                                --          -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
                                --         )
                                ]
-                            ++ competitorVideoColums model get24HrCompetitorStats
+                            ++ competitorVideoColums model.competitorVideos get24HrCompetitorStats
                     }
                 , el
                     ([ Element.width (px 150), paddingXY 10 10 ] ++ centerCenter)
@@ -346,9 +347,9 @@ view model =
     }
 
 
-get24HrCompetitorStats : Model -> String -> Video -> Element Msg
-get24HrCompetitorStats model cId v =
-    model.competitorVideos
+get24HrCompetitorStats : Dict String (Dict String Video) -> String -> Video -> Element Msg
+get24HrCompetitorStats competitorVideos cId v =
+    competitorVideos
         |> Dict.get v.id
         |> Maybe.andThen
             (\stats ->
@@ -362,23 +363,21 @@ get24HrCompetitorStats model cId v =
         |> wrappedText
 
 
-competitorVideoColums : Model -> (Model -> String -> Video -> Element Msg) -> List (Column Video Msg)
-competitorVideoColums model vFunc =
-    let
-        competitorVideos =
-            model.competitorVideos
-                |> Dict.values
-                |> List.map (\videos -> videos |> Dict.values)
-                |> List.concat
-                |> List.map
-                    (\c ->
-                        Column
-                            (columnHeader c.videoOwnerChannelTitle)
-                            (px 100)
-                            (vFunc model c.id)
-                    )
-    in
+competitorVideoColums : Dict String (Dict String Video) -> (Dict String (Dict String Video) -> String -> Video -> Element Msg) -> List (Column Video Msg)
+competitorVideoColums competitorVideos vFunc =
     competitorVideos
+        |> Dict.values
+        |> List.map Dict.values
+        |> List.concat
+        |> MoreDict.groupBy (\v -> (v.videoOwnerChannelTitle, v.videoOwnerChannelId))
+        |> Dict.keys 
+        |> List.map
+            (\(title, id) ->
+                Column
+                    (columnHeader title)
+                    (px 100)
+                    (vFunc competitorVideos id)
+            )
 
 
 viewSparkLine dataList =

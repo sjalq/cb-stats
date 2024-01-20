@@ -28,8 +28,8 @@ gs key dict =
                 Value value_ ->
                     value_
 
-                Dict _ ->
-                    "{object}"
+                Dict d ->
+                    d |> Dict.map (\k v -> gs k v) 
 
                 _ ->
                     ""

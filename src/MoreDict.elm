@@ -152,3 +152,16 @@ upsert item dict =
 
     else
         ( dict |> Dict.insert item.id item, item )
+
+groupBy mapping list =
+    let
+        mappedList =
+            List.map (\item -> ( mapping item, item )) list
+
+        sortedList =
+            List.sortBy Tuple.first mappedList
+
+        groupAccumulator ( key, value ) acc =
+            Dict.update key (\maybeValues -> Just (value :: Maybe.withDefault [] maybeValues)) acc
+    in
+    List.foldl groupAccumulator Dict.empty sortedList
