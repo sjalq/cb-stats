@@ -12,8 +12,7 @@ import Gen.Params.Video.Id_ exposing (Params)
 import Iso8601
 import Lamdera exposing (sendToBackend)
 import Lamdera.Debug exposing (posixToMillis)
-import List.Extra exposing (group)
-import Maybe.Extra exposing (prev)
+ 
 import Page
 import Request
 import Shared

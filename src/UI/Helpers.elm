@@ -3,7 +3,7 @@ module UI.Helpers exposing (..)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border
-import Element.Font exposing (light)
+import Element.Font 
 import Element.Input
 import Gen.Route as Route
 import Html.Attributes

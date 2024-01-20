@@ -1,6 +1,6 @@
 module Json.Bespoke.VideoDecoder exposing (..)
 
-import Json.Decode exposing (Decoder, field, int, list, maybe, string, succeed)
+import Json.Decode exposing (Decoder, int, list, maybe, string, succeed)
 import Json.Decode.Pipeline exposing (optional, required)
 
 

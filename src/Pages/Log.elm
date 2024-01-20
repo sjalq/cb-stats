@@ -4,10 +4,8 @@ import Api.Logging exposing (LogEntry, logLevelToString, posixToString)
 import Bridge exposing (ToBackend(..), sendToBackend)
 import Effect exposing (Effect)
 import Element exposing (..)
-import Element.Input
 import Gen.Params.Log exposing (Params)
-import Lamdera.Debug exposing (posixToMillis)
-import List exposing (length)
+import List 
 import Page
 import Request
 import Shared

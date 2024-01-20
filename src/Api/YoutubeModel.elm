@@ -1,6 +1,6 @@
 module Api.YoutubeModel exposing (..)
 
-import Dict exposing (Dict)
+import Dict 
 import Iso8601
 import Json.Bespoke.VideoDecoder exposing (Statistics)
 import Lamdera.Debug exposing (Posix)

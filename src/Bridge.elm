@@ -1,8 +1,7 @@
 module Bridge exposing (..)
 
 import Api.User exposing (Email)
-import Api.YoutubeModel exposing (Channel, Playlist)
-import Dict exposing (Dict)
+import Api.YoutubeModel exposing (Playlist)
 import Lamdera
 import Api.YoutubeModel exposing (Schedule)
 

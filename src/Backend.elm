@@ -12,7 +12,6 @@ import Dict
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
-import Html exposing (ol, time)
 import Http exposing (Error(..))
 import Iso8601
 import Lamdera exposing (..)

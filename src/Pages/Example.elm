@@ -7,7 +7,6 @@ import Bridge exposing (ToBackend(..))
 import Dict exposing (..)
 import Effect exposing (Effect)
 import Element exposing (..)
-import Element.Font exposing (underline)
 import Env
 import Gen.Params.Example exposing (Params)
 import Gen.Route as Route

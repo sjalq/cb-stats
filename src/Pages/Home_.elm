@@ -2,10 +2,7 @@ module Pages.Home_ exposing (Model, Msg(..), page)
 
 import Api.User exposing (isEditor)
 import Bridge exposing (..)
-import Effect
 import Element
-import Element.Font as Font
-import Element.Region as Region
 import Gen.Route as Route
 import Html exposing (..)
 import Page

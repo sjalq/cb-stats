@@ -2,7 +2,7 @@ module UI.Styled exposing (..)
 
 import Element
 import Element.Font as Font
-import Styles.Colors exposing (blue, red)
+import Styles.Colors exposing (red)
 
 
 errorMessage : Maybe String -> Element.Element msg

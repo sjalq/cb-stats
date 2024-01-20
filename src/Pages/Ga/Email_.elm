@@ -7,21 +7,16 @@ import Bridge exposing (ToBackend(..), sendToBackend)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
 import Element exposing (..)
-import Element.Border
-import Element.Font exposing (underline)
-import Element.Input
+import Element.Font 
 import Gen.Params.Ga.Email_ exposing (Params)
 import Gen.Route as Route
-import Html.Attributes
 import Page
 import Pages.Example exposing (Msg(..))
 import Request
 import Shared
 import UI.Helpers exposing (..)
-import Url
 import View exposing (View)
-import Styles.Colors exposing (lightGrey)
-import Styles.Colors exposing (darkGrey)
+import Styles.Colors
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg

@@ -1,7 +1,6 @@
 module Styles.Element.Extra exposing (..)
 
 import Element
-import Html
 import Html.Attributes
 
 
