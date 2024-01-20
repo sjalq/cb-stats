@@ -323,17 +323,17 @@ view model =
                                --         (\_ ->
                                --             msgButton "Copy" (Just GetVideos)
                                --         )
-                               , Column
-                                    (columnHeader "Sparkline")
-                                    (px 100)
-                                    (\v ->
-                                        model.videoStats
-                                            |> Dict.filter (\_ s -> s.videoId == v.id)
-                                            |> Dict.map (\_ s -> s.viewCount)
-                                            |> Dict.values
-                                            |> viewSparkLine
-                                     -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
-                                    )
+                            --    , Column
+                            --         (columnHeader "Sparkline")
+                            --         (px 100)
+                            --         (\v ->
+                            --             model.videoStats
+                            --                 |> Dict.filter (\_ s -> s.videoId == v.id)
+                            --                 |> Dict.map (\_ s -> s.viewCount)
+                            --                 |> Dict.values
+                            --                 |> viewSparkLine
+                            --          -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
+                            --         )
                                ]
                             ++ competitorVideoColums model get24HrCompetitorStats
                     }

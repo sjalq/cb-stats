@@ -12,7 +12,7 @@ import Dict
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
-import Html exposing (time)
+import Html exposing (ol, time)
 import Http exposing (Error(..))
 import Iso8601
 import Lamdera exposing (..)
@@ -1188,8 +1188,10 @@ update msg model =
                     model.channelHandleMap
                         |> List.map
                             (\( handle, channelId ) ->
-                                competitorHandle_getAccessToken model handle |> Maybe.map (\accessToken -> ( channelId, accessToken ))
+                                competitorHandle_getAccessToken model handle
+                                    |> Maybe.map (\accessToken -> ( channelId, accessToken ))
                             )
+                        |> Debug.log "channelIdAccessToken"
                         |> List.filterMap identity
 
                 fetches =
@@ -1243,8 +1245,8 @@ update msg model =
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
-updateFromFrontend sessionId clientId msg model =
-    case msg of
+updateFromFrontend sessionId clientId msg2 model =
+    case msg2 of
         AttemptSignOut ->
             ( { model | authenticatedSessions = model.authenticatedSessions |> Dict.remove sessionId }
             , sendToShared clientId <| SignOutUser
@@ -1427,7 +1429,37 @@ updateFromFrontend sessionId clientId msg model =
             )
 
         UpdatePlaylist playlist ->
-            ( { model | playlists = model.playlists |> Dict.insert playlist.id playlist }
+            let
+                oldCompetitorSet =
+                    model.playlists
+                        |> Dict.get playlist.id
+                        |> Maybe.map .competitorHandles
+
+                oldCompetitors =
+                    oldCompetitorSet
+                        |> Maybe.map Set.toList
+                        |> Maybe.withDefault []
+                        |> String.join ","
+                        |> String.length
+
+                newCompetitors =
+                    playlist.competitorHandles
+                        |> Set.toList
+                        |> String.join ","
+                        |> String.length
+
+                oopsie =
+                    oldCompetitors > newCompetitors + 2
+
+                playlistToStore =
+                    case ( oopsie, oldCompetitorSet ) of
+                        ( True, Just oldCompetitorSet_ ) ->
+                            { playlist | competitorHandles = oldCompetitorSet_ }
+
+                        _ ->
+                            playlist
+            in
+            ( { model | playlists = model.playlists |> Dict.insert playlist.id playlistToStore }
             , Cmd.none
             )
 
