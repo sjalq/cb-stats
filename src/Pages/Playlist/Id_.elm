@@ -8,6 +8,7 @@ import Element exposing (..)
 import Element.Border
 import Element.Font
 import Gen.Params.Playlist.Id_ exposing (Params)
+import Gen.Route as Route
 import Page
 import Request
 import Shared
@@ -18,7 +19,6 @@ import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
-import Gen.Route as Route 
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -309,12 +309,13 @@ view model =
                                , Column
                                     (columnHeader "Details")
                                     (px 90)
-                                    (\v -> linkButton
-                                        "Details"
-                                     <|
-                                        Route.toHref <|
-                                            Route.Video__Id_
-                                                { id = v.id }
+                                    (\v ->
+                                        linkButton
+                                            "Details"
+                                        <|
+                                            Route.toHref <|
+                                                Route.Video__Id_
+                                                    { id = v.id }
                                     )
 
                                --    , Column
@@ -323,17 +324,17 @@ view model =
                                --         (\_ ->
                                --             msgButton "Copy" (Just GetVideos)
                                --         )
-                            --    , Column
-                            --         (columnHeader "Sparkline")
-                            --         (px 100)
-                            --         (\v ->
-                            --             model.videoStats
-                            --                 |> Dict.filter (\_ s -> s.videoId == v.id)
-                            --                 |> Dict.map (\_ s -> s.viewCount)
-                            --                 |> Dict.values
-                            --                 |> viewSparkLine
-                            --          -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
-                            --         )
+                               --    , Column
+                               --         (columnHeader "Sparkline")
+                               --         (px 100)
+                               --         (\v ->
+                               --             model.videoStats
+                               --                 |> Dict.filter (\_ s -> s.videoId == v.id)
+                               --                 |> Dict.map (\_ s -> s.viewCount)
+                               --                 |> Dict.values
+                               --                 |> viewSparkLine
+                               --          -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
+                               --         )
                                ]
                             ++ competitorVideoColums model get24HrCompetitorStats
                     }
