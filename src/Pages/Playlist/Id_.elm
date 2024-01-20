@@ -307,7 +307,9 @@ view model =
                                             |> String.left 5
                                             |> wrappedText
                                     )
-                               , Column
+                               ]
+                            ++ competitorVideoColums model.competitorVideos get24HrCompetitorStats
+                            ++ [ Column
                                     (columnHeader "Details")
                                     (px 90)
                                     (\v ->
@@ -337,7 +339,6 @@ view model =
                                --          -- viewSparkLine [ 30, 20, 10, 20, 15, 10, 25, 30 , 24, 18, 2, 10, 15, 16, 20, 15, 10, 5, 4, 3, 2, 1, 0, 25 ]
                                --         )
                                ]
-                            ++ competitorVideoColums model.competitorVideos get24HrCompetitorStats
                     }
                 , el
                     ([ Element.width (px 150), paddingXY 10 10 ] ++ centerCenter)
@@ -371,7 +372,7 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle v =
                     |> Dict.values
                     |> List.head
                     -- |> Maybe.map .title
-                    |> Maybe.andThen .statsOnConclusion
+                    |> Maybe.andThen .statsAfter24Hours
                     |> Maybe.map .viewCount
                     |> Maybe.map String.fromInt
             )
@@ -407,7 +408,7 @@ competitorVideoColums competitorVideos vFunc =
         --     )
         |> MoreDict.groupBy .videoOwnerChannelTitle
         |> Dict.keys
-        |> List.map 
+        |> List.map
             (\title ->
                 Column
                     (columnHeader title)
