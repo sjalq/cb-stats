@@ -268,7 +268,7 @@ getCompetitorVideosCmd channelId accessToken time =
         url =
             "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
                 ++ channelId
-                ++ "&type=video&publishedAfter="
+                ++ "&type=live&publishedAfter="
                 ++ publishedAfter
 
                 |> Debug.log "search url"
@@ -282,3 +282,4 @@ getCompetitorVideosCmd channelId accessToken time =
         , timeout = Nothing
         , tracker = Nothing
         }
+
