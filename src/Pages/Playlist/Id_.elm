@@ -9,6 +9,7 @@ import Element.Border
 import Element.Font
 import Gen.Params.Playlist.Id_ exposing (Params)
 import Gen.Route as Route
+import MoreDict
 import Page
 import Request
 import Shared
@@ -19,7 +20,6 @@ import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
-import MoreDict
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -94,7 +94,7 @@ update msg model =
                 , videoChannels = videoChannels
                 , playlists = playlists
                 , videoStats = videoStats
-                , competitorVideos = competitorVideos
+                , competitorVideos = competitorVideos |> Debug.log "competitorVideos"
               }
             , Effect.none
             )
@@ -116,7 +116,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.batch [ Time.every second Tick ]
+    Sub.batch [ Time.every minute Tick ]
 
 
 
@@ -348,14 +348,30 @@ view model =
 
 
 get24HrCompetitorStats : Dict String (Dict String Video) -> String -> Video -> Element Msg
-get24HrCompetitorStats competitorVideos cId v =
+get24HrCompetitorStats competitorVideos competitorChannelTitle v =
+    let
+        lookupStats =
+            competitorVideos
+                |> Dict.map (\k s -> ( k, s |> Dict.keys ))
+
+        _ =
+            Debug.log ("lookup cid " ++ competitorChannelTitle ++ " v.id " ++ v.id) lookupStats
+    in
     competitorVideos
         |> Dict.get v.id
+        |> Debug.log "finding v.id"
         |> Maybe.andThen
             (\stats ->
+                let
+                    _ =
+                        stats |> Dict.keys |> Debug.log "stats"
+                in
                 stats
-                    |> Dict.get cId
-                    |> Maybe.andThen .statsAfter24Hours
+                    |> Dict.filter (\k v_ -> v_.videoOwnerChannelTitle == competitorChannelTitle)
+                    |> Dict.values
+                    |> List.head
+                    -- |> Maybe.map .title
+                    |> Maybe.andThen .statsOnConclusion
                     |> Maybe.map .viewCount
                     |> Maybe.map String.fromInt
             )
@@ -366,17 +382,37 @@ get24HrCompetitorStats competitorVideos cId v =
 competitorVideoColums : Dict String (Dict String Video) -> (Dict String (Dict String Video) -> String -> Video -> Element Msg) -> List (Column Video Msg)
 competitorVideoColums competitorVideos vFunc =
     competitorVideos
+        |> Debug.log "competitorVideoss"
         |> Dict.values
         |> List.map Dict.values
         |> List.concat
-        |> MoreDict.groupBy (\v -> (v.videoOwnerChannelTitle, v.videoOwnerChannelId))
-        |> Dict.keys 
-        |> List.map
-            (\(title, id) ->
+        -- |> MoreDict.groupBy .videoOwnerChannelTitle
+        -- |> Dict.map
+        --     (\k v ->
+        --         ( k
+        --         , v
+        --             |> List.map .id
+        --             |> Debug.log "ids"
+        --             |> List.head
+        --             |> Maybe.withDefault ""
+        --         )
+        --     )
+        -- |> Dict.values
+        -- |> List.map
+        --     (\( title, id ) ->
+        --         Column
+        --             (columnHeader title)
+        --             (px 100)
+        --             (vFunc competitorVideos id)
+        --     )
+        |> MoreDict.groupBy .videoOwnerChannelTitle
+        |> Dict.keys
+        |> List.map 
+            (\title ->
                 Column
                     (columnHeader title)
                     (px 100)
-                    (vFunc competitorVideos id)
+                    (vFunc competitorVideos title)
             )
 
 

@@ -181,7 +181,7 @@ update msg model =
             let
                 newPlaylist =
                     { playlist
-                        | competitorHandles = 
+                        | competitorIds = 
                             competitors 
                             |> String.split "," 
                             |> List.map String.trim
@@ -339,8 +339,25 @@ view model =
                                     |> UI.Helpers.wrappedCell
                             )
                         , Column (columnHeader "Latest Video") (px 200) (.latestVideo >> Time.millisToPosix >> Iso8601.fromTime >> String.left 16 >> wrappedText)
-                        , Column
-                            (columnHeader "Competitor Channel Ids")
+                        -- , Column
+                        --     (columnHeader "Competitor Channel Handles")
+                        --     (px 200)
+                        --     (\p ->
+                        --         Element.Input.multiline
+                        --             [ height (px 100), Element.Border.color Styles.Colors.skyBlue, Element.Border.width 1, paddingXY 5 5 ]
+                        --             { onChange = Competitors p.p
+                        --             , text = 
+                        --                 if (model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault "") == "" then
+                        --                     p.p.competitorHandles |> Set.toList |> String.join ","
+                        --                 else
+                        --                     model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault ""
+                        --             , placeholder = Nothing
+                        --             , label = Element.Input.labelHidden "Competitors"
+                        --             , spellcheck = False
+                        --             }
+                        --     )
+                        , Column 
+                            (columnHeader "Ids")
                             (px 200)
                             (\p ->
                                 Element.Input.multiline
@@ -348,7 +365,7 @@ view model =
                                     { onChange = Competitors p.p
                                     , text = 
                                         if (model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault "") == "" then
-                                            p.p.competitorHandles |> Set.toList |> String.join ","
+                                            p.p.competitorIds |> Set.toList |> String.join ","
                                         else
                                             model.tmpCompetitors |> Dict.get p.id |> Maybe.withDefault ""
                                     , placeholder = Nothing

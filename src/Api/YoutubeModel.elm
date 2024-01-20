@@ -39,6 +39,7 @@ type alias Playlist =
     , channelId : String
     , monitor : Bool -- this will check the playlist for live videos every 10 minutes
     , competitorHandles : Set String
+    , competitorIds : Set String
     }
 
 

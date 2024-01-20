@@ -337,6 +337,7 @@ update msg model =
                                           , channelId = p.snippet.channelId
                                           , monitor = False
                                           , competitorHandles = Set.empty
+                                          , competitorIds = Set.empty
                                           }
                                         )
                                     )
@@ -1182,16 +1183,27 @@ update msg model =
 
         Batch_GetCompetitorVideos time ->
             let
-                channelIdAccessToken : List ( String, String )
+                -- channelIdAccessToken : List ( String, String )
+                -- channelIdAccessToken =
+                --     model.channelHandleMap
+                --         |> List.map
+                --             (\( handle, channelId ) ->
+                --                 competitorHandle_getAccessToken model handle
+                --                     |> Maybe.map (\accessToken -> ( channelId, accessToken ))
+                --             )
+                --         |> Debug.log "channelIdAccessToken"
+                --         |> List.filterMap identity
                 channelIdAccessToken =
-                    model.channelHandleMap
-                        |> List.map
-                            (\( handle, channelId ) ->
-                                competitorHandle_getAccessToken model handle
-                                    |> Maybe.map (\accessToken -> ( channelId, accessToken ))
+                    model.playlists
+                        |> Dict.map
+                            (\playlistId v ->
+                                ( v.competitorIds 
+                                    |> Set.toList 
+                                    |> List.map (\id -> ( id, accessToken_getFirst model)))
                             )
-                        |> Debug.log "channelIdAccessToken"
-                        |> List.filterMap identity
+                        |> Dict.values
+                        |> List.concat
+                        |> List.Extra.unique
 
                 channelIdStr =
                     channelIdAccessToken
@@ -1438,7 +1450,7 @@ updateFromFrontend sessionId clientId msg2 model =
                 oldCompetitorSet =
                     model.playlists
                         |> Dict.get playlist.id
-                        |> Maybe.map .competitorHandles
+                        |> Maybe.map .competitorIds
 
                 oldCompetitors =
                     oldCompetitorSet
@@ -1448,7 +1460,7 @@ updateFromFrontend sessionId clientId msg2 model =
                         |> String.length
 
                 newCompetitors =
-                    playlist.competitorHandles
+                    playlist.competitorIds
                         |> Set.toList
                         |> String.join ","
                         |> String.length
@@ -1459,7 +1471,7 @@ updateFromFrontend sessionId clientId msg2 model =
                 playlistToStore =
                     case ( oopsie, oldCompetitorSet ) of
                         ( True, Just oldCompetitorSet_ ) ->
-                            { playlist | competitorHandles = oldCompetitorSet_ }
+                            { playlist | competitorIds = oldCompetitorSet_ }
 
                         _ ->
                             playlist
@@ -1484,7 +1496,9 @@ updateFromFrontend sessionId clientId msg2 model =
 
                 videos =
                     model.videos
-                        |> Dict.filter (\_ v -> v.playlistId == playlistId || (playlistId == "*" && Dict.member v.playlistId playlists))
+                        |> Dict.filter (\_ v -> v.playlistId == playlistId 
+                            || (playlistId == "*" && Dict.member v.playlistId playlists
+                            || (playlistId == "**" && v.playlistId == "")))
                         |> Dict.filter (\_ v -> video_isNew v)
                         |> Dict.map (\_ v -> { v | description = "" })
 
@@ -1509,9 +1523,11 @@ updateFromFrontend sessionId clientId msg2 model =
                     model.videos
                         |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
 
+                -- this value should be "our video id" -> "competitor video id" -> video
                 competitorVideos =
                     videos
                         |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
+                        |> Dict.filter (\_ v -> (Dict.size v) > 0)
             in
             ( model
             , sendToPage clientId <|
@@ -1838,6 +1854,16 @@ video_lookupCompetingVideo model video =
                 |> Set.toList
                 |> Debug.log "competingChannelIds"
 
+        altCompetitorChannelIds : List String
+        altCompetitorChannelIds =
+            model.playlists
+                |> Dict.filter (\_ p -> p.id == video.playlistId)
+                |> Dict.values
+                |> List.map (.competitorIds >> Set.toList)
+                |> List.concat
+                |> List.Extra.unique
+                |> Debug.log "altCompetitorChannelIds"
+
         vLiveVideoDetails =
             model.liveVideoDetails
                 |> Dict.get video.id
@@ -1845,7 +1871,7 @@ video_lookupCompetingVideo model video =
         competitorVideos : Dict.Dict String Api.YoutubeModel.Video
         competitorVideos =
             model.videos
-                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelId competingChannelIds)
+                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelId altCompetitorChannelIds)
 
         competingLiveVideoDetails : Dict.Dict String Api.YoutubeModel.LiveVideoDetails
         competingLiveVideoDetails =
@@ -1915,3 +1941,10 @@ groupByComparable toComparable list =
             )
             Dict.empty
         |> Dict.toList
+
+accessToken_getFirst model = 
+    model.clientCredentials
+        |> Dict.values
+        |> List.head
+        |> Maybe.map .accessToken
+        |> Maybe.withDefault ""
