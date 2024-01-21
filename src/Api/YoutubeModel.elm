@@ -211,3 +211,29 @@ video_viewersAtXminuteMark liveStreamingDetails listViewers minuteMark =
                 |> Maybe.map .value
     in
     viewersAtMinuteOffset
+
+liveStatusToString liveStatus =
+    case liveStatus of
+        Unknown ->
+            "Unknown"
+
+        Uploaded ->
+            "Uploaded"
+
+        Scheduled time ->
+            "Scheduled for " ++ time
+
+        Expired ->
+            "Expired"
+
+        Old ->
+            "Old"
+
+        Live ->
+            "Live"
+
+        Ended time ->
+            "Ended " ++ time
+
+        Impossibru ->
+            "Impossibru"

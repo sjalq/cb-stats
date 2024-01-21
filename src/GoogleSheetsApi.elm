@@ -29,41 +29,42 @@ import Utils.Time exposing (..)
 -- This file translates the Elm types into the comma delimited strings that are required by the Google Sheets API
 
 
-exportVideoResults : Api.YoutubeModel.VideoResults -> String -> NextAction -> String -> Cmd BackendMsg
-exportVideoResults results spreadsheetId nextAction accessToken =
-    let
-        commaStringListsPerTab : Dict String (List String)
-        commaStringListsPerTab =
-            Dict.empty
+-- exportVideoResults : Api.YoutubeModel.VideoResults -> String -> NextAction -> String -> Cmd BackendMsg
+-- exportVideoResults results spreadsheetId nextAction accessToken =
+--     let
+--         commaStringListsPerTab : Dict String (List String)
+--         commaStringListsPerTab =
+--             Dict.empty
 
-        updateCommands : Cmd BackendMsg
-        updateCommands =
-            commaStringListsPerTab
-                |> Dict.map (\v l -> updateSheet spreadsheetId v l nextAction accessToken)
-                |> Dict.values
-                |> Cmd.batch
-    in
-    updateCommands
+--         updateCommands : Cmd BackendMsg
+--         updateCommands =
+--             commaStringListsPerTab
+--                 |> Dict.map (\v l -> updateSheet spreadsheetId v l nextAction accessToken)
+--                 |> Dict.values
+--                 |> Cmd.batch
+--     in
+--     updateCommands
 
 
-updateSheet : String -> String -> List String -> NextAction -> String -> Cmd BackendMsg
+updateSheet : String -> String -> List (List String) -> NextAction -> String -> Cmd BackendMsg
 updateSheet spreadsheetId range listOfValues nextAction accessToken =
     let
-        commaDelimitedString : String
-        commaDelimitedString =
-            String.join "," listOfValues
+        arrayList = 
+            "[" ++ (listOfValues
+                |> List.map (\l -> "[" ++ (l |> String.join ",") ++ "]")
+                |> String.join ",") ++ "]"
 
         encodedRange =
             Url.percentEncode range
 
         url : String
         url =
-            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ "/values/" ++ encodedRange ++ "!A1?valueInputOption=USER_ENTERED"
+            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ "/values/'" ++ range ++ "'!A1?valueInputOption=USER_ENTERED"
             |> Debug.log "url"
 
         body : String
         body =
-            "{\"values\":[[\"blah\"]]}"
+            "{\"values\":" ++ arrayList ++ "}"
             |> Debug.log "body"
     in
     Http.request

@@ -4,7 +4,7 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
-import Api.YoutubeModel
+import Api.YoutubeModel exposing (video_peakViewers, video_viewersAtXminuteMarkFromDicts)
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
@@ -16,6 +16,7 @@ import GoogleSheetsApi
 import Html.Attributes exposing (property)
 import Http exposing (Error(..))
 import Iso8601
+import Json.Encode as Encode
 import Lamdera exposing (..)
 import List.Extra
 import MoreDict
@@ -1295,10 +1296,11 @@ update msg model =
                                 updates =
                                     ((model.playlists
                                         |> Dict.values
+                                        |> List.filter .monitor
                                         |> List.map (\p -> ( p.id, p.title ))
                                      )
                                         ++ [ ( "*", "All" ), ( "**", "Competitors" ) ]
-                                        |> List.map (\( id, title ) -> ( id, title, getVideos model id |> tabulateVideoData ))
+                                        |> List.map (\( id, title ) -> ( id, title |> String.replace " " "_", getVideos model id |> tabulateVideoData ))
                                         |> List.map
                                             (\( id, title, data ) ->
                                                 GoogleSheetsApi.updateSheet spreadsheetId title data (UpdateSheets []) (sheetAccessToken model)
@@ -1313,7 +1315,15 @@ update msg model =
 
                 Err error ->
                     ( model, Cmd.none )
-                        |> log ("Failed to add sheets to spreadsheet : " ++ spreadsheetId ++ "\n" ++ httpErrToString error) Error
+                        |> log
+                            ("Failed to add sheets to spreadsheet : "
+                                ++ spreadsheetId
+                                ++ "\n"
+                                ++ httpErrToString error
+                                ++ "\n"
+                                ++ (sheetNames |> String.join ",")
+                            )
+                            Error
 
         DeletedSheets spreadsheetId sheetIds nextAction response ->
             case response of
@@ -1334,8 +1344,11 @@ update msg model =
                                         |> Dict.filter (\_ p -> p.monitor)
                                         |> Dict.values
                                         |> List.map .title
+                                        |> List.sort
                                     )
                                         ++ [ "All", "Competitors" ]
+                                        |> List.map (String.replace " " "_")
+                                        |> List.Extra.uniqueBy String.toLower
 
                                 _ =
                                     Debug.log "tempIds" tempIds
@@ -2087,18 +2100,143 @@ sheetAccessToken model =
         accessToken =
             model.clientCredentials |> Dict.get "schalk.dormehl@gmail.com" |> Maybe.map .accessToken |> Maybe.withDefault ""
     in
-    --accessToken
-    "ya29.a0AfB_byCVYVUfi0s_jCnOhdi4oTL8Isi6kXPl7ikeTxqHnTIAOhuT8PJeFMjRUvnL6xKaDss6_GbirIJ8XqQwuNxV4F8sAbuTJYAD6Na0_VEgwD-JHzSveyikVT88JgOh5IJvwmCm5FyMVklOZQuQcI6c0wtP8IXhdvYMaCgYKAZwSARASFQHGX2MiXz8DmDOz815RTsedn32vjw0171"
+    accessToken
+    --"ya29.a0AfB_byCuEoi-zZzf7-S5aoVqtOdP-528H1I1-Yf-A3VWov4gMSOQIELUOHLf6hdIzjHxb7BBpq_-HlGfWRKaDj784AMtjQBDoUnadPCMYqIs3OlT5jBVki6psWxP0pvYBFmQtwsiWwPVOiVVZRnqbJffvqJUuBJa4NRsLwaCgYKAagSARASFQHGX2MiKgviNnRLFXdgqe06o_0FPQ0173"
 
 
-tabulateVideoData : Api.YoutubeModel.VideoResults -> List String
+tabulateVideoData : Api.YoutubeModel.VideoResults -> List (List String)
 tabulateVideoData videoResults =
     -- goal:
     -- * return the same data that Pages.Playlist.Id_ displays
     -- * make sure the headers are the same
     -- * make sure the data is the same
     let
+        uniqueCompetitors =
+            videoResults.competitorVideos
+                |> Dict.values
+                |> List.map Dict.values
+                |> List.concat
+                |> List.map .videoOwnerChannelTitle
+                |> List.Extra.unique
+
+        sheetString str =
+            "\"" ++ str ++ "\""
+
         headers =
-            [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" ]
+            [ "Published at"
+            , "Link"
+            , "Channel"
+            , "Title"
+            , "Status"
+            , "Lobby"
+            , "Peak"
+            , "Live views"
+            , "Live Likes"
+            , "24hr views"
+            , "Subs gained"
+            , "Watch %"
+            , "Details"
+            ]
+                ++ uniqueCompetitors
+                |> List.map sheetString
+
+        data =
+            videoResults.videos
+                |> Dict.values
+                |> List.sortBy .publishedAt
+                |> List.map
+                    (\video ->
+                        let
+                            a =
+                                0
+                        in
+                        [ video.publishedAt |> sheetString
+                        , "https://www.youtube.com/watch?v=" ++ video.id |> sheetString
+                        , video.videoOwnerChannelTitle |> sheetString
+                        , video.title |> escapeStringForJson |> sheetString
+                        , video.liveStatus
+                            |> Api.YoutubeModel.liveStatusToString
+                            |> sheetString
+                        , video_viewersAtXminuteMarkFromDicts videoResults.liveVideoDetails videoResults.currentViewers 1 video.id
+                            |> Maybe.map String.fromInt
+                            |> Maybe.withDefault ""
+                            |> sheetString
+                        , video_peakViewers videoResults.currentViewers video.id
+                            |> Maybe.map String.fromInt
+                            |> Maybe.withDefault ""
+                            |> sheetString
+                        , (case video.statsOnConclusion of
+                            Just statsOnConclusion_ ->
+                                statsOnConclusion_.viewCount
+                                    |> String.fromInt
+
+                            _ ->
+                                ""
+                          )
+                            |> sheetString
+                        , (case video.statsOnConclusion of
+                            Just statsOnConclusion_ ->
+                                statsOnConclusion_.likeCount
+                                    |> String.fromInt
+
+                            _ ->
+                                ""
+                          )
+                            |> sheetString
+                        , (case video.statsAfter24Hours of
+                            Just statsAfter24Hours_ ->
+                                statsAfter24Hours_.viewCount
+                                    |> String.fromInt
+
+                            _ ->
+                                ""
+                          )
+                            |> sheetString
+                        , -- "Subs Gained"
+                          (case video.reportAfter24Hours of
+                            Just reportAfter24Hours_ ->
+                                reportAfter24Hours_.subscribersGained
+                                    + reportAfter24Hours_.subscribersLost
+                                    |> String.fromInt
+
+                            _ ->
+                                ""
+                          )
+                            |> sheetString
+                        , -- "Watch %"
+                          (case video.reportAfter24Hours of
+                            Just reportAfter24Hours_ ->
+                                reportAfter24Hours_.averageViewPercentage
+                                    |> String.fromFloat
+
+                            _ ->
+                                ""
+                          )
+                            |> sheetString
+                        , "https://cb-stats.lamdera.app/video/" ++ video.id 
+                            |> sheetString
+                        ]
+                    )
     in
-    headers
+    headers :: data
+
+
+escapeStringForJson : String -> String
+escapeStringForJson str =
+    str
+        -- |> String.replace "\\" "\\\\"
+        -- |> String.replace "\"" "\\\""
+        -- |> String.replace "\n" "\\n"
+        -- |> String.replace "\r" "\\r"
+        -- |> String.replace "\t" "\\t"
+        |> String.replace "\"" "'"
+        |> String.replace "\n" " "
+        |> String.replace "\u{000D}" " "
+        |> String.replace "\t" " "
+        |> String.replace "[" "("
+        |> String.replace "]" ")"
+
+
+
+-- |> Encode.string
+-- |> Encode.encode 0
