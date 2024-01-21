@@ -21,15 +21,6 @@ import Utils.Time exposing (..)
 
 
 
--- Type alias for token management
-
-
-type alias Token_ =
-    { refreshToken : String
-    , accessToken : String
-    , timeout : Time.Posix
-    }
-
 
 handleJsonResponse : Decode.Decoder a -> Http.Response String -> Result Http.Error a
 handleJsonResponse decoder response =

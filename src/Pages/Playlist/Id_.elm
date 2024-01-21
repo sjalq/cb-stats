@@ -1,14 +1,17 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
+import Api.PerformNow exposing (performNowWithTime)
 import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
 import Element exposing (..)
+import Element.Background
 import Element.Border
 import Element.Font
 import Gen.Params.Playlist.Id_ exposing (Params)
 import Gen.Route as Route
+import Maybe exposing (withDefault)
 import MoreDict
 import Page
 import Request
@@ -72,7 +75,7 @@ init { params } =
 
 
 type Msg
-    = GotVideos (Dict String Playlist) (Dict String Video) (Dict String LiveVideoDetails) (Dict ( String, Int ) CurrentViewers) (Dict String String) (Dict ( String, Int ) VideoStatisticsAtTime) (Dict String (Dict String Video))
+    = GotVideos Api.YoutubeModel.VideoResults
     | GetVideos
     | Tick Time.Posix
 
@@ -80,21 +83,21 @@ type Msg
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotVideos playlists videos liveVideoDetails currentViewers videoChannels videoStats competitorVideos ->
+        GotVideos results ->
             ( { model
-                | videos = videos
+                | videos = results.videos
                 , playlistTitle =
-                    if Dict.size playlists == 1 then
-                        playlists |> Dict.values |> List.head |> Maybe.map .title |> Maybe.withDefault "Unknown"
+                    if Dict.size results.playlists == 1 then
+                        results.playlists |> Dict.values |> List.head |> Maybe.map .title |> Maybe.withDefault "Unknown"
 
                     else
                         "All monitored playlists"
-                , liveVideoDetails = liveVideoDetails
-                , currentViewers = currentViewers
-                , videoChannels = videoChannels
-                , playlists = playlists
-                , videoStats = videoStats
-                , competitorVideos = competitorVideos |> Debug.log "competitorVideos"
+                , liveVideoDetails = results.liveVideoDetails
+                , currentViewers = results.currentViewers
+                , videoChannels = results.videoChannels
+                , playlists = results.playlists
+                , videoStats = results.videoStats
+                , competitorVideos = results.competitorVideos |> Debug.log "competitorVideos"
               }
             , Effect.none
             )
@@ -349,35 +352,73 @@ view model =
 
 
 get24HrCompetitorStats : Dict String (Dict String Video) -> String -> Video -> Element Msg
-get24HrCompetitorStats competitorVideos competitorChannelTitle v =
-    let
-        lookupStats =
-            competitorVideos
-                |> Dict.map (\k s -> ( k, s |> Dict.keys ))
-
-        _ =
-            Debug.log ("lookup cid " ++ competitorChannelTitle ++ " v.id " ++ v.id) lookupStats
-    in
+get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
     competitorVideos
-        |> Dict.get v.id
+        |> Dict.get ourVideo.id
         |> Debug.log "finding v.id"
-        |> Maybe.andThen
+        |> Maybe.map
             (\stats ->
                 let
-                    _ =
-                        stats |> Dict.keys |> Debug.log "stats"
+                    our24HrViews =
+                        ourVideo.statsAfter24Hours
+                            |> Maybe.map .viewCount
+
+                    competitor24HrViews =
+                        stats
+                            |> Dict.filter (\k v_ -> v_.videoOwnerChannelTitle == competitorChannelTitle)
+                            |> Dict.values
+                            |> List.head
+                            |> Maybe.andThen .statsAfter24Hours
+                            |> Maybe.map .viewCount
+
+                    percentageBetterThanThem =
+                        Maybe.map2
+                            (\ourViews theirViews ->
+                                case ( ourViews, theirViews ) of
+                                    ( _, 0 ) ->
+                                        10000
+
+                                    _ ->
+                                        (toFloat ourViews / toFloat theirViews - 1) * 100
+                            )
+                            our24HrViews
+                            competitor24HrViews
+
+                    betterThanThemColor =
+                        percentageBetterThanThem
+                            |> Maybe.map
+                                (\percentageBetterThanThem_ ->
+                                    let
+                                        positiveOffset =
+                                            -(percentageBetterThanThem_ / 300 * 255) |> max 255 |> min 0
+
+                                        negativeOffset =
+                                            -(1 - percentageBetterThanThem_ / 100 * 255) |> max 255 |> min 0
+                                    in
+                                    if percentageBetterThanThem_ >= 0 then
+                                        rgb positiveOffset 255 positiveOffset
+
+                                    else
+                                        rgb 255 negativeOffset negativeOffset
+                                )
+
+                    percentageBetterThanThemStr =
+                        percentageBetterThanThem
+                            |> Maybe.map
+                                (\percentageBetterThanThem_ ->
+                                    if percentageBetterThanThem_ >= 10000 then
+                                        "∞%"
+
+                                    else
+                                        (String.fromFloat percentageBetterThanThem_ |> String.left 5) ++ "%"
+                                )
                 in
-                stats
-                    |> Dict.filter (\k v_ -> v_.videoOwnerChannelTitle == competitorChannelTitle)
-                    |> Dict.values
-                    |> List.head
-                    -- |> Maybe.map .title
-                    |> Maybe.andThen .statsAfter24Hours
-                    |> Maybe.map .viewCount
-                    |> Maybe.map String.fromInt
+                percentageBetterThanThemStr
+                    |> Maybe.withDefault "..."
+                    |> wrappedText
+             --|> el [ Element.Background.color betterThanThemColor ]
             )
-        |> Maybe.withDefault "..."
-        |> wrappedText
+        |> Maybe.withDefault (wrappedText "...")
 
 
 competitorVideoColums : Dict String (Dict String Video) -> (Dict String (Dict String Video) -> String -> Video -> Element Msg) -> List (Column Video Msg)

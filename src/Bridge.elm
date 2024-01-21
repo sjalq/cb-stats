@@ -39,6 +39,7 @@ type ToBackend
     | AttemptBatch_GetChatMessages
     | AttemptBatch_GetVideoStatisticsAtTime
     | AttemptBatch_GetCompetitorVideos
+    | AttemptBatch_ExportToSheet
     --| AttemptYeetAll
     -- update from frontend
     | UpdateSchedule Schedule

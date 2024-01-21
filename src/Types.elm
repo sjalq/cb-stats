@@ -24,7 +24,7 @@ import Set exposing (..)
 import Shared
 import Time exposing (Posix)
 import Url exposing (Url)
-
+import Api.SheetModel 
 
 type alias FrontendModel =
     { url : Url
@@ -85,6 +85,7 @@ type BackendMsg
     | Batch_GetVideoStatisticsAtTime Time.Posix
     | Batch_GetCompetitorChannelIds Time.Posix
     | Batch_GetCompetitorVideos Time.Posix
+    | Batch_ExportToSheet Time.Posix
       -- api calls
     | GetChannelId String 
       -- youtube calls and responses
@@ -104,6 +105,12 @@ type BackendMsg
     | GotVideoDailyReport String (Result Http.Error Json.Bespoke.ReportDecoder.YouTubeAnalyticsRecord)
     | GotChannelId String (Result Http.Error Json.Auto.ChannelHandle.Root)
     | GotCompetitorVideos String (Result Http.Error Json.Auto.Search.Root)
+    -- google sheet related messages
+    | GotSheets String (Result Http.Error (List Api.SheetModel.Sheet))
+    | SheetUpdated String String (Result Http.Error ())
+    | DeletedSheets String (List String) (Result Http.Error ())
+    | GotSheetIds String
+    | AddedSheets String (List Api.SheetModel.Sheet) (Result Http.Error ())
       -- other
     | NoOpBackendMsg
 

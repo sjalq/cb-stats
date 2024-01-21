@@ -62,6 +62,7 @@ type Msg
     | Batch_GetChatMessages
     | Batch_GetVideoStatisticsAtTime
     | Batch_GetCompetitorVideos
+    | Batch_ExportToSheet
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -114,6 +115,9 @@ update msg model =
         Batch_GetCompetitorVideos ->
             ( model, Effect.fromCmd <| sendToBackend <| AttemptBatch_GetCompetitorVideos )
 
+        Batch_ExportToSheet ->
+            ( model, Effect.fromCmd <| sendToBackend <| AttemptBatch_ExportToSheet )
+
 
 
 -- SUBSCRIPTIONS
@@ -165,6 +169,7 @@ view model =
                         , msgButton "Get chat messages" (Just Batch_GetChatMessages)
                         , msgButton "Get video statistics at time" (Just Batch_GetVideoStatisticsAtTime)
                         , msgButton "Get competitor videos" (Just Batch_GetCompetitorVideos)
+                        , msgButton "Export to sheet" (Just Batch_ExportToSheet)
                         ]
                             |> List.map (\x -> Element.row [ Element.paddingXY 1 1, width (px 400) ] [ x ])
                        )

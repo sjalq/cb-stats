@@ -7,6 +7,7 @@ import Lamdera.Debug exposing (Posix)
 import Set exposing (Set)
 import Time
 import Utils.Time exposing (..)
+import Dict exposing (Dict)
 
 
 type alias ClientCredentials =
@@ -122,6 +123,16 @@ type alias VideoStatisticsAtTime =
     , dislikeCount : Maybe Int
     , favoriteCount : Maybe Int
     , commentCount : Maybe Int
+    }
+
+type alias VideoResults =
+    { playlists : Dict String Playlist
+    , videos : Dict String Video
+    , liveVideoDetails : Dict String LiveVideoDetails
+    , currentViewers : Dict ( String, Int ) CurrentViewers
+    , videoChannels : Dict String String
+    , videoStats : Dict ( String, Int ) VideoStatisticsAtTime
+    , competitorVideos : Dict String ( Dict String Video )
     }
 
 

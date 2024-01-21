@@ -357,7 +357,7 @@ view model =
                         --             }
                         --     )
                         , Column 
-                            (columnHeader "Ids")
+                            (columnHeader "Competitor Ids")
                             (px 200)
                             (\p ->
                                 Element.Input.multiline

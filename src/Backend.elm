@@ -37,7 +37,7 @@ import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
 import Utils.Time exposing (..)
 import YouTubeApi
-
+import GoogleSheetsApi
 
 
 -- todo:
@@ -1269,6 +1269,10 @@ update msg model =
                     ( model, Cmd.none )
                         |> log ("Failed to fetch competitor videos for channel : " ++ channelId ++ "\n" ++ httpErrToString error) Error
 
+        Batch_ExportToSheet time ->
+            -- the same data that gets sent to "/playlists/*" should be on the sheet
+            ( model, Cmd.none )
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg2 model =
@@ -1460,65 +1464,11 @@ updateFromFrontend sessionId clientId msg2 model =
             )
 
         AttemptGetVideos playlistId ->
-            let
-                playlists =
-                    (case playlistId of
-                        "*" ->
-                            model.playlists
-                                |> Dict.filter (\_ v -> v.monitor)
-
-                        playlistId_ ->
-                            model.playlists
-                                |> Dict.filter (\_ v -> v.id == playlistId_)
-                    )
-                        |> Dict.map (\_ p -> { p | description = "" })
-
-                videos =
-                    model.videos
-                        |> Dict.filter
-                            (\_ v ->
-                                v.playlistId
-                                    == playlistId
-                                    || (playlistId
-                                            == "*"
-                                            && Dict.member v.playlistId playlists
-                                            || (playlistId == "**" && v.playlistId == "")
-                                       )
-                            )
-                        |> Dict.filter (\_ v -> video_isNew v)
-                        |> Dict.map (\_ v -> { v | description = "" })
-
-                liveVideoDetails =
-                    model.liveVideoDetails
-                        |> Dict.filter (\_ v -> Dict.member v.videoId videos)
-
-                currentViewers =
-                    model.currentViewers
-                        |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
-
-                videoStats =
-                    model.videoStatisticsAtTime
-                        |> Dict.filter (\_ s -> Dict.member s.videoId videos)
-                        |> Dict.values
-                        |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
-                        --|> List.take 24
-                        |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
-                        |> Dict.fromList
-
-                videoChannels =
-                    model.videos
-                        |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
-
-                -- this value should be "our video id" -> "competitor video id" -> video
-                competitorVideos =
-                    videos
-                        |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
-                        |> Dict.filter (\_ v -> Dict.size v > 0)
-            in
             ( model
             , sendToPage clientId <|
                 Gen.Msg.Playlist__Id_ <|
-                    Pages.Playlist.Id_.GotVideos playlists videos liveVideoDetails currentViewers videoChannels videoStats competitorVideos
+                    Pages.Playlist.Id_.GotVideos <|
+                        getVideos model playlistId
             )
 
         AttemptYeetLogs ->
@@ -1621,6 +1571,9 @@ updateFromFrontend sessionId clientId msg2 model =
                         , videoStatisticsAtTime = videoStats
                         }
             )
+
+        AttemptBatch_ExportToSheet ->
+            ( model, performNowWithTime Batch_ExportToSheet )
 
 
 randomSalt : Random.Generator String
@@ -1936,3 +1889,77 @@ accessToken_getLatest model =
         |> List.head
         |> Maybe.map .accessToken
         |> Maybe.withDefault ""
+
+
+getVideos : Model -> String -> Api.YoutubeModel.VideoResults
+getVideos model playlistId =
+    let
+        playlists : Dict.Dict String Api.YoutubeModel.Playlist
+        playlists =
+            (case playlistId of
+                "*" ->
+                    model.playlists
+                        |> Dict.filter (\_ v -> v.monitor)
+
+                playlistId_ ->
+                    model.playlists
+                        |> Dict.filter (\_ v -> v.id == playlistId_)
+            )
+                |> Dict.map (\_ p -> { p | description = "" })
+
+        videos : Dict.Dict String Api.YoutubeModel.Video
+        videos =
+            model.videos
+                |> Dict.filter
+                    (\_ v ->
+                        v.playlistId
+                            == playlistId
+                            || (playlistId
+                                    == "*"
+                                    && Dict.member v.playlistId playlists
+                                    || (playlistId == "**" && v.playlistId == "")
+                               )
+                    )
+                |> Dict.filter (\_ v -> video_isNew v)
+                |> Dict.map (\_ v -> { v | description = "" })
+
+        liveVideoDetails : Dict.Dict String Api.YoutubeModel.LiveVideoDetails
+        liveVideoDetails =
+            model.liveVideoDetails
+                |> Dict.filter (\_ v -> Dict.member v.videoId videos)
+
+        currentViewers : Dict.Dict ( String, Int ) Api.YoutubeModel.CurrentViewers
+        currentViewers =
+            model.currentViewers
+                |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId videos)
+
+        videoStats : Dict.Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
+        videoStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> Dict.member s.videoId videos)
+                |> Dict.values
+                |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                --|> List.take 24
+                |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
+                |> Dict.fromList
+
+        videoChannels : Dict.Dict String String
+        videoChannels =
+            model.videos
+                |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
+
+        -- this value should be "our video id" -> "competitor video id" -> video
+        competitorVideos : Dict.Dict String (Dict.Dict String Api.YoutubeModel.Video)
+        competitorVideos =
+            videos
+                |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
+                |> Dict.filter (\_ v -> Dict.size v > 0)
+    in
+    { playlists = playlists
+    , videos = videos
+    , liveVideoDetails = liveVideoDetails
+    , currentViewers = currentViewers
+    , videoChannels = videoChannels
+    , videoStats = videoStats
+    , competitorVideos = competitorVideos
+    }
