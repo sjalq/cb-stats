@@ -258,7 +258,7 @@ getChannelIdCmd channelHandle  =
         }
 
 
-getCompetitorVideosCmd channelId accessToken time =
+getCompetitorLiveVideosCmd channelId accessToken time =
     -- fetch the vidoes that were published 12 hours before or after the current time from the youtube
     -- search api
     let
@@ -269,6 +269,31 @@ getCompetitorVideosCmd channelId accessToken time =
             "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
                 ++ channelId
                 ++ "&type=live&publishedAfter="
+                ++ publishedAfter
+
+                |> Debug.log "search url"
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotCompetitorVideos channelId) Json.Auto.Search.rootDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+getCompetitorOtherVideosCmd channelId accessToken time =
+    -- fetch the vidoes that were published 12 hours before or after the current time from the youtube
+    -- search api
+    let
+        publishedAfter =
+            ((time |> Time.posixToMillis) - (10 * day)) |> intTimeToStr
+
+        url =
+            "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
+                ++ channelId
+                ++ "&type=video&publishedAfter="
                 ++ publishedAfter
 
                 |> Debug.log "search url"

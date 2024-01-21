@@ -348,7 +348,13 @@ update msg model =
                                 |> MoreDict.filterMapJoin
                                     identity
                                     identity
-                                    (\( retrieved, current ) -> { retrieved | monitor = current.monitor })
+                                    (\( retrieved, current ) ->
+                                        { retrieved
+                                            | monitor = current.monitor
+                                            , competitorHandles = current.competitorHandles
+                                            , competitorIds = current.competitorIds
+                                        }
+                                    )
 
                         newModel =
                             { model
@@ -459,8 +465,8 @@ update msg model =
                                         , { id = v.snippet.resourceId.videoId
                                           , title = v.snippet.title
                                           , description = v.snippet.description
-                                          , videoOwnerChannelId = v.snippet.videoOwnerChannelId
-                                          , videoOwnerChannelTitle = v.snippet.videoOwnerChannelTitle
+                                          , videoOwnerChannelId = v.snippet.videoOwnerChannelId |> Maybe.withDefault ""
+                                          , videoOwnerChannelTitle = v.snippet.videoOwnerChannelTitle |> Maybe.withDefault ""
                                           , playlistId = v.snippet.playlistId
                                           , thumbnailUrl = v.snippet.thumbnails |> Maybe.map (.standard >> .url)
                                           , publishedAt = v.snippet.publishedAt
@@ -1197,9 +1203,9 @@ update msg model =
                     model.playlists
                         |> Dict.map
                             (\playlistId v ->
-                                ( v.competitorIds 
-                                    |> Set.toList 
-                                    |> List.map (\id -> ( id, accessToken_getFirst model)))
+                                v.competitorIds
+                                    |> Set.toList
+                                    |> List.map (\id -> ( id, accessToken_getLatest model ))
                             )
                         |> Dict.values
                         |> List.concat
@@ -1214,7 +1220,10 @@ update msg model =
                     channelIdAccessToken
                         |> List.map
                             (\( channelId, accessToken ) ->
-                                YouTubeApi.getCompetitorVideosCmd channelId accessToken time
+                                Cmd.batch
+                                    [ YouTubeApi.getCompetitorLiveVideosCmd channelId accessToken time
+                                    , YouTubeApi.getCompetitorOtherVideosCmd channelId accessToken time
+                                    ]
                             )
                         |> Debug.log "fetches"
             in
@@ -1446,37 +1455,7 @@ updateFromFrontend sessionId clientId msg2 model =
             )
 
         UpdatePlaylist playlist ->
-            let
-                oldCompetitorSet =
-                    model.playlists
-                        |> Dict.get playlist.id
-                        |> Maybe.map .competitorIds
-
-                oldCompetitors =
-                    oldCompetitorSet
-                        |> Maybe.map Set.toList
-                        |> Maybe.withDefault []
-                        |> String.join ","
-                        |> String.length
-
-                newCompetitors =
-                    playlist.competitorIds
-                        |> Set.toList
-                        |> String.join ","
-                        |> String.length
-
-                oopsie =
-                    oldCompetitors > newCompetitors + 2
-
-                playlistToStore =
-                    case ( oopsie, oldCompetitorSet ) of
-                        ( True, Just oldCompetitorSet_ ) ->
-                            { playlist | competitorIds = oldCompetitorSet_ }
-
-                        _ ->
-                            playlist
-            in
-            ( { model | playlists = model.playlists |> Dict.insert playlist.id playlistToStore }
+            ( { model | playlists = model.playlists |> Dict.insert playlist.id playlist }
             , Cmd.none
             )
 
@@ -1496,9 +1475,16 @@ updateFromFrontend sessionId clientId msg2 model =
 
                 videos =
                     model.videos
-                        |> Dict.filter (\_ v -> v.playlistId == playlistId 
-                            || (playlistId == "*" && Dict.member v.playlistId playlists
-                            || (playlistId == "**" && v.playlistId == "")))
+                        |> Dict.filter
+                            (\_ v ->
+                                v.playlistId
+                                    == playlistId
+                                    || (playlistId
+                                            == "*"
+                                            && Dict.member v.playlistId playlists
+                                            || (playlistId == "**" && v.playlistId == "")
+                                       )
+                            )
                         |> Dict.filter (\_ v -> video_isNew v)
                         |> Dict.map (\_ v -> { v | description = "" })
 
@@ -1527,7 +1513,7 @@ updateFromFrontend sessionId clientId msg2 model =
                 competitorVideos =
                     videos
                         |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
-                        |> Dict.filter (\_ v -> (Dict.size v) > 0)
+                        |> Dict.filter (\_ v -> Dict.size v > 0)
             in
             ( model
             , sendToPage clientId <|
@@ -1942,9 +1928,11 @@ groupByComparable toComparable list =
             Dict.empty
         |> Dict.toList
 
-accessToken_getFirst model = 
+
+accessToken_getLatest model =
     model.clientCredentials
         |> Dict.values
+        |> List.sortBy (\cc -> -cc.timestamp)
         |> List.head
         |> Maybe.map .accessToken
         |> Maybe.withDefault ""
