@@ -1273,6 +1273,23 @@ update msg model =
             -- the same data that gets sent to "/playlists/*" should be on the sheet
             ( model, Cmd.none )
 
+        GotSheets spreadsheetId reponser ->
+            (model, Cmd.none)
+
+        SheetUpdated spreadsheetId sheetName response ->
+            (model, Cmd.none)
+
+        DeletedSheets spreadsheetId sheetIds response ->
+            (model, Cmd.none)
+
+        GotSheetIds spreadsheetId response ->
+            (model, Cmd.none)
+
+        AddedSheets spreadsheetId sheetNames response ->
+            (model, Cmd.none)
+
+
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg2 model =
