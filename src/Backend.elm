@@ -1308,7 +1308,6 @@ update msg model =
                             in
                             ( model, Cmd.batch updates )
 
-                        --GoogleSheetsApi.getSheetIds spreadsheetId UpdateSheets (sheetAccessToken model) )
                         _ ->
                             ( model, Cmd.none )
 

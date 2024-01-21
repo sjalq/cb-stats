@@ -47,26 +47,31 @@ exportVideoResults results spreadsheetId nextAction accessToken =
 
 
 updateSheet : String -> String -> List String -> NextAction -> String -> Cmd BackendMsg
-updateSheet spreadsheetId sheetId listOfValues nextAction accessToken =
+updateSheet spreadsheetId range listOfValues nextAction accessToken =
     let
         commaDelimitedString : String
         commaDelimitedString =
             String.join "," listOfValues
 
+        encodedRange =
+            Url.percentEncode range
+
         url : String
         url =
-            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ "/values/" ++ sheetId ++ "?valueInputOption=USER_ENTERED"
+            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ "/values/" ++ encodedRange ++ "!A1?valueInputOption=USER_ENTERED"
+            |> Debug.log "url"
 
         body : String
         body =
-            "{\"values\":[[" ++ commaDelimitedString ++ "]]}"
+            "{\"values\":[[\"blah\"]]}"
+            |> Debug.log "body"
     in
     Http.request
         { method = "PUT"
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.stringBody "application/json" body
-        , expect = Http.expectWhatever (SheetUpdated spreadsheetId sheetId nextAction)
+        , expect = Http.expectWhatever (SheetUpdated spreadsheetId range nextAction)
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -129,7 +134,6 @@ addSheets spreadsheetId newSheetNames nextAction accessToken =
             "https://sheets.googleapis.com/v4/spreadsheets/"
                 ++ spreadsheetId
                 ++ ":batchUpdate"
-                |> Debug.log "url"
 
         requestBody =
             { requests =
@@ -142,7 +146,7 @@ addSheets spreadsheetId newSheetNames nextAction accessToken =
                         )
             }
                 |> Json.Auto.GoogleSheetsAddSheets.encodedRoot
-                |> Debug.log "requestBody as String" 
+                |> Debug.log "requestBody as String"
     in
     Http.request
         { method = "POST"
