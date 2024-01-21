@@ -2100,8 +2100,8 @@ sheetAccessToken model =
         accessToken =
             model.clientCredentials |> Dict.get "schalk.dormehl@gmail.com" |> Maybe.map .accessToken |> Maybe.withDefault ""
     in
-    accessToken
-    --"ya29.a0AfB_byCuEoi-zZzf7-S5aoVqtOdP-528H1I1-Yf-A3VWov4gMSOQIELUOHLf6hdIzjHxb7BBpq_-HlGfWRKaDj784AMtjQBDoUnadPCMYqIs3OlT5jBVki6psWxP0pvYBFmQtwsiWwPVOiVVZRnqbJffvqJUuBJa4NRsLwaCgYKAagSARASFQHGX2MiKgviNnRLFXdgqe06o_0FPQ0173"
+    --accessToken
+    "ya29.a0AfB_byBj-AEs-2bu_uNdb3EZOzHiYw5yYeRFHbaq7zfmrZv9aIWCMeFmCusTAPFJIuJzB0O-sI0dOVnedZskD2_3h9fNURq4gsAMC3uhs22F6D-xr1a1BwH76nXATk_mKIFxH01BtuJCyAbdrnvBNS6S9zMu1aBuMdJ3kAaCgYKAVISARASFQHGX2MiyEMhlFa8NvoR0A0-DKN2pw0173"
 
 
 tabulateVideoData : Api.YoutubeModel.VideoResults -> List (List String)
@@ -2147,8 +2147,12 @@ tabulateVideoData videoResults =
                 |> List.map
                     (\video ->
                         let
-                            a =
-                                0
+                            lastStats =
+                                videoResults.videoStats
+                                    |> Dict.filter (\( videoId, _ ) _ -> videoId == video.id)
+                                    |> Dict.values
+                                    |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                                    |> List.head
                         in
                         [ video.publishedAt |> sheetString
                         , "https://www.youtube.com/watch?v=" ++ video.id |> sheetString
@@ -2183,15 +2187,18 @@ tabulateVideoData videoResults =
                                 ""
                           )
                             |> sheetString
-                        , (case video.statsAfter24Hours of
-                            Just statsAfter24Hours_ ->
-                                statsAfter24Hours_.viewCount
-                                    |> String.fromInt
-
-                            _ ->
-                                ""
-                          )
+                        , lastStats
+                            |> Maybe.map .viewCount
+                            |> Maybe.map String.fromInt
+                            |> Maybe.withDefault ""
                             |> sheetString
+                            -- , (case video.statsAfter24Hours of
+                            --     Just statsAfter24Hours_ ->
+                            --         statsAfter24Hours_.viewCount
+                            --             |> String.fromInt
+                            --     _ ->
+                            --         ""
+                            --   )
                         , -- "Subs Gained"
                           (case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
@@ -2213,7 +2220,8 @@ tabulateVideoData videoResults =
                                 ""
                           )
                             |> sheetString
-                        , "https://cb-stats.lamdera.app/video/" ++ video.id 
+                        , "https://cb-stats.lamdera.app/video/"
+                            ++ video.id
                             |> sheetString
                         ]
                     )
