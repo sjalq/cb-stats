@@ -153,7 +153,7 @@ update msg model =
                 , playlists = playlists
                 , latestVideos = latestVideos
                 , schedules = schedules
-                , tmpCompetitors = playlists |> Dict.map (\_ p -> p.competitorHandles |> Set.toList |> String.join ",")
+                , tmpCompetitors = playlists |> Dict.map (\_ p -> p.competitorIds |> Set.toList |> String.join ",")
               }
             , Effect.none
             )
