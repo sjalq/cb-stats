@@ -24,7 +24,8 @@ import Set exposing (..)
 import Shared
 import Time exposing (Posix)
 import Url exposing (Url)
-import Api.SheetModel 
+import Json.Auto.GoogleSheetsUpdate
+import Json.Auto.GoogleSheetsDetails
 
 type alias FrontendModel =
     { url : Url
@@ -106,11 +107,11 @@ type BackendMsg
     | GotChannelId String (Result Http.Error Json.Auto.ChannelHandle.Root)
     | GotCompetitorVideos String (Result Http.Error Json.Auto.Search.Root)
     -- google sheet related messages
-    | GotSheets String (Result Http.Error (List Api.SheetModel.Sheet))
+    | GotSheets String (Result Http.Error (List Json.Auto.GoogleSheetsDetails.Root))
     | SheetUpdated String String (Result Http.Error ())
     | DeletedSheets String (List String) (Result Http.Error ())
-    | GotSheetIds String
-    | AddedSheets String (List Api.SheetModel.Sheet) (Result Http.Error ())
+    | GotSheetIds String (Result Http.Error Json.Auto.GoogleSheetsDetails.Root)
+    | AddedSheets String (List String) (Result Http.Error ())
       -- other
     | NoOpBackendMsg
 

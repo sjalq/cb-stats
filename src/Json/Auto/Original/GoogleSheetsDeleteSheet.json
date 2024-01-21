@@ -1,0 +1,14 @@
+{
+    "requests": [
+        {
+            "deleteSheet": {
+                "sheetId": 1234567
+            }
+        },
+        {
+            "deleteSheet": {
+                "sheetId": 2345678
+            }
+        }
+    ]
+}

@@ -6,6 +6,9 @@ import Http
 import Json.Auto.AccessToken
 import Json.Auto.ChannelHandle
 import Json.Auto.Channels
+import Json.Auto.GoogleSheetsAddSheets
+import Json.Auto.GoogleSheetsDeleteSheets
+import Json.Auto.GoogleSheetsDetails
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
 import Json.Auto.Search
@@ -20,7 +23,6 @@ import Time exposing (..)
 import Types exposing (BackendMsg(..))
 import Url
 import Utils.Time exposing (..)
-import Api.SheetModel exposing (..)
 
 
 
@@ -75,22 +77,16 @@ getSheetIds spreadsheetId accessToken =
     let
         url =
             "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId
-
-        sheetsDecoder =
-            Decode.field "sheets" (Decode.list sheetDecoder)
     in
     Http.request
         { method = "GET"
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotSheetIds spreadsheetId) sheetsDecoder
+        , expect = Http.expectJson (GotSheetIds spreadsheetId) Json.Auto.GoogleSheetsDetails.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
-
-
-
 
 
 deleteSheet : String -> List String -> String -> Cmd BackendMsg
@@ -100,7 +96,17 @@ deleteSheet spreadsheetId sheetIds accessToken =
             "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ ":batchUpdate"
 
         requestBody =
-            Encode.list deleteSheetReqBody sheetIds |> Encode.encode 0
+            { requests =
+                sheetIds
+                    |> List.map
+                        (\id ->
+                            { deleteSheet =
+                                { sheetId = id |> String.toInt |> Maybe.withDefault 0
+                                }
+                            }
+                        )
+            }
+                |> Json.Auto.GoogleSheetsDeleteSheets.encodedRoot
     in
     Http.request
         { method = "POST"
@@ -109,26 +115,30 @@ deleteSheet spreadsheetId sheetIds accessToken =
             , Http.header "Content-Type" "application/json"
             ]
         , url = url
-        , body = Http.stringBody "application/json" requestBody
+        , body = Http.jsonBody requestBody
         , expect = Http.expectWhatever (DeletedSheets spreadsheetId sheetIds)
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
-
-
-addSheets : String -> List Sheet -> String -> Cmd BackendMsg
-addSheets spreadsheetId newSheets accessToken =
+addSheets : String -> List String -> String -> Cmd BackendMsg
+addSheets spreadsheetId newSheetNames accessToken =
     let
         url =
             "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ ":batchUpdate"
 
         requestBody =
-            Encode.object
-                [ ( "requests", Encode.list newSheetRequestBody newSheets )
-                ]
-                |> Encode.encode 0
+            { requests =
+                newSheetNames
+                    |> List.map
+                        (\name ->
+                            { addSheet =
+                                { properties = { title = name } }
+                            }
+                        )
+            }
+                |> Json.Auto.GoogleSheetsAddSheets.encodedRoot
     in
     Http.request
         { method = "POST"
@@ -137,8 +147,8 @@ addSheets spreadsheetId newSheets accessToken =
             , Http.header "Content-Type" "application/json"
             ]
         , url = url
-        , body = Http.stringBody "application/json" requestBody
-        , expect = Http.expectWhatever (AddedSheets spreadsheetId newSheets)
+        , body = Http.jsonBody requestBody
+        , expect = Http.expectWhatever (AddedSheets spreadsheetId newSheetNames)
         , timeout = Nothing
         , tracker = Nothing
-        } 
+        }

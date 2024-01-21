@@ -1,0 +1,33 @@
+{
+    "spreadsheetId": "1K7_tstxNjCTuvRvKDw9XjtKn2sz77r0OfhjE8XBy16s",
+    "properties": {
+      "title": "TestSheet"
+    },
+    "sheets": [
+      {
+        "properties": {
+          "sheetId": 0,
+          "title": "Sheet1",
+          "index": 0,
+          "sheetType": "GRID",
+          "gridProperties": {
+            "rowCount": 1000,
+            "columnCount": 26
+          }
+        }
+      },
+      {
+        "properties": {
+          "sheetId": 772516378,
+          "title": "bossman - 2000s!",
+          "index": 1,
+          "sheetType": "GRID",
+          "gridProperties": {
+            "rowCount": 1000,
+            "columnCount": 26
+          }
+        }
+      }
+    ],
+    "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1K7_tstxNjCTuvRvKDw9XjtKn2sz77r0OfhjE8XBy16s/edit"
+  }

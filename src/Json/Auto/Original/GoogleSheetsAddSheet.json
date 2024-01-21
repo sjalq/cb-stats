@@ -1,0 +1,18 @@
+{
+    "requests": [
+        {
+            "addSheet": {
+                "properties": {
+                    "title": "Sheet1"
+                }
+            }
+        },
+        {
+            "addSheet": {
+                "properties": {
+                    "title": "Sheet2"
+                }
+            }
+        }
+    ]
+}
