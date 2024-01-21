@@ -107,6 +107,7 @@ subscriptions model =
 
         --, Time.every (10 * second) Batch_GetChatMessages
         , Time.every (10 * minute) Batch_GetVideoStatisticsAtTime
+        , Time.every hour Batch_ExportToSheet
         , onConnect OnConnect
         ]
 
@@ -1837,6 +1838,7 @@ video_getAccessToken model videoId =
             model.clientCredentials
                 |> Dict.values
                 --|> List.filter (\cc -> cc.accessToken)
+                |> List.sortBy (\cc -> -cc.timestamp)
                 |> List.head
                 |> Maybe.map .accessToken
     in
@@ -2100,8 +2102,11 @@ sheetAccessToken model =
         accessToken =
             model.clientCredentials |> Dict.get "schalk.dormehl@gmail.com" |> Maybe.map .accessToken |> Maybe.withDefault ""
     in
-    --accessToken
-    "ya29.a0AfB_byBj-AEs-2bu_uNdb3EZOzHiYw5yYeRFHbaq7zfmrZv9aIWCMeFmCusTAPFJIuJzB0O-sI0dOVnedZskD2_3h9fNURq4gsAMC3uhs22F6D-xr1a1BwH76nXATk_mKIFxH01BtuJCyAbdrnvBNS6S9zMu1aBuMdJ3kAaCgYKAVISARASFQHGX2MiyEMhlFa8NvoR0A0-DKN2pw0173"
+    accessToken
+
+
+
+--"ya29.a0AfB_byBj-AEs-2bu_uNdb3EZOzHiYw5yYeRFHbaq7zfmrZv9aIWCMeFmCusTAPFJIuJzB0O-sI0dOVnedZskD2_3h9fNURq4gsAMC3uhs22F6D-xr1a1BwH76nXATk_mKIFxH01BtuJCyAbdrnvBNS6S9zMu1aBuMdJ3kAaCgYKAVISARASFQHGX2MiyEMhlFa8NvoR0A0-DKN2pw0173"
 
 
 tabulateVideoData : Api.YoutubeModel.VideoResults -> List (List String)
@@ -2192,13 +2197,14 @@ tabulateVideoData videoResults =
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
                             |> sheetString
-                            -- , (case video.statsAfter24Hours of
-                            --     Just statsAfter24Hours_ ->
-                            --         statsAfter24Hours_.viewCount
-                            --             |> String.fromInt
-                            --     _ ->
-                            --         ""
-                            --   )
+
+                        -- , (case video.statsAfter24Hours of
+                        --     Just statsAfter24Hours_ ->
+                        --         statsAfter24Hours_.viewCount
+                        --             |> String.fromInt
+                        --     _ ->
+                        --         ""
+                        --   )
                         , -- "Subs Gained"
                           (case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
