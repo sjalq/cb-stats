@@ -12,10 +12,12 @@ import Http
 import Json.Auto.AccessToken
 import Json.Auto.ChannelHandle
 import Json.Auto.Channels
+import Json.Auto.GoogleSheetsDetails
+import Json.Auto.GoogleSheetsUpdate
 import Json.Auto.PlaylistItems
 import Json.Auto.Playlists
-import Json.Auto.VideoStats
 import Json.Auto.Search
+import Json.Auto.VideoStats
 import Json.Bespoke.LiveBroadcastDecoder
 import Json.Bespoke.ReportDecoder
 import Json.Bespoke.VideoDecoder
@@ -24,8 +26,7 @@ import Set exposing (..)
 import Shared
 import Time exposing (Posix)
 import Url exposing (Url)
-import Json.Auto.GoogleSheetsUpdate
-import Json.Auto.GoogleSheetsDetails
+
 
 type alias FrontendModel =
     { url : Url
@@ -50,7 +51,7 @@ type alias BackendModel =
     , videoStatisticsAtTime : Dict ( String, Int ) VideoStatisticsAtTime
     , liveVideoDetails : Dict String LiveVideoDetails
     , currentViewers : Dict ( String, Int ) CurrentViewers
-    , channelHandleMap : List (String, String)
+    , channelHandleMap : List ( String, String )
     , apiCallCount : Int
     }
 
@@ -65,6 +66,13 @@ type FrontendMsg
 
 type alias ToBackend =
     Bridge.ToBackend
+
+
+type NextAction
+    = DeleteSheets
+    | AddSheets (List Int)
+    | UpdateSheets (List Int)
+    | Done
 
 
 type BackendMsg
@@ -88,7 +96,7 @@ type BackendMsg
     | Batch_GetCompetitorVideos Time.Posix
     | Batch_ExportToSheet Time.Posix
       -- api calls
-    | GetChannelId String 
+    | GetChannelId String
       -- youtube calls and responses
     | GetAccessToken String Time.Posix
     | GotAccessToken String Time.Posix (Result Http.Error Json.Auto.AccessToken.Root)
@@ -106,12 +114,11 @@ type BackendMsg
     | GotVideoDailyReport String (Result Http.Error Json.Bespoke.ReportDecoder.YouTubeAnalyticsRecord)
     | GotChannelId String (Result Http.Error Json.Auto.ChannelHandle.Root)
     | GotCompetitorVideos String (Result Http.Error Json.Auto.Search.Root)
-    -- google sheet related messages
-    | GotSheets String (Result Http.Error (List Json.Auto.GoogleSheetsDetails.Root))
-    | SheetUpdated String String (Result Http.Error ())
-    | DeletedSheets String (List String) (Result Http.Error ())
-    | GotSheetIds String (Result Http.Error Json.Auto.GoogleSheetsDetails.Root)
-    | AddedSheets String (List String) (Result Http.Error ())
+      -- google sheet related messages
+    | SheetUpdated String String NextAction (Result Http.Error ())
+    | DeletedSheets String (List Int) NextAction (Result Http.Error ())
+    | GotSheetIds String NextAction (Result Http.Error Json.Auto.GoogleSheetsDetails.Root)
+    | AddedSheets String (List String) NextAction (Result Http.Error ())
       -- other
     | NoOpBackendMsg
 

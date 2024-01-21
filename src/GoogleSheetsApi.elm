@@ -20,7 +20,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Task exposing (Task)
 import Time exposing (..)
-import Types exposing (BackendMsg(..))
+import Types exposing (BackendMsg(..), NextAction(..))
 import Url
 import Utils.Time exposing (..)
 
@@ -29,8 +29,8 @@ import Utils.Time exposing (..)
 -- This file translates the Elm types into the comma delimited strings that are required by the Google Sheets API
 
 
-exportVideoResults : Api.YoutubeModel.VideoResults -> String -> String -> Cmd BackendMsg
-exportVideoResults results spreadsheetId accessToken =
+exportVideoResults : Api.YoutubeModel.VideoResults -> String -> NextAction -> String -> Cmd BackendMsg
+exportVideoResults results spreadsheetId nextAction accessToken =
     let
         commaStringListsPerTab : Dict String (List String)
         commaStringListsPerTab =
@@ -39,15 +39,15 @@ exportVideoResults results spreadsheetId accessToken =
         updateCommands : Cmd BackendMsg
         updateCommands =
             commaStringListsPerTab
-                |> Dict.map (\v l -> updateSheet spreadsheetId v l accessToken)
+                |> Dict.map (\v l -> updateSheet spreadsheetId v l nextAction accessToken)
                 |> Dict.values
                 |> Cmd.batch
     in
     updateCommands
 
 
-updateSheet : String -> String -> List String -> String -> Cmd BackendMsg
-updateSheet spreadsheetId sheetName listOfValues accessToken =
+updateSheet : String -> String -> List String -> NextAction -> String -> Cmd BackendMsg
+updateSheet spreadsheetId sheetId listOfValues nextAction accessToken =
     let
         commaDelimitedString : String
         commaDelimitedString =
@@ -55,7 +55,7 @@ updateSheet spreadsheetId sheetName listOfValues accessToken =
 
         url : String
         url =
-            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ "/values/" ++ sheetName ++ "?valueInputOption=USER_ENTERED"
+            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ "/values/" ++ sheetId ++ "?valueInputOption=USER_ENTERED"
 
         body : String
         body =
@@ -66,14 +66,14 @@ updateSheet spreadsheetId sheetName listOfValues accessToken =
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.stringBody "application/json" body
-        , expect = Http.expectWhatever (SheetUpdated spreadsheetId sheetName)
+        , expect = Http.expectWhatever (SheetUpdated spreadsheetId sheetId nextAction)
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
-getSheetIds : String -> String -> Cmd BackendMsg
-getSheetIds spreadsheetId accessToken =
+getSheetIds : String -> NextAction -> String -> Cmd BackendMsg
+getSheetIds spreadsheetId nextAction accessToken =
     let
         url =
             "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId
@@ -83,14 +83,14 @@ getSheetIds spreadsheetId accessToken =
         , headers = [ Http.header "Authorization" ("Bearer " ++ accessToken) ]
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectJson (GotSheetIds spreadsheetId) Json.Auto.GoogleSheetsDetails.rootDecoder
+        , expect = Http.expectJson (GotSheetIds spreadsheetId nextAction) Json.Auto.GoogleSheetsDetails.rootDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
-deleteSheet : String -> List String -> String -> Cmd BackendMsg
-deleteSheet spreadsheetId sheetIds accessToken =
+deleteSheets : String -> List Int -> NextAction -> String -> Cmd BackendMsg
+deleteSheets spreadsheetId sheetIds nextAction accessToken =
     let
         url =
             "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ ":batchUpdate"
@@ -101,7 +101,7 @@ deleteSheet spreadsheetId sheetIds accessToken =
                     |> List.map
                         (\id ->
                             { deleteSheet =
-                                { sheetId = id |> String.toInt |> Maybe.withDefault 0
+                                { sheetId = id
                                 }
                             }
                         )
@@ -116,17 +116,20 @@ deleteSheet spreadsheetId sheetIds accessToken =
             ]
         , url = url
         , body = Http.jsonBody requestBody
-        , expect = Http.expectWhatever (DeletedSheets spreadsheetId sheetIds)
+        , expect = Http.expectWhatever (DeletedSheets spreadsheetId sheetIds nextAction)
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
-addSheets : String -> List String -> String -> Cmd BackendMsg
-addSheets spreadsheetId newSheetNames accessToken =
+addSheets : String -> List String -> NextAction -> String -> Cmd BackendMsg
+addSheets spreadsheetId newSheetNames nextAction accessToken =
     let
         url =
-            "https://sheets.googleapis.com/v4/spreadsheets/" ++ spreadsheetId ++ ":batchUpdate"
+            "https://sheets.googleapis.com/v4/spreadsheets/"
+                ++ spreadsheetId
+                ++ ":batchUpdate"
+                |> Debug.log "url"
 
         requestBody =
             { requests =
@@ -139,6 +142,7 @@ addSheets spreadsheetId newSheetNames accessToken =
                         )
             }
                 |> Json.Auto.GoogleSheetsAddSheets.encodedRoot
+                |> Debug.log "requestBody as String" 
     in
     Http.request
         { method = "POST"
@@ -148,7 +152,7 @@ addSheets spreadsheetId newSheetNames accessToken =
             ]
         , url = url
         , body = Http.jsonBody requestBody
-        , expect = Http.expectWhatever (AddedSheets spreadsheetId newSheetNames)
+        , expect = Http.expectWhatever (AddedSheets spreadsheetId newSheetNames nextAction)
         , timeout = Nothing
         , tracker = Nothing
         }

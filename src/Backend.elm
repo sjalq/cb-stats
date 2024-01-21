@@ -12,6 +12,8 @@ import Dict
 import Dict.Extra as Dict
 import Env
 import Gen.Msg
+import GoogleSheetsApi
+import Html.Attributes exposing (property)
 import Http exposing (Error(..))
 import Iso8601
 import Lamdera exposing (..)
@@ -34,10 +36,10 @@ import String exposing (fromInt)
 import Task
 import Time
 import Time.Extra as Time
-import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), ToFrontend(..), hasExpired)
+import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), NextAction(..), ToFrontend(..), hasExpired)
 import Utils.Time exposing (..)
 import YouTubeApi
-import GoogleSheetsApi
+
 
 
 -- todo:
@@ -1270,25 +1272,124 @@ update msg model =
                         |> log ("Failed to fetch competitor videos for channel : " ++ channelId ++ "\n" ++ httpErrToString error) Error
 
         Batch_ExportToSheet time ->
-            -- the same data that gets sent to "/playlists/*" should be on the sheet
-            ( model, Cmd.none )
+            -- ok jr, keep up!
+            -- goal:
+            -- * we want remove all the sheets, then put all the sheets back from the current data
+            -- logic:
+            -- * add a temp sheet since we can't remove the last sheet
+            -- * remove all the other sheets
+            -- * add all the sheets back
+            -- * remove the temp sheet
+            -- * put the data on the sheets per playlist
+            ( model, GoogleSheetsApi.addSheets "1K7_tstxNjCTuvRvKDw9XjtKn2sz77r0OfhjE8XBy16s" [ "temp____" ] DeleteSheets (sheetAccessToken model) )
 
-        GotSheets spreadsheetId reponser ->
-            (model, Cmd.none)
+        AddedSheets spreadsheetId sheetNames nextAction response ->
+            case response of
+                Ok response_ ->
+                    case nextAction of
+                        DeleteSheets ->
+                            ( model, GoogleSheetsApi.getSheetIds spreadsheetId DeleteSheets (sheetAccessToken model) )
 
-        SheetUpdated spreadsheetId sheetName response ->
-            (model, Cmd.none)
+                        UpdateSheets tempIds ->
+                            let
+                                updates =
+                                    ((model.playlists
+                                        |> Dict.values
+                                        |> List.map (\p -> ( p.id, p.title ))
+                                     )
+                                        ++ [ ( "*", "All" ), ( "**", "Competitors" ) ]
+                                        |> List.map (\( id, title ) -> ( id, title, getVideos model id |> tabulateVideoData ))
+                                        |> List.map
+                                            (\( id, title, data ) ->
+                                                GoogleSheetsApi.updateSheet spreadsheetId title data (UpdateSheets []) (sheetAccessToken model)
+                                            )
+                                    )
+                                        ++ [ GoogleSheetsApi.deleteSheets spreadsheetId tempIds Done (sheetAccessToken model) ]
+                            in
+                            ( model, Cmd.batch updates )
 
-        DeletedSheets spreadsheetId sheetIds response ->
-            (model, Cmd.none)
+                        --GoogleSheetsApi.getSheetIds spreadsheetId UpdateSheets (sheetAccessToken model) )
+                        _ ->
+                            ( model, Cmd.none )
 
-        GotSheetIds spreadsheetId response ->
-            (model, Cmd.none)
+                Err error ->
+                    ( model, Cmd.none )
+                        |> log ("Failed to add sheets to spreadsheet : " ++ spreadsheetId ++ "\n" ++ httpErrToString error) Error
 
-        AddedSheets spreadsheetId sheetNames response ->
-            (model, Cmd.none)
+        DeletedSheets spreadsheetId sheetIds nextAction response ->
+            case response of
+                Ok response_ ->
+                    case nextAction of
+                        AddSheets tempIds ->
+                            -- goal:
+                            -- * add a sheet for each playlist
+                            -- * add a sheet with all monitored data
+                            -- * add a sheet with all competitor data
+                            -- logic:
+                            -- * add sheets for each monitored playlist
+                            -- * add a sheet with all monitored data
+                            -- * add a sheet with all competitor data
+                            let
+                                newSheetnames =
+                                    (model.playlists
+                                        |> Dict.filter (\_ p -> p.monitor)
+                                        |> Dict.values
+                                        |> List.map .title
+                                    )
+                                        ++ [ "All", "Competitors" ]
 
+                                _ =
+                                    Debug.log "tempIds" tempIds
+                            in
+                            ( model
+                            , Cmd.batch
+                                [ GoogleSheetsApi.addSheets spreadsheetId newSheetnames (UpdateSheets tempIds) (sheetAccessToken model)
+                                ]
+                            )
 
+                        _ ->
+                            ( model, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
+                        |> log ("Failed to delete sheets from spreadsheet : " ++ spreadsheetId ++ "\n" ++ httpErrToString error) Error
+
+        GotSheetIds spreadsheetId nextAction response ->
+            case nextAction of
+                DeleteSheets ->
+                    case response of
+                        Result.Ok response_ ->
+                            let
+                                ( sheetIds, tempIds ) =
+                                    response_.sheets
+                                        |> List.map .properties
+                                        |> List.partition (\p -> p.title /= "temp____")
+
+                                ( sheetIds_, tempIds_ ) =
+                                    ( sheetIds
+                                        |> List.map .sheetId
+                                    , tempIds
+                                        |> List.map .sheetId
+                                    )
+                            in
+                            ( model, GoogleSheetsApi.deleteSheets spreadsheetId sheetIds_ (AddSheets tempIds_) (sheetAccessToken model) )
+
+                        Result.Err error ->
+                            ( model, Cmd.none )
+                                |> log ("Failed to fetch sheet ids for spreadsheet : " ++ spreadsheetId ++ "\n" ++ httpErrToString error) Error
+
+                _ ->
+                    ( model, Cmd.none )
+
+        SheetUpdated spreadsheetId sheetName nextAction response ->
+            case response of
+                Result.Ok response_ ->
+                    ( model, Cmd.none )
+                        |> log ("Sheet updated : " ++ sheetName) Info
+
+                Result.Err error ->
+                    ( model, Cmd.none )
+                        |> log ("Failed to update sheet : " ++ sheetName ++ "\n" ++ httpErrToString error) Error
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -1980,3 +2081,25 @@ getVideos model playlistId =
     , videoStats = videoStats
     , competitorVideos = competitorVideos
     }
+
+
+sheetAccessToken model =
+    let
+        accessToken =
+            model.clientCredentials |> Dict.get "schalk.dormehl@gmail.com" |> Maybe.map .accessToken |> Maybe.withDefault ""
+    in
+    --accessToken
+    "ya29.a0AfB_byCVYVUfi0s_jCnOhdi4oTL8Isi6kXPl7ikeTxqHnTIAOhuT8PJeFMjRUvnL6xKaDss6_GbirIJ8XqQwuNxV4F8sAbuTJYAD6Na0_VEgwD-JHzSveyikVT88JgOh5IJvwmCm5FyMVklOZQuQcI6c0wtP8IXhdvYMaCgYKAZwSARASFQHGX2MiXz8DmDOz815RTsedn32vjw0171"
+
+
+tabulateVideoData : Api.YoutubeModel.VideoResults -> List String
+tabulateVideoData videoResults =
+    -- goal:
+    -- * return the same data that Pages.Playlist.Id_ displays
+    -- * make sure the headers are the same
+    -- * make sure the data is the same
+    let
+        headers =
+            [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" ]
+    in
+    headers
