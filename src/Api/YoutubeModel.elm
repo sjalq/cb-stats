@@ -153,6 +153,16 @@ video_peakViewers currentViewers videoId =
         |> Maybe.map .value
 
 
+video_avgViewers liveVideoDetails currentViewers minuteMark videoId =
+    let
+        min1 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark videoId
+        min2 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (minuteMark + 1) videoId
+    in
+    Maybe.map2 
+        (\m1 m2 -> (m1 + m2) // 2)
+        min1
+        min2
+
 video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark videoId =
     let
         liveStreamingDetails =

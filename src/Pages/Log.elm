@@ -176,7 +176,7 @@ view model =
                         , msgButton "Get video statistics at time" (Just Batch_GetVideoStatisticsAtTime)
                         , msgButton "Get competitor videos" (Just Batch_GetCompetitorVideos)
                         , msgButton "Export to sheet" (Just Batch_ExportToSheet)
-                        , msgButton "Fix data" (Just FixData)
+                        --, msgButton "Fix data" (Just FixData)
                         ]
                             |> List.map (\x -> Element.row [ Element.paddingXY 1 1, width (px 400) ] [ x ])
                        )

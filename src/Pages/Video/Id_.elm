@@ -216,15 +216,24 @@ view model =
             , model.liveVideoDetails |> Maybe.andThen .actualStartTime |> Maybe.withDefault "" |> drawField "Actual Start Time"
             , model.liveVideoDetails |> Maybe.andThen .actualEndTime |> Maybe.withDefault "" |> drawField "Actual End Time"
             , model.currentViewers |> List.map .value |> List.maximum |> Maybe.map String.fromInt |> Maybe.withDefault "" |> drawField "Max Live Viewers"
-            , model.currentViewers
-                |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
-                |> Dict.values
-                |> List.filterMap (List.sortBy .value >> List.head)
-                |> List.map .value
-                |> List.head
+            , video_avgViewers
+                (model.liveVideoDetails |> Maybe.map (\l_ -> Dict.empty |> Dict.insert l_.videoId l_) |> Maybe.withDefault Dict.empty)
+                (model.currentViewers |> List.map (\c_ -> ((c_.videoId, c_.timestamp |> Time.posixToMillis), c_)) |> Dict.fromList)
+                1
+                (model.video |> Maybe.map .id |> Maybe.withDefault "")
                 |> Maybe.map String.fromInt
-                |> Maybe.withDefault ""
+                |> Maybe.withDefault "unknown"
                 |> drawField "1 Min Mark Viewers"
+
+            -- , model.currentViewers
+            --     |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+            --     |> Dict.values
+            --     |> List.filterMap (List.sortBy .value >> List.head)
+            --     |> List.map .value
+            --     |> List.head
+            --     |> Maybe.map String.fromInt
+            --     |> Maybe.withDefault ""
+            --     |> drawField "1 Min Mark Viewers"
             , draw24HourViews model.videoStatisticsAtTime
             , drawLiveViewers
                 (model.currentViewers

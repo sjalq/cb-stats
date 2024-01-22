@@ -4,7 +4,7 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
-import Api.YoutubeModel exposing (video_peakViewers, video_viewersAtXminuteMarkFromDicts)
+import Api.YoutubeModel exposing (video_peakViewers, video_viewersAtXminuteMarkFromDicts, video_avgViewers)
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
@@ -1840,8 +1840,8 @@ video_getAccessToken model videoId =
         altAccessToken =
             model.clientCredentials
                 |> Dict.values
-                --|> List.filter (\cc -> cc.accessToken)
-                |> List.sortBy (\cc -> -cc.timestamp)
+                |> List.sortBy (\cc -> cc.timestamp)
+                |> List.reverse
                 |> List.head
                 |> Maybe.map .accessToken
     in
@@ -2020,10 +2020,11 @@ groupByComparable toComparable list =
 accessToken_getLatest model =
     model.clientCredentials
         |> Dict.values
-        |> List.sortBy (\cc -> -cc.timestamp)
+        |> List.sortBy (\cc -> cc.timestamp)
+        |> List.reverse
         |> List.head
         |> Maybe.map .accessToken
-        |> Maybe.withDefault ""
+        |> Maybe.withDefault "123-an-error-you'll-see"
 
 
 getVideos : Model -> String -> Api.YoutubeModel.VideoResults
@@ -2169,7 +2170,7 @@ tabulateVideoData videoResults =
                         , video.liveStatus
                             |> Api.YoutubeModel.liveStatusToString
                             |> sheetString
-                        , video_viewersAtXminuteMarkFromDicts videoResults.liveVideoDetails videoResults.currentViewers 1 video.id
+                        , video_avgViewers videoResults.liveVideoDetails videoResults.currentViewers 1 video.id
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
                             |> sheetString
