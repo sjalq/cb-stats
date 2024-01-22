@@ -153,17 +153,29 @@ video_peakViewers currentViewers videoId =
         |> Maybe.map .value
 
 
-video_avgViewers liveVideoDetails currentViewers minuteMark videoId =
+video_lobbyEstimate liveVideoDetails currentViewers videoId =
     let
-        min1 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark videoId
-        min2 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (minuteMark + 1) videoId
+        min1 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers 60 videoId
+        min2 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (60 + 60) videoId
+    in
+    Maybe.map2 
+        (\m1 m2 -> ((m1 * 20) + (m2 * 80)) // 100)
+        min1
+        min2
+
+
+
+video_avgViewers liveVideoDetails currentViewers secondMark videoId =
+    let
+        min1 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark videoId
+        min2 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (secondMark + 60) videoId
     in
     Maybe.map2 
         (\m1 m2 -> (m1 + m2) // 2)
         min1
         min2
 
-video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark videoId =
+video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark videoId =
     let
         liveStreamingDetails =
             liveVideoDetails
@@ -175,9 +187,9 @@ video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark v
                 |> Maybe.andThen (Iso8601.toTime >> Result.toMaybe)
                 |> Maybe.map Time.posixToMillis
 
-        minuteOffset =
+        secondOffset =
             actualStartTime
-                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (minuteMark * minute))
+                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (secondMark * second))
                 |> Maybe.withDefault 0
 
         listViewers =
@@ -187,7 +199,7 @@ video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers minuteMark v
 
         viewersAtMinuteOffset =
             listViewers
-                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < minuteOffset)
+                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < secondOffset)
                 |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
                 |> List.reverse
                 |> List.head
