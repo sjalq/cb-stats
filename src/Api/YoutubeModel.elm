@@ -225,7 +225,7 @@ video_viewersAtXminuteMark liveStreamingDetails listViewers minuteMark =
         viewersAtMinuteOffset =
             listViewers
                 |> Debug.log "listViewers"
-                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < minuteOffset)
+                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) <= minuteOffset)
                 |> Debug.log "filter"
                 |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
                 |> List.reverse

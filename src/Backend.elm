@@ -99,7 +99,7 @@ subscriptions model =
         , Time.every hour Batch_RefreshAllChannels
         , Time.every hour Batch_RefreshAllPlaylists
         , Time.every pollingInterval Batch_RefreshAllVideosFromPlaylists
-        , Time.every minute Batch_GetLiveVideoStreamData
+        , Time.every (15 * second) Batch_GetLiveVideoStreamData
         , Time.every minute Batch_GetVideoStats
         , Time.every hour Batch_GetVideoDailyReports
         , Time.every (8 * hour) Batch_GetCompetitorChannelIds
