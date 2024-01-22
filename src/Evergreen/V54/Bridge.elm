@@ -1,34 +1,31 @@
-module Bridge exposing (..)
+module Evergreen.V54.Bridge exposing (..)
 
-import Api.User exposing (Email)
-import Api.YoutubeModel exposing (Playlist)
-import Lamdera
-import Api.YoutubeModel exposing (Schedule)
-
-
-sendToBackend =
-    Lamdera.sendToBackend
+import Evergreen.V54.Api.User
+import Evergreen.V54.Api.YoutubeModel
 
 
 type ToBackend
-    = AttemptRegistration { email : Email, password : String }
-    | AttemptSignIn { email : Email, password : String }
+    = AttemptRegistration
+        { email : Evergreen.V54.Api.User.Email
+        , password : String
+        }
+    | AttemptSignIn
+        { email : Evergreen.V54.Api.User.Email
+        , password : String
+        }
     | AttemptSignOut
     | AttemptGetCredentials
     | AttemptGetChannels String
     | AttemptGetVideos String
     | AttemptYeetCredentials String
-      -- front end instructions to fetch data from youtube
     | FetchChannelsFromYoutube String
     | FetchPlaylistsFromYoutube String
     | FetchVideosFromYoutube String
-      -- normal fetches from backend to frontend
     | AttemptGetChannelAndPlaylists String
     | AttemptGetLogs Int Int
     | AttemptYeetLogs
     | AttemptYeetVideos
     | AttemptGetVideoDetails String
-    --
     | AttemptBatch_RefreshAccessTokens
     | AttemptBatch_RefreshAllChannels
     | AttemptBatch_RefreshAllPlaylists
@@ -40,11 +37,7 @@ type ToBackend
     | AttemptBatch_GetVideoStatisticsAtTime
     | AttemptBatch_GetCompetitorVideos
     | AttemptBatch_ExportToSheet
-    --| AttemptYeetAll
-    -- fix data
-    | AttemptFixData 
-    -- update from frontend
-    | UpdateSchedule Schedule
-    | UpdatePlaylist Playlist
-    -- no op for migrations
+    | AttemptFixData
+    | UpdateSchedule Evergreen.V54.Api.YoutubeModel.Schedule
+    | UpdatePlaylist Evergreen.V54.Api.YoutubeModel.Playlist
     | NoOpToBackend

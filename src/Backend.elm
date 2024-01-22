@@ -107,7 +107,7 @@ subscriptions model =
 
         --, Time.every (10 * second) Batch_GetChatMessages
         , Time.every (10 * minute) Batch_GetVideoStatisticsAtTime
-        , Time.every hour Batch_ExportToSheet
+        , Time.every (10 * minute) Batch_ExportToSheet
         , onConnect OnConnect
         ]
 
@@ -1706,6 +1706,9 @@ updateFromFrontend sessionId clientId msg2 model =
         AttemptBatch_ExportToSheet ->
             ( model, performNowWithTime Batch_ExportToSheet )
 
+        AttemptFixData ->
+            (model |> manuallyInsertVideoStatsKyle |> manuallyInsertVideoStatsSheldon, Cmd.none)
+
 
 randomSalt : Random.Generator String
 randomSalt =
@@ -2254,3 +2257,109 @@ escapeStringForJson str =
 
 -- |> Encode.string
 -- |> Encode.encode 0
+
+
+manuallyInsertVideoStatsKyle : Model -> Model
+manuallyInsertVideoStatsKyle model =
+    let
+        videoId =
+            "7f5GjKj7rfc"
+
+        actualStartTimeStr =
+            "2024-01-22T07:24:20Z"
+
+        actualStartTimeInt =
+            actualStartTimeStr |> strToIntTime
+
+        data =
+            [ ( 0, 386 )
+            , ( 1, 650 )
+            , ( 2, 760 )
+            , ( 3, 832 )
+            , ( 4, 891 )
+            , ( 5, 955 )
+            , ( 6, 955 )
+            , ( 7, 1059 )
+            , ( 8, 1161 )
+            , ( 9, 1218 )
+            , ( 10, 1280 )
+            , ( 11, 1285 )
+            , ( 12, 1360 )
+            , ( 13, 1352 )
+            , ( 14, 1390 )
+            , ( 15, 1444 )
+            , ( 16, 1450 )
+            , ( 17, 1477 )
+            , ( 18, 1480 )
+            , ( 19, 1520 )
+            , ( 20, 1541 )
+            , ( 21, 1589 )
+            , ( 22, 1599 )
+            , ( 23, 1621 )
+            , ( 24, 1635 )
+            , ( 25, 1651 )
+            , ( 26, 1680 )
+            , ( 27, 1701 )
+            , ( 28, 1735 )
+            , ( 29, 1774 )
+            , ( 30, 1780 )
+            , ( 31, 1786 )
+            , ( 32, 1840 )
+            , ( 33, 1841 )
+            , ( 34, 1825 )
+            ]
+                |> List.map
+                    (\( timeOffset, value ) ->
+                        ( ( videoId, actualStartTimeInt + (timeOffset * minute) )
+                        , { videoId = videoId
+                          , timestamp = actualStartTimeInt + (timeOffset * minute) |> Time.millisToPosix
+                          , value = value
+                          }
+                        )
+                    )
+                |> Dict.fromList
+    in
+    { model
+        | currentViewers =
+            Dict.union model.currentViewers data
+    }
+
+manuallyInsertVideoStatsSheldon : Model -> Model
+manuallyInsertVideoStatsSheldon model =
+    let
+        videoId =
+            "E0tsnclIzVo"
+
+        actualStartTimeStr =
+            "2024-01-22T07:24:20Z"
+
+        actualStartTimeInt =
+            actualStartTimeStr |> strToIntTime
+
+        data =
+            [ ( 0, 760 )
+            , ( 1, 1260 )
+            , ( 2, 1440 )
+            , ( 3, 1605 )
+            , ( 4, 1783 )
+            , ( 5, 1951 )
+            , ( 6, 2145 )
+            , ( 7, 2281 )
+            , ( 8, 2341 )
+            , ( 9, 2421 )
+            ]
+                |> List.map
+                    (\( timeOffset, value ) ->
+                        ( ( videoId, actualStartTimeInt + (timeOffset * minute) )
+                        , { videoId = videoId
+                          , timestamp = actualStartTimeInt + (timeOffset * minute) |> Time.millisToPosix
+                          , value = value
+                          }
+                        )
+                    )
+                |> Dict.fromList
+    in
+    { model
+        | currentViewers =
+            Dict.union model.currentViewers data
+    }

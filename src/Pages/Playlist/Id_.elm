@@ -1,7 +1,7 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
-import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime)
+import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime, video_peakViewers)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
@@ -226,13 +226,8 @@ view model =
                                     (columnHeader "Peak")
                                     (px 75)
                                     (\v ->
-                                        model.currentViewers
-                                            |> Dict.filter (\( vId, _ ) _ -> vId == v.id)
-                                            |> Dict.values
-                                            |> List.sortBy (.timestamp >> posixToMillis)
-                                            |> List.reverse
-                                            |> List.head
-                                            |> Maybe.map (\cv -> cv.value |> String.fromInt |> wrappedText)
+                                        video_peakViewers model.currentViewers v.id
+                                            |> Maybe.map (String.fromInt >> wrappedText)
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
                                , Column
