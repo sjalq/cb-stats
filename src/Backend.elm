@@ -2331,7 +2331,7 @@ manuallyInsertVideoStatsSheldon model =
             "E0tsnclIzVo"
 
         actualStartTimeStr =
-            "2024-01-22T07:24:20Z"
+            "2024-01-22T10:06:18Z"
 
         actualStartTimeInt =
             actualStartTimeStr |> strToIntTime
