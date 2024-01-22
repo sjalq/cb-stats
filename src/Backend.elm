@@ -1707,7 +1707,7 @@ updateFromFrontend sessionId clientId msg2 model =
             ( model, performNowWithTime Batch_ExportToSheet )
 
         AttemptFixData ->
-            (model |> manuallyInsertVideoStatsKyle |> manuallyInsertVideoStatsSheldon, Cmd.none)
+            ( model |> removeSheldonMess, Cmd.none )
 
 
 randomSalt : Random.Generator String
@@ -2324,6 +2324,7 @@ manuallyInsertVideoStatsKyle model =
             Dict.union model.currentViewers data
     }
 
+
 manuallyInsertVideoStatsSheldon : Model -> Model
 manuallyInsertVideoStatsSheldon model =
     let
@@ -2363,3 +2364,31 @@ manuallyInsertVideoStatsSheldon model =
         | currentViewers =
             Dict.union model.currentViewers data
     }
+
+
+removeSheldonMess : Model -> Model
+removeSheldonMess model =
+    let
+        wrongTime =
+            "2024-01-22T07:24:20Z"
+
+        videoId =
+            "E0tsnclIzVo"
+
+        data =
+            [ 0
+            , 1
+            , 2
+            , 3
+            , 4
+            , 5
+            , 6
+            , 7
+            , 8
+            , 9
+            ]
+                |> List.map (\timeOffset -> ( videoId, (wrongTime |> strToIntTime) + (timeOffset * minute) ))
+    in
+    { model 
+        | currentViewers = model.currentViewers 
+            |> Dict.filter (\( videoId_, timestamp_ ) _ -> not (List.member ( videoId_, timestamp_ ) data)) }
