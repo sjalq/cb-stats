@@ -16,6 +16,7 @@ import MoreDict exposing (groupBy)
 import Page
 import Request
 import Shared
+import Time
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
@@ -225,7 +226,18 @@ view model =
                 |> Maybe.withDefault ""
                 |> drawField "1 Min Mark Viewers"
             , draw24HourViews model.videoStatisticsAtTime
-            , drawLiveViewers model.currentViewers
+            , drawLiveViewers
+                (model.currentViewers
+                    |> List.filter
+                        (\cv ->
+                            (cv.timestamp |> Time.posixToMillis)
+                                >= (model.liveVideoDetails
+                                        |> Maybe.andThen .actualStartTime
+                                        |> Maybe.map strToIntTime
+                                        |> Maybe.withDefault 0
+                                   )
+                        )
+                )
             ]
     }
 

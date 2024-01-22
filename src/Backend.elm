@@ -2388,6 +2388,7 @@ removeSheldonMess model =
             , 9
             ]
                 |> List.map (\timeOffset -> ( videoId, (wrongTime |> strToIntTime) + (timeOffset * minute) ))
+            |> Debug.log "this ran on this data"
     in
     { model 
         | currentViewers = model.currentViewers 

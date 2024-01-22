@@ -121,7 +121,8 @@ update msg model =
             ( model, Effect.fromCmd <| sendToBackend <| AttemptBatch_ExportToSheet )
 
         FixData ->
-            ( model, Effect.fromCmd <| sendToBackend <| AttemptFixData )
+            (model, Effect.none)
+            --( model, Effect.fromCmd <| sendToBackend <| AttemptFixData )
 
 
 
