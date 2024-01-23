@@ -1,7 +1,7 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
-import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime, video_peakViewers)
+import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime, video_peakViewers, video_liveViewsEstimate)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
@@ -231,11 +231,11 @@ view model =
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
                                , Column
-                                    (columnHeader "Live views")
-                                    (px 90)
+                                    (columnHeader "Live views±")
+                                    (px 95) 
                                     (\v ->
-                                        v.statsOnConclusion
-                                            |> Maybe.map (\stats -> stats.viewCount |> String.fromInt)
+                                        video_liveViewsEstimate v model.currentViewers
+                                            |> Maybe.map String.fromInt
                                             |> Maybe.withDefault "..."
                                             |> wrappedText
                                     )

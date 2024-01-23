@@ -152,6 +152,16 @@ video_peakViewers currentViewers videoId =
         |> List.head
         |> Maybe.map .value
 
+video_liveViewsEstimate video currentViewers = 
+    let
+        peak = video_peakViewers currentViewers video.id 
+        liveLikes = video.statsOnConclusion |> Maybe.map .likeCount 
+    in
+    Maybe.map2
+        (\p l -> (p * 12) + (l * 31) // 10 ) 
+        peak
+        liveLikes
+
 
 video_lobbyEstimate liveVideoDetails currentViewers videoId =
     let
