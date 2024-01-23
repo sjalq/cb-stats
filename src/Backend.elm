@@ -16,7 +16,6 @@ import GoogleSheetsApi
 import Html.Attributes exposing (property)
 import Http exposing (Error(..))
 import Iso8601
-import Json.Encode as Encode
 import Lamdera exposing (..)
 import List.Extra
 import MoreDict
@@ -2139,7 +2138,7 @@ tabulateVideoData videoResults =
             , "Status"
             , "Lobby"
             , "Peak"
-            , "Live views"
+            , "Live views est"
             , "Live Likes"
             , "24hr views"
             , "Subs gained"
