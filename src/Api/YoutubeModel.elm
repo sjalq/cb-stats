@@ -1,13 +1,12 @@
 module Api.YoutubeModel exposing (..)
 
-import Dict 
+import Dict exposing (Dict)
 import Iso8601
 import Json.Bespoke.VideoDecoder exposing (Statistics)
 import Lamdera.Debug exposing (Posix)
 import Set exposing (Set)
 import Time
 import Utils.Time exposing (..)
-import Dict exposing (Dict)
 
 
 type alias ClientCredentials =
@@ -97,6 +96,8 @@ type alias Video =
     , statsAfter24Hours : Maybe Statistics
     , reportAfter24Hours : Maybe Report
     , chatMsgCount : Maybe Int
+    , ctr : Maybe Float
+    , liveViews : Maybe Int
     }
 
 
@@ -125,6 +126,7 @@ type alias VideoStatisticsAtTime =
     , commentCount : Maybe Int
     }
 
+
 type alias VideoResults =
     { playlists : Dict String Playlist
     , videos : Dict String Video
@@ -132,7 +134,7 @@ type alias VideoResults =
     , currentViewers : Dict ( String, Int ) CurrentViewers
     , videoChannels : Dict String String
     , videoStats : Dict ( String, Int ) VideoStatisticsAtTime
-    , competitorVideos : Dict String ( Dict String Video )
+    , competitorVideos : Dict String (Dict String Video)
     }
 
 
@@ -152,38 +154,48 @@ video_peakViewers currentViewers videoId =
         |> List.head
         |> Maybe.map .value
 
-video_liveViewsEstimate video currentViewers = 
+
+video_liveViewsEstimate video currentViewers =
     let
-        peak = video_peakViewers currentViewers video.id 
-        liveLikes = video.statsOnConclusion |> Maybe.map .likeCount 
+        peak =
+            video_peakViewers currentViewers video.id
+
+        liveLikes =
+            video.statsOnConclusion |> Maybe.map .likeCount
     in
     Maybe.map2
-        (\p l -> ((p * 12) + (l * 31)) // 10 ) 
+        (\p l -> ((p * 12) + (l * 31)) // 10)
         peak
         liveLikes
 
 
 video_lobbyEstimate liveVideoDetails currentViewers videoId =
     let
-        min1 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers 60 videoId
-        min2 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (60 + 60) videoId
+        min1 =
+            video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers 60 videoId
+
+        min2 =
+            video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (60 + 60) videoId
     in
-    Maybe.map2 
+    Maybe.map2
         (\m1 m2 -> ((m1 * 20) + (m2 * 80)) // 100)
         min1
         min2
 
 
-
 video_avgViewers liveVideoDetails currentViewers secondMark videoId =
     let
-        min1 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark videoId
-        min2 = video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (secondMark + 60) videoId
+        min1 =
+            video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark videoId
+
+        min2 =
+            video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (secondMark + 60) videoId
     in
-    Maybe.map2 
+    Maybe.map2
         (\m1 m2 -> (m1 + m2) // 2)
         min1
         min2
+
 
 video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark videoId =
     let
@@ -217,6 +229,7 @@ video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark v
     in
     viewersAtMinuteOffset
 
+
 video_viewersAtXminuteMark liveStreamingDetails listViewers minuteMark =
     let
         actualStartTime =
@@ -243,6 +256,13 @@ video_viewersAtXminuteMark liveStreamingDetails listViewers minuteMark =
                 |> Maybe.map .value
     in
     viewersAtMinuteOffset
+
+
+currentViewers_ListToDict currentViewers =
+    currentViewers
+        |> List.map (\c -> ( ( c.videoId, c.timestamp |> Time.posixToMillis ), c ))
+        |> Dict.fromList
+
 
 liveStatusToString liveStatus =
     case liveStatus of

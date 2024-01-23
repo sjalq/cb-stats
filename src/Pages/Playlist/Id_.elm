@@ -1,7 +1,7 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
-import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime, video_peakViewers, video_liveViewsEstimate)
+import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime, video_liveViewsEstimate, video_peakViewers)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
@@ -9,8 +9,10 @@ import Element exposing (..)
 import Element.Background
 import Element.Border
 import Element.Font
+import Element.Input
 import Gen.Params.Playlist.Id_ exposing (Params)
 import Gen.Route as Route
+import Html exposing (label)
 import Maybe exposing (withDefault)
 import MoreDict
 import Page
@@ -50,6 +52,8 @@ type alias Model =
     , videoStats : Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
     , competitorVideos : Dict String (Dict String Video)
     , currentIntTime : Int
+    , tmpCtrs : Dict String String
+    , tmpLiveViews : Dict String String
     }
 
 
@@ -65,6 +69,8 @@ init { params } =
       , videoStats = Dict.empty
       , competitorVideos = Dict.empty
       , currentIntTime = 0
+      , tmpCtrs = Dict.empty
+      , tmpLiveViews = Dict.empty
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
     )
@@ -77,6 +83,8 @@ init { params } =
 type Msg
     = GotVideos Api.YoutubeModel.VideoResults
     | GetVideos
+    | UpdateVideoCTR String String
+    | UpdateVideoLiveViews String String
     | Tick Time.Posix
 
 
@@ -98,6 +106,8 @@ update msg model =
                 , playlists = results.playlists
                 , videoStats = results.videoStats
                 , competitorVideos = results.competitorVideos |> Debug.log "competitorVideos"
+                , tmpCtrs = results.videos |> Dict.map (\_ v -> v.ctr |> Maybe.map String.fromFloat |> Maybe.withDefault "")
+                , tmpLiveViews = results.videos |> Dict.map (\_ v -> v.liveViews |> Maybe.map String.fromInt |> Maybe.withDefault "")
               }
             , Effect.none
             )
@@ -111,6 +121,57 @@ update msg model =
             ( { model | currentIntTime = time |> posixToMillis }
             , Effect.none
             )
+
+        UpdateVideoCTR id ctr ->
+            let
+                ctrFloat =
+                    ctr
+                        |> String.left 6
+                        |> String.toFloat
+            in
+            case ctrFloat of
+                Just ctrFloat_ ->
+                    if (ctrFloat_ >= 0 && ctrFloat_ <= 100) && ((ctr |> String.length) <= 5) then
+                        ( { model | tmpCtrs = Dict.insert id ctr model.tmpCtrs }
+                        , Effect.fromCmd <| sendToBackend <| AttemptUpdateVideoCtr id ctrFloat
+                        )
+
+                    else
+                        ( model, Effect.none )
+
+                Nothing ->
+                    if ctr == "" then
+                        ( { model | tmpCtrs = Dict.insert id ctr model.tmpCtrs }
+                        , Effect.fromCmd <| sendToBackend <| AttemptUpdateVideoCtr id Nothing
+                        )
+
+                    else
+                        ( model, Effect.none )
+
+        UpdateVideoLiveViews id liveViews ->
+            let
+                liveViewsInt =
+                    liveViews
+                        |> String.toInt
+            in
+            case liveViewsInt of
+                Just liveViewsInt_ ->
+                    if liveViewsInt_ >= 0 then
+                        ( { model | tmpLiveViews = Dict.insert id liveViews model.tmpLiveViews }
+                        , Effect.fromCmd <| sendToBackend <| AttemptUpdateVideoLiveViews id liveViewsInt
+                        )
+
+                    else
+                        ( model, Effect.none )
+
+                Nothing ->
+                    if liveViews == "" then
+                        ( { model | tmpLiveViews = Dict.insert id liveViews model.tmpLiveViews }
+                        , Effect.fromCmd <| sendToBackend <| AttemptUpdateVideoLiveViews id Nothing
+                        )
+
+                    else
+                        ( model, Effect.none )
 
 
 
@@ -183,7 +244,7 @@ view model =
                                 else
                                     []
                                )
-                            ++ [ Column (columnHeader "Title") (px 300) (.title >> wrappedText)
+                            ++ [ Column (columnHeader "Title") (px 200) (.title >> wrappedText)
                                , Column
                                     (columnHeader "Status")
                                     (px 150)
@@ -232,12 +293,25 @@ view model =
                                     )
                                , Column
                                     (columnHeader "Live views±")
-                                    (px 95) 
+                                    (px 95)
                                     (\v ->
                                         video_liveViewsEstimate v model.currentViewers
                                             |> Maybe.map String.fromInt
                                             |> Maybe.withDefault "..."
                                             |> wrappedText
+                                    )
+                               , Column
+                                    (columnHeader "Live views")
+                                    (px 90)
+                                    (\v ->
+                                        Element.Input.multiline
+                                            [ height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                            { onChange = UpdateVideoLiveViews v.id
+                                            , text = model.tmpLiveViews |> Dict.get v.id |> Maybe.withDefault ""
+                                            , placeholder = Nothing
+                                            , label = Element.Input.labelHidden "Live views"
+                                            , spellcheck = False
+                                            }
                                     )
                                , Column
                                     (columnHeader "Live Likes")
@@ -304,6 +378,19 @@ view model =
                                             |> Maybe.withDefault "..."
                                             |> String.left 5
                                             |> wrappedText
+                                    )
+                               , Column
+                                    (columnHeader "CTR")
+                                    (px 90)
+                                    (\v ->
+                                        Element.Input.multiline
+                                            [ height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                            { onChange = UpdateVideoCTR v.id
+                                            , text = model.tmpCtrs |> Dict.get v.id |> Maybe.withDefault ""
+                                            , placeholder = Nothing
+                                            , label = Element.Input.labelHidden "CTR"
+                                            , spellcheck = False
+                                            }
                                     )
                                ]
                             ++ competitorVideoColums model.competitorVideos get24HrCompetitorStats

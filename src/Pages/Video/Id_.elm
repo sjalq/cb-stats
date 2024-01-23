@@ -132,7 +132,7 @@ labelOnly str =
 
 drawField : String -> String -> Element msg
 drawField label value =
-    leftLabeledElement label (el [ Element.paddingXY 10 10 ] <| text value)
+    leftLabeledElement label (el [ Element.paddingXY 10 10, width <| px 640 ] <| text value)
 
 
 drawImage : String -> String -> Element msg
@@ -218,11 +218,28 @@ view model =
             , model.currentViewers |> List.map .value |> List.maximum |> Maybe.map String.fromInt |> Maybe.withDefault "" |> drawField "Max Live Viewers"
             , video_lobbyEstimate
                 (model.liveVideoDetails |> Maybe.map (\l_ -> Dict.empty |> Dict.insert l_.videoId l_) |> Maybe.withDefault Dict.empty)
-                (model.currentViewers |> List.map (\c_ -> ((c_.videoId, c_.timestamp |> Time.posixToMillis), c_)) |> Dict.fromList)
+                (model.currentViewers |> currentViewers_ListToDict)
                 (model.video |> Maybe.map .id |> Maybe.withDefault "")
                 |> Maybe.map String.fromInt
                 |> Maybe.withDefault "unknown"
                 |> drawField "1 Min Mark Viewers"
+            , case ( model.video, model.video |> Maybe.andThen .liveViews ) of
+                ( Just video_, Nothing ) ->
+                    -- drawField "_" "_"
+                    drawField "Live Views Est."
+                        (video_liveViewsEstimate
+                            video_
+                            (model.currentViewers |> currentViewers_ListToDict)
+                            |> Maybe.map String.fromInt
+                            |> Maybe.withDefault "unknown"
+                        )
+
+                ( _, Just liveViews_ ) ->
+                    drawField "Live Views" <| (liveViews_ |> String.fromInt)
+
+                _ ->
+                    drawField "Live Views" "unknown"
+            , drawField "CTR %" <| (model.video |> Maybe.andThen .ctr |> Maybe.map String.fromFloat |> Maybe.withDefault "unknown")
 
             -- , model.currentViewers
             --     |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)

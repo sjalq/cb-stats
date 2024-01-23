@@ -4,7 +4,7 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
-import Api.YoutubeModel exposing (video_peakViewers, video_lobbyEstimate, video_liveViewsEstimate)
+import Api.YoutubeModel exposing (video_liveViewsEstimate, video_lobbyEstimate, video_peakViewers)
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
@@ -479,6 +479,8 @@ update msg model =
                                           , reportAfter24Hours = Nothing
                                           , liveChatId = Nothing
                                           , chatMsgCount = Nothing
+                                          , ctr = Nothing
+                                          , liveViews = Nothing
                                           }
                                         )
                                     )
@@ -507,9 +509,9 @@ update msg model =
                     in
                     ( newModel
                     , Cmd.none
-                    -- todo: @Schalk, figure this out, you removed it to prevent fetching pages and pages of
-                    -- playlist items
-                    --fetchMore
+                      -- todo: @Schalk, figure this out, you removed it to prevent fetching pages and pages of
+                      -- playlist items
+                      --fetchMore
                     )
 
                 Err error ->
@@ -1259,6 +1261,8 @@ update msg model =
                                         , reportAfter24Hours = Nothing
                                         , liveChatId = Nothing
                                         , chatMsgCount = Nothing
+                                        , ctr = Nothing
+                                        , liveViews = Nothing
                                         }
                                     )
                                 |> List.map (\v -> ( v.id, v ))
@@ -1710,6 +1714,30 @@ updateFromFrontend sessionId clientId msg2 model =
 
         AttemptFixData ->
             ( model |> removeSheldonMess, Cmd.none )
+
+        AttemptUpdateVideoCtr videoId ctr ->
+            ( { model
+                | videos =
+                    model.videos
+                        |> Dict.get videoId
+                        |> Maybe.map (\v -> { v | ctr = ctr })
+                        |> Maybe.map (\v -> model.videos |> Dict.insert videoId v)
+                        |> Maybe.withDefault model.videos
+              }
+            , Cmd.none
+            )
+
+        AttemptUpdateVideoLiveViews videoId liveViews ->
+            ( { model
+                | videos =
+                    model.videos
+                        |> Dict.get videoId
+                        |> Maybe.map (\v -> { v | liveViews = liveViews })
+                        |> Maybe.map (\v -> model.videos |> Dict.insert videoId v)
+                        |> Maybe.withDefault model.videos
+              }
+            , Cmd.none
+            )
 
 
 randomSalt : Random.Generator String
@@ -2386,8 +2414,10 @@ removeSheldonMess model =
             , 9
             ]
                 |> List.map (\timeOffset -> ( videoId, (wrongTime |> strToIntTime) + (timeOffset * minute) ))
-            |> Debug.log "this ran on this data"
+                |> Debug.log "this ran on this data"
     in
-    { model 
-        | currentViewers = model.currentViewers 
-            |> Dict.filter (\( videoId_, timestamp_ ) _ -> not (List.member ( videoId_, timestamp_ ) data)) }
+    { model
+        | currentViewers =
+            model.currentViewers
+                |> Dict.filter (\( videoId_, timestamp_ ) _ -> not (List.member ( videoId_, timestamp_ ) data))
+    }
