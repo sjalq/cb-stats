@@ -506,7 +506,10 @@ update msg model =
                                 |> Maybe.withDefault Cmd.none
                     in
                     ( newModel
-                    , fetchMore
+                    , Cmd.none
+                    -- todo: @Schalk, figure this out, you removed it to prevent fetching pages and pages of
+                    -- playlist items
+                    --fetchMore
                     )
 
                 Err error ->
