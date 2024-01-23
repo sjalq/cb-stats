@@ -158,7 +158,7 @@ video_liveViewsEstimate video currentViewers =
         liveLikes = video.statsOnConclusion |> Maybe.map .likeCount 
     in
     Maybe.map2
-        (\p l -> (p * 12) + (l * 31) // 10 ) 
+        (\p l -> ((p * 12) + (l * 31)) // 10 ) 
         peak
         liveLikes
 
