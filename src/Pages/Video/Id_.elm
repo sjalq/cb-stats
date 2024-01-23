@@ -189,12 +189,12 @@ drawLiveViewers currentViewers =
         , Element.table tableStyle
             { data =
                 currentViewers
-                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 19)
                     |> Dict.values
                     |> List.filterMap (List.sortBy .value >> List.head)
                     |> viewsDiff
             , columns =
-                [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> wrappedText)
+                [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 19 >> wrappedText)
                 , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
                 ]
