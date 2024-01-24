@@ -141,6 +141,7 @@ type alias VideoResults =
     , videoChannels : Dict String String
     , videoStats : Dict ( String, Int ) VideoStatisticsAtTime
     , competitorVideos : Dict String (Dict String Video)
+    , competitorsVsUs : Dict String (Dict String (Maybe Float))
     }
 
 

@@ -407,12 +407,6 @@ view model =
                                     )
 
                                --    , Column
-                               --         (columnHeader "Copy row")
-                               --         (px 80)
-                               --         (\_ ->
-                               --             msgButton "Copy" (Just GetVideos)
-                               --         )
-                               --    , Column
                                --         (columnHeader "Sparkline")
                                --         (px 100)
                                --         (\v ->

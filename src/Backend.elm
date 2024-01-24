@@ -2123,6 +2123,30 @@ getVideos model playlistId =
             videos
                 |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
                 |> Dict.filter (\_ v -> Dict.size v > 0)
+
+        uniqueCompetitorIds =
+            competitorVideos
+                |> Dict.values
+                |> List.map Dict.values
+                |> List.concat
+                |> List.map .videoOwnerChannelId
+                |> List.Extra.unique
+
+        competitorsVsUs =
+            videos
+                |> Dict.keys
+                |> List.map
+                    (\videoId ->
+                        ( videoId
+                        , uniqueCompetitorIds
+                            |> List.map
+                                (\competitorId ->
+                                    ( competitorId, calculateCompetingViewsPercentage model videoId competitorId )
+                                )
+                            |> Dict.fromList
+                        )
+                    )
+                |> Dict.fromList
     in
     { playlists = playlists
     , videos = videos
@@ -2131,6 +2155,7 @@ getVideos model playlistId =
     , videoChannels = videoChannels
     , videoStats = videoStats
     , competitorVideos = competitorVideos
+    , competitorsVsUs = competitorsVsUs
     }
 
 
@@ -2169,20 +2194,6 @@ tabulateVideoData model videoResults =
                 |> List.map .videoOwnerChannelId
                 |> List.Extra.unique
 
-        competitorVideoViewCount v competitorChannelTitle =
-            videoResults.competitorVideos
-                |> Dict.get v.id
-                |> Maybe.andThen
-                    (\cv ->
-                        Dict.filter (\_ cv_ -> cv_.videoOwnerChannelTitle == competitorChannelTitle) cv
-                            |> Dict.values
-                            |> List.head
-                            |> Maybe.andThen .statsAfter24Hours
-                            |> Maybe.map .viewCount
-                    )
-
-        -- |> Maybe.map (\cv ->
-        --     cv.
         sheetString str =
             "\"" ++ str ++ "\""
 
@@ -2241,10 +2252,6 @@ tabulateVideoData model videoResults =
 
                             Unknown_ ->
                                 ""
-
-                         --  , video_liveViewsEstimate video videoResults.currentViewers
-                         --     |> Maybe.map String.fromInt
-                         --     |> Maybe.withDefault ""
                          , case video.statsOnConclusion of
                             Just statsOnConclusion_ ->
                                 statsOnConclusion_.likeCount
@@ -2287,8 +2294,10 @@ tabulateVideoData model videoResults =
                             ++ (uniqueCompetitorIds
                                     |> List.map
                                         (\competitorId ->
-                                            calculateCompetingViewsPercentage model video.id competitorId
-                                                |> Maybe.map String.fromFloat
+                                            videoResults.competitorsVsUs
+                                                |> Dict.get video.id
+                                                |> Maybe.andThen (\competitorsVsUs_ -> Dict.get competitorId competitorsVsUs_)
+                                                |> Maybe.andThen (Maybe.map String.fromFloat)
                                                 |> Maybe.withDefault ""
                                         )
                                )
