@@ -254,13 +254,14 @@ getCompetitorLiveVideosCmd channelId accessToken time =
     -- search api
     let
         publishedAfter =
-            ((time |> Time.posixToMillis) - (10 * day)) |> intTimeToStr
+            ((time |> Time.posixToMillis) - (3 * day)) |> intTimeToStr
 
         url =
             "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
                 ++ channelId
                 ++ "&type=live&publishedAfter="
                 ++ publishedAfter
+                ++ "&maxResults=50"
 
                 |> Debug.log "search url"
     in
@@ -279,13 +280,14 @@ getCompetitorOtherVideosCmd channelId accessToken time =
     -- search api
     let
         publishedAfter =
-            ((time |> Time.posixToMillis) - (10 * day)) |> intTimeToStr
+            ((time |> Time.posixToMillis) - (3 * day)) |> intTimeToStr
 
         url =
             "https://www.googleapis.com/youtube/v3/search?part=snippet&channelId="
                 ++ channelId
                 ++ "&type=video&publishedAfter="
                 ++ publishedAfter
+                ++ "&maxResults=50"
 
                 |> Debug.log "search url"
     in

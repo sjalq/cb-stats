@@ -80,6 +80,11 @@ type LiveStatus
     | Ended String
     | Impossibru
 
+type LiveViewers 
+    = Estimate Int
+    | Actual Int
+    | Unknown_
+
 
 type alias Video =
     { id : String
@@ -167,6 +172,24 @@ video_liveViewsEstimate video currentViewers =
         (\p l -> ((p * 12) + (l * 31)) // 10)
         peak
         liveLikes
+
+
+
+
+video_liveViews video currentViewers =
+    case ( video, video |> Maybe.andThen .liveViews ) of
+        ( Just video_, Nothing ) ->
+            video_liveViewsEstimate
+                video_
+                (currentViewers |> currentViewers_ListToDict)
+            |> Maybe.map (\liveViews_ -> Actual liveViews_)
+            |> Maybe.withDefault Unknown_
+            
+        ( _, Just liveViews_ ) ->
+            Actual liveViews_ 
+
+        _ ->
+            Unknown_
 
 
 video_lobbyEstimate liveVideoDetails currentViewers videoId =
