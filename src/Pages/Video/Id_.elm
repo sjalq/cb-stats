@@ -233,7 +233,7 @@ view model =
                     drawField "Live Views" <| (value |> String.fromInt)
 
                 Estimate value ->
-                    drawField "Live Views" <| (value |> String.fromInt)
+                    drawField "Live Views ±" <| (value |> String.fromInt)
 
                 _ ->
                     drawField "Live Views" "unknown"
