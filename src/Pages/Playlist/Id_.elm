@@ -1,7 +1,7 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
-import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, VideoStatisticsAtTime, video_liveViewsEstimate, video_peakViewers)
+import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, video_liveViewsEstimate, video_peakViewers)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)

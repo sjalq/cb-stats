@@ -4,7 +4,7 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
-import Api.YoutubeModel exposing (video_liveViewsEstimate, video_lobbyEstimate, video_peakViewers)
+import Api.YoutubeModel exposing (LiveViewers(..), video_liveViews, video_liveViewsEstimate, video_lobbyEstimate, video_peakViewers)
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
@@ -2208,6 +2208,19 @@ tabulateVideoData videoResults =
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
                             |> sheetString
+                        , case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
+                            Actual liveViews ->
+                                liveViews
+                                    |> String.fromInt
+                                    |> sheetString
+
+                            Estimate liveViewsEstimate ->
+                                liveViewsEstimate
+                                    |> String.fromInt
+                                    |> sheetString
+
+                            Unknown_ ->
+                                ""
                         , video_liveViewsEstimate video videoResults.currentViewers
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""

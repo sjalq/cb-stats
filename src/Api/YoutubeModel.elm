@@ -80,7 +80,8 @@ type LiveStatus
     | Ended String
     | Impossibru
 
-type LiveViewers 
+
+type LiveViewers
     = Estimate Int
     | Actual Int
     | Unknown_
@@ -174,22 +175,17 @@ video_liveViewsEstimate video currentViewers =
         liveLikes
 
 
-
-
 video_liveViews video currentViewers =
-    case ( video, video |> Maybe.andThen .liveViews ) of
-        ( Just video_, Nothing ) ->
+    case video.liveViews of
+        Nothing ->
             video_liveViewsEstimate
-                video_
+                video
                 (currentViewers |> currentViewers_ListToDict)
-            |> Maybe.map (\liveViews_ -> Actual liveViews_)
-            |> Maybe.withDefault Unknown_
-            
-        ( _, Just liveViews_ ) ->
-            Actual liveViews_ 
+                |> Maybe.map (\liveViews_ -> Estimate liveViews_)
+                |> Maybe.withDefault Unknown_
 
-        _ ->
-            Unknown_
+        Just liveViews_ ->
+            Actual liveViews_
 
 
 video_lobbyEstimate liveVideoDetails currentViewers videoId =

@@ -161,12 +161,13 @@ drawMultilineFieldWithScrollbar label value =
         ]
 
 
-draw24HourViews videoStatisticsAtTime =
+draw24HourViews liveViews videoStatisticsAtTime =
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
         , Element.table tableStyle
             { data =
                 videoStatisticsAtTime
+                    |> List.map (\s -> { s | viewCount = s.viewCount + liveViews })
                     |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
                     |> Dict.values
                     |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
@@ -204,6 +205,10 @@ drawLiveViewers currentViewers =
 
 view : Model -> View Msg
 view model =
+    let
+        liveViews =
+            model.video |> Maybe.map (\v -> video_liveViews v model.currentViewers) |> Maybe.withDefault Unknown_
+    in
     { title = "Video"
     , body =
         column [ width <| fill ]
@@ -223,19 +228,12 @@ view model =
                 |> Maybe.map String.fromInt
                 |> Maybe.withDefault "unknown"
                 |> drawField "1 Min Mark Viewers"
-            , case ( model.video, model.video |> Maybe.andThen .liveViews ) of
-                ( Just video_, Nothing ) ->
-                    -- drawField "_" "_"
-                    drawField "Live Views Est."
-                        (video_liveViewsEstimate
-                            video_
-                            (model.currentViewers |> currentViewers_ListToDict)
-                            |> Maybe.map String.fromInt
-                            |> Maybe.withDefault "unknown"
-                        )
+            , case liveViews of
+                Actual value ->
+                    drawField "Live Views" <| (value |> String.fromInt)
 
-                ( _, Just liveViews_ ) ->
-                    drawField "Live Views" <| (liveViews_ |> String.fromInt)
+                Estimate value ->
+                    drawField "Live Views" <| (value |> String.fromInt)
 
                 _ ->
                     drawField "Live Views" "unknown"
@@ -250,7 +248,15 @@ view model =
             --     |> Maybe.map String.fromInt
             --     |> Maybe.withDefault ""
             --     |> drawField "1 Min Mark Viewers"
-            , draw24HourViews model.videoStatisticsAtTime
+            , case liveViews of
+                Actual value ->
+                    draw24HourViews value model.videoStatisticsAtTime
+
+                Estimate value ->
+                    draw24HourViews value model.videoStatisticsAtTime
+
+                _ ->
+                    drawField "Live Viewers" "unknown"
             , drawLiveViewers
                 (model.currentViewers
                     |> List.filter
