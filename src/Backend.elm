@@ -2287,14 +2287,14 @@ tabulateVideoData model videoResults =
                          , "https://cb-stats.lamdera.app/video/"
                             ++ video.id
                          ]
-                            ++ (uniqueCompetitorIds
-                                    |> List.map
-                                        (\competitorId ->
-                                            calculateCompetingViewsPercentage model video.id competitorId
-                                                |> Maybe.map String.fromFloat
-                                                |> Maybe.withDefault ""
-                                        )
-                               )
+                            -- ++ (uniqueCompetitorIds
+                            --         |> List.map
+                            --             (\competitorId ->
+                            --                 calculateCompetingViewsPercentage model video.id competitorId
+                            --                     |> Maybe.map String.fromFloat
+                            --                     |> Maybe.withDefault ""
+                            --             )
+                            --    )
                         )
                             |> List.map sheetString
                     )
