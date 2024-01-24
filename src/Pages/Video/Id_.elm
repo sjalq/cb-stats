@@ -227,7 +227,7 @@ view model =
                 (model.video |> Maybe.map .id |> Maybe.withDefault "")
                 |> Maybe.map String.fromInt
                 |> Maybe.withDefault "unknown"
-                |> drawField "1 Min Mark Viewers"
+                |> drawField "Lobby Viewers"
             , case liveViews of
                 Actual value ->
                     drawField "Live Views" <| (value |> String.fromInt)
