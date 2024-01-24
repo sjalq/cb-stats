@@ -43,8 +43,6 @@ type ToBackend
     | AttemptBatch_GetCompetitorVideos
     | AttemptBatch_ExportToSheet
     --| AttemptYeetAll
-    -- fix data
-    | AttemptFixData 
     -- update from frontend
     | UpdateSchedule Schedule
     | UpdatePlaylist Playlist

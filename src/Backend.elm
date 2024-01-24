@@ -1717,9 +1717,6 @@ updateFromFrontend sessionId clientId msg2 model =
         AttemptBatch_ExportToSheet ->
             ( model, performNowWithTime Batch_ExportToSheet )
 
-        AttemptFixData ->
-            ( model |> removeSheldonMess, Cmd.none )
-
         AttemptUpdateVideoCtr videoId ctr ->
             ( { model
                 | videos =
@@ -2244,9 +2241,10 @@ tabulateVideoData model videoResults =
 
                             Unknown_ ->
                                 ""
-                        --  , video_liveViewsEstimate video videoResults.currentViewers
-                        --     |> Maybe.map String.fromInt
-                        --     |> Maybe.withDefault ""
+
+                         --  , video_liveViewsEstimate video videoResults.currentViewers
+                         --     |> Maybe.map String.fromInt
+                         --     |> Maybe.withDefault ""
                          , case video.statsOnConclusion of
                             Just statsOnConclusion_ ->
                                 statsOnConclusion_.likeCount
@@ -2286,14 +2284,14 @@ tabulateVideoData model videoResults =
                          , "https://cb-stats.lamdera.app/video/"
                             ++ video.id
                          ]
-                         ++ (uniqueCompetitorIds
-                                 |> List.map
-                                     (\competitorId ->
-                                         calculateCompetingViewsPercentage model video.id competitorId
-                                             |> Maybe.map String.fromFloat
-                                             |> Maybe.withDefault ""
-                                     )
-                            )
+                            ++ (uniqueCompetitorIds
+                                    |> List.map
+                                        (\competitorId ->
+                                            calculateCompetingViewsPercentage model video.id competitorId
+                                                |> Maybe.map String.fromFloat
+                                                |> Maybe.withDefault ""
+                                        )
+                               )
                         )
                             |> List.map sheetString
                     )
@@ -2304,229 +2302,12 @@ tabulateVideoData model videoResults =
 escapeStringForJson : String -> String
 escapeStringForJson str =
     str
-        -- |> String.replace "\\" "\\\\"
-        -- |> String.replace "\"" "\\\""
-        -- |> String.replace "\n" "\\n"
-        -- |> String.replace "\r" "\\r"
-        -- |> String.replace "\t" "\\t"
         |> String.replace "\"" "'"
         |> String.replace "\n" " "
         |> String.replace "\u{000D}" " "
         |> String.replace "\t" " "
         |> String.replace "[" "("
         |> String.replace "]" ")"
-
-
-
--- |> Encode.string
--- |> Encode.encode 0
-
-
-manuallyInsertVideoStatsKyle : Model -> Model
-manuallyInsertVideoStatsKyle model =
-    let
-        videoId =
-            "7f5GjKj7rfc"
-
-        actualStartTimeStr =
-            "2024-01-22T07:24:20Z"
-
-        actualStartTimeInt =
-            actualStartTimeStr |> strToIntTime
-
-        data =
-            [ ( 0, 386 )
-            , ( 1, 650 )
-            , ( 2, 760 )
-            , ( 3, 832 )
-            , ( 4, 891 )
-            , ( 5, 955 )
-            , ( 6, 955 )
-            , ( 7, 1059 )
-            , ( 8, 1161 )
-            , ( 9, 1218 )
-            , ( 10, 1280 )
-            , ( 11, 1285 )
-            , ( 12, 1360 )
-            , ( 13, 1352 )
-            , ( 14, 1390 )
-            , ( 15, 1444 )
-            , ( 16, 1450 )
-            , ( 17, 1477 )
-            , ( 18, 1480 )
-            , ( 19, 1520 )
-            , ( 20, 1541 )
-            , ( 21, 1589 )
-            , ( 22, 1599 )
-            , ( 23, 1621 )
-            , ( 24, 1635 )
-            , ( 25, 1651 )
-            , ( 26, 1680 )
-            , ( 27, 1701 )
-            , ( 28, 1735 )
-            , ( 29, 1774 )
-            , ( 30, 1780 )
-            , ( 31, 1786 )
-            , ( 32, 1840 )
-            , ( 33, 1841 )
-            , ( 34, 1825 )
-            ]
-                |> List.map
-                    (\( timeOffset, value ) ->
-                        ( ( videoId, actualStartTimeInt + (timeOffset * minute) )
-                        , { videoId = videoId
-                          , timestamp = actualStartTimeInt + (timeOffset * minute) |> Time.millisToPosix
-                          , value = value
-                          }
-                        )
-                    )
-                |> Dict.fromList
-    in
-    { model
-        | currentViewers =
-            Dict.union model.currentViewers data
-    }
-
-
-manuallyInsertVideoStatsSheldon : Model -> Model
-manuallyInsertVideoStatsSheldon model =
-    let
-        videoId =
-            "E0tsnclIzVo"
-
-        actualStartTimeStr =
-            "2024-01-22T10:06:18Z"
-
-        actualStartTimeInt =
-            actualStartTimeStr |> strToIntTime
-
-        data =
-            [ ( 0, 760 )
-            , ( 1, 1260 )
-            , ( 2, 1440 )
-            , ( 3, 1605 )
-            , ( 4, 1783 )
-            , ( 5, 1951 )
-            , ( 6, 2145 )
-            , ( 7, 2281 )
-            , ( 8, 2341 )
-            , ( 9, 2421 )
-            ]
-                |> List.map
-                    (\( timeOffset, value ) ->
-                        ( ( videoId, actualStartTimeInt + (timeOffset * minute) )
-                        , { videoId = videoId
-                          , timestamp = actualStartTimeInt + (timeOffset * minute) |> Time.millisToPosix
-                          , value = value
-                          }
-                        )
-                    )
-                |> Dict.fromList
-    in
-    { model
-        | currentViewers =
-            Dict.union model.currentViewers data
-    }
-
-
-removeSheldonMess : Model -> Model
-removeSheldonMess model =
-    let
-        wrongTime =
-            "2024-01-22T07:24:20Z"
-
-        videoId =
-            "E0tsnclIzVo"
-
-        data =
-            [ 0
-            , 1
-            , 2
-            , 3
-            , 4
-            , 5
-            , 6
-            , 7
-            , 8
-            , 9
-            ]
-                |> List.map (\timeOffset -> ( videoId, (wrongTime |> strToIntTime) + (timeOffset * minute) ))
-                |> Debug.log "this ran on this data"
-    in
-    { model
-        | currentViewers =
-            model.currentViewers
-                |> Dict.filter (\( videoId_, timestamp_ ) _ -> not (List.member ( videoId_, timestamp_ ) data))
-    }
-
-
-video_comps : Model -> String -> Int -> List a
-video_comps model videoId time =
-    let
-        -- goal:
-        -- * get the latests statistics of all videos that compete with this video
-        -- logic
-        -- * join the video with the liveVideoDetails
-        -- * filter out those that ended less than 24hrs ago
-        -- * from that get the latest statistics
-        qualifyingVideoIds =
-            model.liveVideoDetails
-                |> Dict.filter
-                    (\_ lvd ->
-                        (lvd.actualEndTime
-                            |> Maybe.map strToIntTime
-                            |> Maybe.withDefault 0
-                        )
-                            <= (time - (24 * hour))
-                    )
-                |> Dict.keys
-
-        qualifyingVideoStatistics =
-            model.videoStatisticsAtTime
-                |> Dict.filter (\_ s -> List.member s.videoId qualifyingVideoIds)
-                |> Dict.values
-                |> groupByComparable .videoId
-                |> List.filterMap (\( _, s ) -> s |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1) |> List.head)
-                |> List.map (\s -> ( s.videoId, s ))
-                |> Dict.fromList
-
-        qualifyingVideoIds2 =
-            qualifyingVideoStatistics
-                |> Dict.keys
-
-        playlistIds =
-            qualifyingVideoIds2
-                |> List.filterMap (\id -> model.videos |> Dict.get id |> Maybe.map .playlistId)
-                |> List.Extra.unique
-
-        playlists =
-            model.playlists
-                |> Dict.filter (\_ p -> List.member p.id playlistIds)
-
-        competitorChannelIds =
-            playlists
-                |> Dict.values
-                |> List.map (.competitorIds >> Set.toList)
-                |> List.concat
-                |> List.Extra.unique
-
-        qualifyingCompetitorVideoIds =
-            model.videos
-                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelId competitorChannelIds)
-                |> Dict.filter (\id _ -> List.member id qualifyingVideoIds2)
-                |> Dict.keys
-
-        qualifyingCompetitorStats =
-            model.videoStatisticsAtTime
-                |> Dict.filter (\_ s -> List.member s.videoId qualifyingCompetitorVideoIds)
-                |> Dict.values
-
-        thisVideoStats =
-            model.videoStatisticsAtTime
-                |> Dict.filter (\_ s -> s.videoId == videoId)
-                |> Dict.values
-    in
-    []
 
 
 findCompetingVideoStats : Model -> String -> String -> { ours : Maybe VideoStatisticsAtTime, theirs : Maybe VideoStatisticsAtTime }
