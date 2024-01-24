@@ -53,6 +53,7 @@ type alias BackendModel =
     , currentViewers : Dict ( String, Int ) CurrentViewers
     , channelHandleMap : List ( String, String )
     , apiCallCount : Int
+    , time : Time.Posix
     }
 
 
@@ -119,6 +120,7 @@ type BackendMsg
     | DeletedSheets String (List Int) NextAction (Result Http.Error ())
     | GotSheetIds String NextAction (Result Http.Error Json.Auto.GoogleSheetsDetails.Root)
     | AddedSheets String (List String) NextAction (Result Http.Error ())
+    | Tick Time.Posix
       -- other
     | NoOpBackendMsg
 

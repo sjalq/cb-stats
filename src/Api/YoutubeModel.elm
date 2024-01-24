@@ -196,10 +196,11 @@ video_lobbyEstimate liveVideoDetails currentViewers videoId =
         min2 =
             video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers (60 + 60) videoId
     in
-    Maybe.map2
-        (\m1 m2 -> ((m1 * 20) + (m2 * 80)) // 100)
-        min1
-        min2
+    -- Maybe.map2
+    --     (\m1 m2 -> ((m1 * 20) + (m2 * 80)) // 100)
+    --     min1
+    --     min2
+    video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers 15 videoId
 
 
 video_avgViewers liveVideoDetails currentViewers secondMark videoId =

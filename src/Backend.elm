@@ -77,6 +77,7 @@ init =
       , currentViewers = Dict.empty
       , channelHandleMap = []
       , apiCallCount = 0
+      , time = Time.millisToPosix 0
       }
     , Cmd.none
     )
@@ -94,7 +95,8 @@ pollingInterval =
 subscriptions : Model -> Sub BackendMsg
 subscriptions model =
     Sub.batch
-        [ Time.every (10 * second) Batch_RefreshAccessTokens
+        [ Time.every (10 * second) Tick
+        , Time.every (10 * second) Batch_RefreshAccessTokens
         , Time.every hour Batch_RefreshAllChannels
         , Time.every hour Batch_RefreshAllPlaylists
         , Time.every pollingInterval Batch_RefreshAllVideosFromPlaylists
@@ -1307,7 +1309,7 @@ update msg model =
                                         |> List.map (\p -> ( p.id, p.title ))
                                      )
                                         ++ [ ( "*", "All" ), ( "**", "Competitors" ) ]
-                                        |> List.map (\( id, title ) -> ( id, title |> String.replace " " "_", getVideos model id |> tabulateVideoData ))
+                                        |> List.map (\( id, title ) -> ( id, title |> String.replace " " "_", getVideos model id |> tabulateVideoData model ))
                                         |> List.map
                                             (\( id, title, data ) ->
                                                 GoogleSheetsApi.updateSheet spreadsheetId title data (UpdateSheets []) (sheetAccessToken model)
@@ -1409,6 +1411,9 @@ update msg model =
                 Result.Err error ->
                     ( model, Cmd.none )
                         |> log ("Failed to update sheet : " ++ sheetName ++ "\n" ++ httpErrToString error) Error
+
+        Tick time ->
+            ( { model | time = time }, Cmd.none )
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
@@ -2144,19 +2149,27 @@ sheetAccessToken model =
 --"ya29.a0AfB_byBj-AEs-2bu_uNdb3EZOzHiYw5yYeRFHbaq7zfmrZv9aIWCMeFmCusTAPFJIuJzB0O-sI0dOVnedZskD2_3h9fNURq4gsAMC3uhs22F6D-xr1a1BwH76nXATk_mKIFxH01BtuJCyAbdrnvBNS6S9zMu1aBuMdJ3kAaCgYKAVISARASFQHGX2MiyEMhlFa8NvoR0A0-DKN2pw0173"
 
 
-tabulateVideoData : Api.YoutubeModel.VideoResults -> List (List String)
-tabulateVideoData videoResults =
+tabulateVideoData : Model -> Api.YoutubeModel.VideoResults -> List (List String)
+tabulateVideoData model videoResults =
     -- goal:
     -- * return the same data that Pages.Playlist.Id_ displays
     -- * make sure the headers are the same
     -- * make sure the data is the same
     let
-        uniqueCompetitors =
+        uniqueCompetitorTitles =
             videoResults.competitorVideos
                 |> Dict.values
                 |> List.map Dict.values
                 |> List.concat
                 |> List.map .videoOwnerChannelTitle
+                |> List.Extra.unique
+
+        uniqueCompetitorIds =
+            videoResults.competitorVideos
+                |> Dict.values
+                |> List.map Dict.values
+                |> List.concat
+                |> List.map .videoOwnerChannelId
                 |> List.Extra.unique
 
         competitorVideoViewCount v competitorChannelTitle =
@@ -2191,7 +2204,7 @@ tabulateVideoData videoResults =
             , "Watch %"
             , "Details"
             ]
-                ++ uniqueCompetitors
+                ++ uniqueCompetitorTitles
                 |> List.map sheetString
 
         data =
@@ -2275,6 +2288,14 @@ tabulateVideoData videoResults =
                         , "https://cb-stats.lamdera.app/video/"
                             ++ video.id
                         ]
+                            ++ (uniqueCompetitorIds
+                                    |> List.map
+                                        (\competitorId ->
+                                            calculateCompetingViewsPercentage model video.id competitorId
+                                                |> Maybe.map String.fromFloat
+                                        )
+                                    |> List.map (Maybe.withDefault "")
+                               )
                             |> List.map sheetString
                     )
     in
@@ -2522,10 +2543,12 @@ findCompetingVideoStats model videoId competitorId =
             model.liveVideoDetails
                 |> Dict.filter (\_ lvd -> Dict.member lvd.videoId competitorVideos)
 
+        -- big O n
         ourVideoLiveVideoDetails =
             model.liveVideoDetails
                 |> Dict.get videoId
 
+        -- big O n log n
         competitorVideosThatOverlap =
             competitorLiveVideoDetails
                 |> Dict.filter
@@ -2565,16 +2588,19 @@ findCompetingVideoStats model videoId competitorId =
     { ours = ourLatestVideoStats, theirs = latestCompetitorVideoThatOverlapsStats }
 
 
-calculateCompetingViewsPercentage : Model -> String -> String -> Int -> Maybe Float
-calculateCompetingViewsPercentage model videoId competingChannelId currentTime =
+calculateCompetingViewsPercentage : Model -> String -> String -> Maybe Float
+calculateCompetingViewsPercentage model videoId competingChannelId =
     let
         { ours, theirs } =
             findCompetingVideoStats model videoId competingChannelId
 
+        currentTime =
+            model.time |> Time.posixToMillis
+
         percentage =
             case ( ours, theirs ) of
                 ( Just ours_, Just theirs_ ) ->
-                    if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis)  <= (currentTime - day)) then
+                    if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis) <= (currentTime - day)) then
                         if theirs_.viewCount >= 0 then
                             Just ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat))
 
