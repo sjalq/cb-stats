@@ -4,7 +4,7 @@ import Api.Data
 import Api.Logging as Logging exposing (..)
 import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.User
-import Api.YoutubeModel exposing (LiveViewers(..), video_liveViews, video_liveViewsEstimate, video_lobbyEstimate, video_peakViewers)
+import Api.YoutubeModel exposing (LiveViewers(..), VideoStatisticsAtTime, video_liveViews, video_liveViewsEstimate, video_lobbyEstimate, video_peakViewers)
 import BackendLogging exposing (log)
 import Bridge exposing (..)
 import Crypto.Hash
@@ -1968,7 +1968,7 @@ video_lookupCompetingVideo model video =
                 |> List.Extra.unique
                 |> Debug.log "altCompetitorChannelIds"
 
-        vLiveVideoDetails =
+        ourLiveVideoDetails =
             model.liveVideoDetails
                 |> Dict.get video.id
 
@@ -1982,14 +1982,14 @@ video_lookupCompetingVideo model video =
             model.liveVideoDetails
                 |> Dict.filter (\_ c -> Dict.member c.videoId competitorVideos)
                 |> Dict.filter
-                    (\_ c ->
-                        case vLiveVideoDetails of
-                            Just vLiveVideoDetails_ ->
+                    (\_ competitorLiveVideoDetails ->
+                        case ourLiveVideoDetails of
+                            Just ourLiveVideoDetails_ ->
                                 timespansOverlap
-                                    (video_actualStartTime model vLiveVideoDetails_)
-                                    (video_actualEndTime model vLiveVideoDetails_)
-                                    (video_actualStartTime model c)
-                                    (video_actualEndTime model c)
+                                    (video_actualStartTime model ourLiveVideoDetails_)
+                                    (video_actualEndTime model ourLiveVideoDetails_)
+                                    (video_actualStartTime model competitorLiveVideoDetails)
+                                    (video_actualEndTime model competitorLiveVideoDetails)
 
                             Nothing ->
                                 False
@@ -2115,6 +2115,7 @@ getVideos model playlistId =
                 |> Dict.map (\_ v -> v.videoOwnerChannelTitle)
 
         -- this value should be "our video id" -> "competitor video id" -> video
+        -- for each of "our" videos, find the competitor video that was live at the same time
         competitorVideos : Dict.Dict String (Dict.Dict String Api.YoutubeModel.Video)
         competitorVideos =
             videos
@@ -2158,6 +2159,20 @@ tabulateVideoData videoResults =
                 |> List.map .videoOwnerChannelTitle
                 |> List.Extra.unique
 
+        competitorVideoViewCount v competitorChannelTitle =
+            videoResults.competitorVideos
+                |> Dict.get v.id
+                |> Maybe.andThen
+                    (\cv ->
+                        Dict.filter (\_ cv_ -> cv_.videoOwnerChannelTitle == competitorChannelTitle) cv
+                            |> Dict.values
+                            |> List.head
+                            |> Maybe.andThen .statsAfter24Hours
+                            |> Maybe.map .viewCount
+                    )
+
+        -- |> Maybe.map (\cv ->
+        --     cv.
         sheetString str =
             "\"" ++ str ++ "\""
 
@@ -2194,50 +2209,42 @@ tabulateVideoData videoResults =
                                     |> List.head
                         in
                         [ video.publishedAt |> sheetString
-                        , "https://www.youtube.com/watch?v=" ++ video.id |> sheetString
-                        , video.videoOwnerChannelTitle |> sheetString
-                        , video.title |> escapeStringForJson |> sheetString
+                        , "https://www.youtube.com/watch?v=" ++ video.id
+                        , video.videoOwnerChannelTitle
+                        , video.title |> escapeStringForJson
                         , video.liveStatus
                             |> Api.YoutubeModel.liveStatusToString
-                            |> sheetString
                         , video_lobbyEstimate videoResults.liveVideoDetails videoResults.currentViewers video.id
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                            |> sheetString
                         , video_peakViewers videoResults.currentViewers video.id
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                            |> sheetString
-                        , sheetString <|
-                            case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
-                                Actual liveViews ->
-                                    liveViews
-                                        |> String.fromInt
+                        , case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
+                            Actual liveViews ->
+                                liveViews
+                                    |> String.fromInt
 
-                                Estimate liveViewsEstimate ->
-                                    liveViewsEstimate
-                                        |> String.fromInt
+                            Estimate liveViewsEstimate ->
+                                liveViewsEstimate
+                                    |> String.fromInt
 
-                                Unknown_ ->
-                                    ""
+                            Unknown_ ->
+                                ""
                         , video_liveViewsEstimate video videoResults.currentViewers
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                            |> sheetString
-                        , (case video.statsOnConclusion of
+                        , case video.statsOnConclusion of
                             Just statsOnConclusion_ ->
                                 statsOnConclusion_.likeCount
                                     |> String.fromInt
 
                             _ ->
                                 ""
-                          )
-                            |> sheetString
                         , lastStats
                             |> Maybe.map .viewCount
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                            |> sheetString
 
                         -- , (case video.statsAfter24Hours of
                         --     Just statsAfter24Hours_ ->
@@ -2258,19 +2265,17 @@ tabulateVideoData videoResults =
                           )
                             |> sheetString
                         , -- "Watch %"
-                          (case video.reportAfter24Hours of
+                          case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
                                 reportAfter24Hours_.averageViewPercentage
                                     |> String.fromFloat
 
                             _ ->
                                 ""
-                          )
-                            |> sheetString
                         , "https://cb-stats.lamdera.app/video/"
                             ++ video.id
-                            |> sheetString
                         ]
+                            |> List.map sheetString
                     )
     in
     headers :: data
@@ -2433,3 +2438,153 @@ removeSheldonMess model =
             model.currentViewers
                 |> Dict.filter (\( videoId_, timestamp_ ) _ -> not (List.member ( videoId_, timestamp_ ) data))
     }
+
+
+video_comps : Model -> String -> Int -> List a
+video_comps model videoId time =
+    let
+        -- goal:
+        -- * get the latests statistics of all videos that compete with this video
+        -- logic
+        -- * join the video with the liveVideoDetails
+        -- * filter out those that ended less than 24hrs ago
+        -- * from that get the latest statistics
+        qualifyingVideoIds =
+            model.liveVideoDetails
+                |> Dict.filter
+                    (\_ lvd ->
+                        (lvd.actualEndTime
+                            |> Maybe.map strToIntTime
+                            |> Maybe.withDefault 0
+                        )
+                            <= (time - (24 * hour))
+                    )
+                |> Dict.keys
+
+        qualifyingVideoStatistics =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> List.member s.videoId qualifyingVideoIds)
+                |> Dict.values
+                |> groupByComparable .videoId
+                |> List.filterMap (\( _, s ) -> s |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1) |> List.head)
+                |> List.map (\s -> ( s.videoId, s ))
+                |> Dict.fromList
+
+        qualifyingVideoIds2 =
+            qualifyingVideoStatistics
+                |> Dict.keys
+
+        playlistIds =
+            qualifyingVideoIds2
+                |> List.filterMap (\id -> model.videos |> Dict.get id |> Maybe.map .playlistId)
+                |> List.Extra.unique
+
+        playlists =
+            model.playlists
+                |> Dict.filter (\_ p -> List.member p.id playlistIds)
+
+        competitorChannelIds =
+            playlists
+                |> Dict.values
+                |> List.map (.competitorIds >> Set.toList)
+                |> List.concat
+                |> List.Extra.unique
+
+        qualifyingCompetitorVideoIds =
+            model.videos
+                |> Dict.filter (\_ v -> List.member v.videoOwnerChannelId competitorChannelIds)
+                |> Dict.filter (\id _ -> List.member id qualifyingVideoIds2)
+                |> Dict.keys
+
+        qualifyingCompetitorStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> List.member s.videoId qualifyingCompetitorVideoIds)
+                |> Dict.values
+
+        thisVideoStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> s.videoId == videoId)
+                |> Dict.values
+    in
+    []
+
+
+findCompetingVideoStats : Model -> String -> String -> { ours : Maybe VideoStatisticsAtTime, theirs : Maybe VideoStatisticsAtTime }
+findCompetingVideoStats model videoId competitorId =
+    let
+        -- goal:
+        -- * for one video and one competitor video find the competing video that was live at the same time
+        competitorVideos =
+            model.videos
+                |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
+
+        competitorLiveVideoDetails =
+            model.liveVideoDetails
+                |> Dict.filter (\_ lvd -> Dict.member lvd.videoId competitorVideos)
+
+        ourVideoLiveVideoDetails =
+            model.liveVideoDetails
+                |> Dict.get videoId
+
+        competitorVideosThatOverlap =
+            competitorLiveVideoDetails
+                |> Dict.filter
+                    (\_ lvd ->
+                        case ourVideoLiveVideoDetails of
+                            Just ourVideoLiveVideoDetails_ ->
+                                timespansOverlap
+                                    (video_actualStartTime model ourVideoLiveVideoDetails_)
+                                    (video_actualEndTime model ourVideoLiveVideoDetails_)
+                                    (video_actualStartTime model lvd)
+                                    (video_actualEndTime model lvd)
+
+                            Nothing ->
+                                False
+                    )
+
+        latestCompetitorVideoThatOverlaps =
+            competitorVideosThatOverlap
+                |> Dict.values
+                |> List.sortBy (.actualEndTime >> Maybe.map strToIntTime >> Maybe.withDefault 0 >> (*) -1)
+                |> List.head
+
+        latestCompetitorVideoThatOverlapsStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> s.videoId == (latestCompetitorVideoThatOverlaps |> Maybe.map .videoId |> Maybe.withDefault "Nope"))
+                |> Dict.values
+                |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                |> List.head
+
+        ourLatestVideoStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> s.videoId == videoId)
+                |> Dict.values
+                |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                |> List.head
+    in
+    { ours = ourLatestVideoStats, theirs = latestCompetitorVideoThatOverlapsStats }
+
+
+calculateCompetingViewsPercentage : Model -> String -> String -> Int -> Maybe Float
+calculateCompetingViewsPercentage model videoId competingChannelId currentTime =
+    let
+        { ours, theirs } =
+            findCompetingVideoStats model videoId competingChannelId
+
+        percentage =
+            case ( ours, theirs ) of
+                ( Just ours_, Just theirs_ ) ->
+                    if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis)  <= (currentTime - day)) then
+                        if theirs_.viewCount >= 0 then
+                            Just ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat))
+
+                        else
+                            Nothing
+
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+    in
+    percentage

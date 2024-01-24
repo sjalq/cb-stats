@@ -439,19 +439,23 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
         |> Dict.get ourVideo.id
         |> Debug.log "finding v.id"
         |> Maybe.map
-            (\stats ->
+            (\competitorsVideosForOurVideo ->
                 let
                     our24HrViews =
                         ourVideo.statsAfter24Hours
                             |> Maybe.map .viewCount
 
-                    competitor24HrViews =
-                        stats
+                    firstCompetitorVideo = 
+                        competitorsVideosForOurVideo
                             |> Dict.filter (\k v_ -> v_.videoOwnerChannelTitle == competitorChannelTitle)
                             |> Dict.values
                             |> List.head
+
+                    competitor24HrViews =
+                        firstCompetitorVideo
                             |> Maybe.andThen .statsAfter24Hours
                             |> Maybe.map .viewCount
+                            |> Debug.log "competitor24HrViews"
 
                     percentageBetterThanThem =
                         Maybe.map2
@@ -495,8 +499,12 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
                                         (String.fromFloat percentageBetterThanThem_ |> String.left 5) ++ "%"
                                 )
                 in
-                percentageBetterThanThemStr
-                    |> Maybe.withDefault "..."
+                -- percentageBetterThanThemStr
+                --     |> Maybe.withDefault "..."
+                --     |> wrappedText
+                firstCompetitorVideo 
+                    |> Maybe.map .title 
+                    |> Maybe.withDefault "???"
                     |> wrappedText
              --|> el [ Element.Background.color betterThanThemColor ]
             )
