@@ -2208,19 +2208,18 @@ tabulateVideoData videoResults =
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
                             |> sheetString
-                        , case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
-                            Actual liveViews ->
-                                liveViews
-                                    |> String.fromInt
-                                    |> sheetString
+                        , sheetString <|
+                            case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
+                                Actual liveViews ->
+                                    liveViews
+                                        |> String.fromInt
 
-                            Estimate liveViewsEstimate ->
-                                liveViewsEstimate
-                                    |> String.fromInt
-                                    |> sheetString
+                                Estimate liveViewsEstimate ->
+                                    liveViewsEstimate
+                                        |> String.fromInt
 
-                            Unknown_ ->
-                                ""
+                                Unknown_ ->
+                                    ""
                         , video_liveViewsEstimate video videoResults.currentViewers
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
