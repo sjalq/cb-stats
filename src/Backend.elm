@@ -2221,19 +2221,19 @@ tabulateVideoData model videoResults =
                                     |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
                                     |> List.head
                         in
-                        [ video.publishedAt |> sheetString
-                        , "https://www.youtube.com/watch?v=" ++ video.id
-                        , video.videoOwnerChannelTitle
-                        , video.title |> escapeStringForJson
-                        , video.liveStatus
+                        ([ video.publishedAt |> sheetString
+                         , "https://www.youtube.com/watch?v=" ++ video.id
+                         , video.videoOwnerChannelTitle
+                         , video.title |> escapeStringForJson
+                         , video.liveStatus
                             |> Api.YoutubeModel.liveStatusToString
-                        , video_lobbyEstimate videoResults.liveVideoDetails videoResults.currentViewers video.id
+                         , video_lobbyEstimate videoResults.liveVideoDetails videoResults.currentViewers video.id
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                        , video_peakViewers videoResults.currentViewers video.id
+                         , video_peakViewers videoResults.currentViewers video.id
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                        , case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
+                         , case video_liveViews video (videoResults.currentViewers |> Dict.values |> List.filter (\c -> c.videoId == video.id)) of
                             Actual liveViews ->
                                 liveViews
                                     |> String.fromInt
@@ -2244,58 +2244,59 @@ tabulateVideoData model videoResults =
 
                             Unknown_ ->
                                 ""
-                        , video_liveViewsEstimate video videoResults.currentViewers
+                         , video_liveViewsEstimate video videoResults.currentViewers
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
-                        , case video.statsOnConclusion of
+                         , case video.statsOnConclusion of
                             Just statsOnConclusion_ ->
                                 statsOnConclusion_.likeCount
                                     |> String.fromInt
 
                             _ ->
                                 ""
-                        , lastStats
+                         , lastStats
                             |> Maybe.map .viewCount
                             |> Maybe.map String.fromInt
                             |> Maybe.withDefault ""
 
-                        -- , (case video.statsAfter24Hours of
-                        --     Just statsAfter24Hours_ ->
-                        --         statsAfter24Hours_.viewCount
-                        --             |> String.fromInt
-                        --     _ ->
-                        --         ""
-                        --   )
-                        , -- "Subs Gained"
-                          (case video.reportAfter24Hours of
-                            Just reportAfter24Hours_ ->
-                                reportAfter24Hours_.subscribersGained
-                                    + reportAfter24Hours_.subscribersLost
-                                    |> String.fromInt
+                         -- , (case video.statsAfter24Hours of
+                         --     Just statsAfter24Hours_ ->
+                         --         statsAfter24Hours_.viewCount
+                         --             |> String.fromInt
+                         --     _ ->
+                         --         ""
+                         --   )
+                         , -- "Subs Gained"
+                           (case video.reportAfter24Hours of
+                                Just reportAfter24Hours_ ->
+                                    reportAfter24Hours_.subscribersGained
+                                        + reportAfter24Hours_.subscribersLost
+                                        |> String.fromInt
 
-                            _ ->
-                                ""
-                          )
+                                _ ->
+                                    ""
+                           )
                             |> sheetString
-                        , -- "Watch %"
-                          case video.reportAfter24Hours of
+                         , -- "Watch %"
+                           case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
                                 reportAfter24Hours_.averageViewPercentage
                                     |> String.fromFloat
 
                             _ ->
                                 ""
-                        , "https://cb-stats.lamdera.app/video/"
+                         , "https://cb-stats.lamdera.app/video/"
                             ++ video.id
-                        ]
+                         ]
                             ++ (uniqueCompetitorIds
                                     |> List.map
                                         (\competitorId ->
                                             calculateCompetingViewsPercentage model video.id competitorId
                                                 |> Maybe.map String.fromFloat
+                                                |> Maybe.withDefault ""
                                         )
-                                    |> List.map (Maybe.withDefault "")
                                )
+                        )
                             |> List.map sheetString
                     )
     in
