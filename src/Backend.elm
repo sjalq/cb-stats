@@ -2221,7 +2221,7 @@ tabulateVideoData model videoResults =
                                     |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
                                     |> List.head
                         in
-                        ([ video.publishedAt |> sheetString
+                        ([ video.publishedAt 
                          , "https://www.youtube.com/watch?v=" ++ video.id
                          , video.videoOwnerChannelTitle
                          , video.title |> escapeStringForJson
@@ -2276,7 +2276,6 @@ tabulateVideoData model videoResults =
                                 _ ->
                                     ""
                            )
-                            |> sheetString
                          , -- "Watch %"
                            case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
