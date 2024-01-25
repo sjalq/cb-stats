@@ -2153,7 +2153,7 @@ getVideos model playlistId =
     , liveVideoDetails = liveVideoDetails
     , currentViewers = currentViewers
     , videoChannels = videoChannels
-    , videoStats = allStats
+    , videoStatisticsAtTime = allStats
     , competitorVideos = competitorVideos
     , competitorsVsUs = competitorsVsUs
     }
@@ -2223,7 +2223,7 @@ tabulateVideoData model videoResults =
                     (\video ->
                         let
                             lastStats =
-                                videoResults.videoStats
+                                videoResults.videoStatisticsAtTime
                                     |> Dict.filter (\( videoId, _ ) _ -> videoId == video.id)
                                     |> Dict.values
                                     |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)

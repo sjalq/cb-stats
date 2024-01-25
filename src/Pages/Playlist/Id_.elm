@@ -1,7 +1,7 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
 import Api.PerformNow exposing (performNowWithTime)
-import Api.YoutubeModel exposing (CurrentViewers, LiveStatus(..), LiveVideoDetails, Playlist, Video, video_liveViewsEstimate, video_peakViewers)
+import Api.YoutubeModel exposing (..)
 import Bridge exposing (..)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
@@ -49,7 +49,7 @@ type alias Model =
     , currentViewers : Dict ( String, Int ) CurrentViewers
     , videoChannels : Dict String String
     , playlists : Dict String Playlist
-    , videoStats : Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
+    , videoStatisticsAtTime : Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
     , competitorVideos : Dict String (Dict String Video)
     , currentIntTime : Int
     , tmpCtrs : Dict String String
@@ -66,7 +66,7 @@ init { params } =
       , currentViewers = Dict.empty
       , videoChannels = Dict.empty
       , playlists = Dict.empty
-      , videoStats = Dict.empty
+      , videoStatisticsAtTime = Dict.empty
       , competitorVideos = Dict.empty
       , currentIntTime = 0
       , tmpCtrs = Dict.empty
@@ -104,7 +104,7 @@ update msg model =
                 , currentViewers = results.currentViewers
                 , videoChannels = results.videoChannels
                 , playlists = results.playlists
-                , videoStats = results.videoStats
+                , videoStatisticsAtTime = results.videoStatisticsAtTime
                 , competitorVideos = results.competitorVideos |> Debug.log "competitorVideos"
                 , tmpCtrs = results.videos |> Dict.map (\_ v -> v.ctr |> Maybe.map String.fromFloat |> Maybe.withDefault "")
                 , tmpLiveViews = results.videos |> Dict.map (\_ v -> v.liveViews |> Maybe.map String.fromInt |> Maybe.withDefault "")
@@ -328,7 +328,7 @@ view model =
                                     (\v ->
                                         let
                                             stats =
-                                                model.videoStats
+                                                model.videoStatisticsAtTime
                                                     |> Dict.filter (\_ s -> s.videoId == v.id)
                                                     |> Dict.map (\_ s -> s.viewCount)
                                                     |> Dict.values
@@ -393,7 +393,7 @@ view model =
                                             }
                                     )
                                ]
-                            ++ competitorVideoColums model get24HrCompetitorStats
+                            ++ competitorVideoColums model alt_get24HrCompetitorStats
                             ++ [ Column
                                     (columnHeader "Details")
                                     (px 90)
@@ -426,6 +426,13 @@ view model =
             )
     }
 
+--alt_get24HrCompetitorStats : Model -> String -> Video -> Element Msg
+alt_get24HrCompetitorStats model competitorChannelId ourVideo  = 
+    calculateCompetingViewsPercentage model ourVideo.id competitorChannelId
+        |> Maybe.map (\percentage -> String.fromFloat percentage |> String.left 5)
+        |> Maybe.withDefault "..."
+        |> wrappedText
+
 
 get24HrCompetitorStats : Model -> String -> Video -> Element Msg
 get24HrCompetitorStats model competitorChannelTitle ourVideo =
@@ -440,7 +447,7 @@ get24HrCompetitorStats model competitorChannelTitle ourVideo =
                             |> Maybe.map .viewCount
 
                     our24HrStats =
-                        model.videoStats
+                        model.videoStatisticsAtTime
                             |> Dict.filter (\_ s -> s.videoId == ourVideo.id)
                             |> Dict.values
                             |> List.sortBy (.timestamp >> Time.posixToMillis)
@@ -460,7 +467,7 @@ get24HrCompetitorStats model competitorChannelTitle ourVideo =
                             |> Debug.log "competitor24HrViews"
 
                     competitor24HrStats =
-                        model.videoStats
+                        model.videoStatisticsAtTime
                             |> Dict.filter (\_ s -> s.videoId == (firstCompetitorVideo |> Maybe.map .id |> Maybe.withDefault ""))
                             |> Dict.values
                             |> List.sortBy (.timestamp >> Time.posixToMillis)
@@ -564,14 +571,14 @@ competitorVideoColums model vFunc =
         --             (px 100)
         --             (vFunc competitorVideos id)
         --     )
-        |> MoreDict.groupBy .videoOwnerChannelTitle
+        |> MoreDict.groupBy (\g -> (g.videoOwnerChannelId, g.videoOwnerChannelTitle))
         |> Dict.keys
         |> List.map
-            (\title ->
+            (\(id, title) ->
                 Column
                     (columnHeader title)
                     (px 100)
-                    (vFunc model title)
+                    (vFunc model id)
             )
 
 
