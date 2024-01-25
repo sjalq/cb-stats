@@ -1774,7 +1774,10 @@ updateFromFrontend sessionId clientId msg2 model =
                                 let
                                     competitorTitle = model.videos 
                                         |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
-                                        |> Dict.map (\_ v -> v.videoOwnerChannelTitle) |> Dict.get videoId |> Maybe.withDefault ""
+                                        |> Dict.map (\_ v -> v.videoOwnerChannelTitle) 
+                                        |> Dict.values
+                                        |> List.head
+                                        |> Maybe.withDefault ""
                                 in
 
                                 { videoId = videoId 
@@ -1784,13 +1787,41 @@ updateFromFrontend sessionId clientId msg2 model =
                                 } |> Just
                             
                             )
+
+                -- uniqueCompetitors = 
+                --     model.videos
+                --         |> Dict.values
+                --         |> List.filter (\v -> v.playlistId == "")
+                --         |> List.map .videoOwnerChannelId
+
+                -- requests_ = 
+                --     uniqueCompetitors |> List.concatMap (\competitorId -> videoIds |> List.map (\videoId -> (competitorId, videoId)))
+
+                -- competingPercentages = []
+                    -- requests_
+                    --     |> List.map
+                    --         (\( competitorId, videoId ) ->
+                    --             let
+                    --                 competitorTitle = model.videos 
+                    --                     |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
+                    --                     |> Dict.map (\_ v -> v.videoOwnerChannelTitle) |> Dict.get videoId |> Maybe.withDefault ""
+                    --             in
+
+                    --             { videoId = videoId 
+                    --             , competitorId = competitorId
+                    --             , competitorTitle = competitorTitle
+                    --             , percentage = calculateCompetingViewsPercentage model videoId competitorId |> Maybe.withDefault 0
+                    --             } |> Just
+                            
+                    --         )
             in
             ( model
             , sendToPage clientId <|
                 Gen.Msg.Playlist__Id_ <|
                     Pages.Playlist.Id_.GotCompetingPercentages competingPercentages
             )
-                |> log ("Got competing percentages for " ++ (requests |> List.map Tuple.first |> String.join ",")) Info
+                --|> log ("Got competing percentages for " ++ (requests |> List.map (\(a,b) -> a ++ " - " ++  b ++  "||||") |> String.join ","  )) Info
+                |> log ("Got competing percentages for " ++ (requests |> List.length |> String.fromInt )) Info
 
 
 randomSalt : Random.Generator String

@@ -116,7 +116,7 @@ update msg model =
               }
             , 
             let
-                uniqueCompetitors = model.competitorVideos
+                uniqueCompetitors = results.competitorVideos
                     |> Dict.values
                     |> List.map Dict.values
                     |> List.concat
@@ -124,7 +124,7 @@ update msg model =
                     |> Dict.keys
 
                 videoIds = 
-                    model.videos 
+                    results.videos 
                     |> Dict.keys
 
                 crossProduct : List (String, String)
