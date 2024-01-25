@@ -1756,7 +1756,10 @@ updateFromFrontend sessionId clientId msg2 model =
                                             let
                                                 competitorTitle = model.videos 
                                                     |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
-                                                    |> Dict.map (\_ v -> v.videoOwnerChannelTitle) |> Dict.get videoId |> Maybe.withDefault ""
+                                                    |> Dict.map (\_ v -> v.videoOwnerChannelTitle) 
+                                                    |> Dict.values
+                                                    |> List.head
+                                                    |> Maybe.withDefault ""
                                             in
 
                                             { videoId = videoId 
