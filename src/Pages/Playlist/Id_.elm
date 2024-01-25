@@ -1,6 +1,6 @@
 module Pages.Playlist.Id_ exposing (Model, Msg(..), page)
 
-import Api.PerformNow exposing (performNowWithTime)
+import Api.PerformNow exposing (performNow, performNowWithTime)
 import Api.YoutubeModel exposing (..)
 import Bridge exposing (..)
 import Dict exposing (Dict)
@@ -10,6 +10,7 @@ import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
+import Evergreen.V35.Types exposing (BackendMsg(..))
 import Gen.Params.Playlist.Id_ exposing (Params)
 import Gen.Route as Route
 import Html exposing (label)
@@ -25,8 +26,6 @@ import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
-import Evergreen.V35.Types exposing (BackendMsg(..))
-import Api.PerformNow exposing (performNow)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -56,7 +55,7 @@ type alias Model =
     , currentIntTime : Int
     , tmpCtrs : Dict String String
     , tmpLiveViews : Dict String String
-    , competingPercentages : (List (Maybe CompetitorResult))
+    , competingPercentages : List (Maybe CompetitorResult)
     }
 
 
@@ -114,24 +113,24 @@ update msg model =
                 , tmpCtrs = results.videos |> Dict.map (\_ v -> v.ctr |> Maybe.map String.fromFloat |> Maybe.withDefault "")
                 , tmpLiveViews = results.videos |> Dict.map (\_ v -> v.liveViews |> Maybe.map String.fromInt |> Maybe.withDefault "")
               }
-            , 
-            let
-                uniqueCompetitors = results.competitorVideos
-                    |> Dict.values
-                    |> List.map Dict.values
-                    |> List.concat
-                    |> MoreDict.groupBy .videoOwnerChannelId
-                    |> Dict.keys
+            , let
+                uniqueCompetitors =
+                    results.competitorVideos
+                        |> Dict.values
+                        |> List.map Dict.values
+                        |> List.concat
+                        |> MoreDict.groupBy .videoOwnerChannelId
+                        |> Dict.keys
 
-                videoIds = 
-                    results.videos 
-                    |> Dict.keys
+                videoIds =
+                    results.videos
+                        |> Dict.keys
 
-                crossProduct : List (String, String)
-                crossProduct = uniqueCompetitors |> List.concatMap (\competitorId -> videoIds |> List.map (\videoId -> (competitorId, videoId)))
-
-            in
-            Effect.fromCmd <| sendToBackend (AttemptGetCompetingPercentages crossProduct)
+                crossProduct : List ( String, String )
+                crossProduct =
+                    uniqueCompetitors |> List.concatMap (\competitorId -> videoIds |> List.map (\videoId -> ( competitorId, videoId )))
+              in
+              Effect.fromCmd <| sendToBackend (AttemptGetCompetingPercentages crossProduct)
             )
 
         GetVideos ->
@@ -221,16 +220,17 @@ view model =
         el
             [ centerX
             , centerY
+            ,Element.scrollbarX
             ]
             (Element.column
-                [ Element.scrollbarX ]
+                [  ]
                 [ Element.el titleStyle (Element.text <| "Videos associated to playlist:")
                 , Element.el (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) (Element.text <| model.playlistTitle)
                 , Element.table
                     tableStyle
                     { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) |> List.reverse
                     , columns =
-                        [ Column (columnHeader "") (px 10) (\_ -> text "")
+                        [ Column (columnHeader "") (px 150) (\_ -> text "")
 
                         --, Column (columnHeader "Id") (px 290) (.id >> wrappedText)
                         , Column (columnHeader "Published at") (px 120) (.publishedAt >> String.left 16 >> String.right 14 >> (++) "\"" >> wrappedText)
@@ -318,15 +318,15 @@ view model =
                                             |> Maybe.map (String.fromInt >> wrappedText)
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
-                               , Column
-                                    (columnHeader "Live views±")
-                                    (px 95)
-                                    (\v ->
-                                        video_liveViewsEstimate v model.currentViewers
-                                            |> Maybe.map String.fromInt
-                                            |> Maybe.withDefault "..."
-                                            |> wrappedText
-                                    )
+                            --    , Column
+                            --         (columnHeader "Live views±")
+                            --         (px 95)
+                            --         (\v ->
+                            --             video_liveViewsEstimate v model.currentViewers
+                            --                 |> Maybe.map String.fromInt
+                            --                 |> Maybe.withDefault "..."
+                            --                 |> wrappedText
+                            --         )
                                , Column
                                     (columnHeader "Live views")
                                     (px 90)
@@ -382,10 +382,6 @@ view model =
 
                                         else
                                             wrappedText max
-                                     -- v.statsAfter24Hours
-                                     --     |> Maybe.map (\r -> r.viewCount |> String.fromInt)
-                                     --     |> Maybe.withDefault "..."
-                                     --     |> wrappedText
                                     )
                                , Column
                                     (columnHeader "Subs gained")
@@ -401,9 +397,8 @@ view model =
                                     (px 90)
                                     (\v ->
                                         v.reportAfter24Hours
-                                            |> Maybe.map (\r -> r.averageViewPercentage |> String.fromFloat)
+                                            |> Maybe.map (.averageViewPercentage >> floatToDecimalStr)
                                             |> Maybe.withDefault "..."
-                                            |> String.left 5
                                             |> wrappedText
                                     )
                                , Column
@@ -455,17 +450,17 @@ view model =
 
 
 alt_competitorVideoColums model vFunc =
-        model.competingPercentages
-            |> List.filterMap identity
-            |> MoreDict.groupBy (\g -> (g.competitorId, g.competitorTitle))
-            |> Dict.keys
-            |> List.map
-                (\(competitorId, competitorTitle) ->
-                    Column
-                        (columnHeader competitorTitle)
-                        (px 100)
-                        (vFunc model competitorId)
-                )
+    model.competingPercentages
+        |> List.filterMap identity
+        |> MoreDict.groupBy (\g -> ( g.competitorId, g.competitorTitle ))
+        |> Dict.keys
+        |> List.map
+            (\( competitorId, competitorTitle ) ->
+                Column
+                    (columnHeader competitorTitle)
+                    (px 100)
+                    (vFunc model competitorId)
+            )
 
 
 floatToDecimalStr : Float -> String
@@ -480,9 +475,13 @@ floatToDecimalStr f =
         _ ->
             "0.00"
 
+
+
 --alt_get24HrCompetitorStats : Model -> String -> Video -> Element Msg
-alt_get24HrCompetitorStats model competitorChannelId ourVideo  = 
-    model.competingPercentages 
+
+
+alt_get24HrCompetitorStats model competitorChannelId ourVideo =
+    model.competingPercentages
         |> List.filterMap identity
         |> List.filter (\c -> c.competitorId == competitorChannelId && c.videoId == ourVideo.id)
         |> List.head
@@ -490,136 +489,6 @@ alt_get24HrCompetitorStats model competitorChannelId ourVideo  =
         |> Maybe.map floatToDecimalStr
         |> Maybe.withDefault "..."
         |> wrappedText
-
-
-get24HrCompetitorStats : Model -> String -> Video -> Element Msg
-get24HrCompetitorStats model competitorChannelTitle ourVideo =
-    model.competitorVideos
-        |> Dict.get ourVideo.id
-        |> Debug.log "finding v.id"
-        |> Maybe.map
-            (\competitorsVideosForOurVideo ->
-                let
-                    our24HrViews =
-                        ourVideo.statsAfter24Hours
-                            |> Maybe.map .viewCount
-
-                    our24HrStats =
-                        model.videoStatisticsAtTime
-                            |> Dict.filter (\_ s -> s.videoId == ourVideo.id)
-                            |> Dict.values
-                            |> List.sortBy (.timestamp >> Time.posixToMillis)
-                            |> List.head
-                            |> Maybe.map .viewCount
-
-                    firstCompetitorVideo =
-                        competitorsVideosForOurVideo
-                            |> Dict.filter (\k v_ -> v_.videoOwnerChannelTitle == competitorChannelTitle)
-                            |> Dict.values
-                            |> List.head
-
-                    competitor24HrViews =
-                        firstCompetitorVideo
-                            |> Maybe.andThen .statsAfter24Hours
-                            |> Maybe.map .viewCount
-                            |> Debug.log "competitor24HrViews"
-
-                    competitor24HrStats =
-                        model.videoStatisticsAtTime
-                            |> Dict.filter (\_ s -> s.videoId == (firstCompetitorVideo |> Maybe.map .id |> Maybe.withDefault ""))
-                            |> Dict.values
-                            |> List.sortBy (.timestamp >> Time.posixToMillis)
-                            |> List.head
-                            |> Maybe.map .viewCount
-
-                    percentageBetterThanThem =
-                        -- Maybe.map2
-                        --     (\ourViews theirViews ->
-                        --         case ( ourViews, theirViews ) of
-                        --             ( _, 0 ) ->
-                        --                 10000
-                        --             _ ->
-                        --                 (toFloat ourViews / toFloat theirViews - 1) * 100
-                        --     )
-                        --     our24HrStats
-                        --     competitor24HrStats
-                        -- |> Maybe.withDefault -1000 |> Just
-                        Just <|
-                            case ( our24HrStats, competitor24HrStats ) of
-                                ( Just ourViews, Just theirViews ) ->
-                                    if theirViews == 0 then
-                                        10000
-
-                                    else
-                                        (toFloat ourViews / toFloat theirViews - 1) * 100
-
-                                ( Just ourViews, Nothing ) ->
-                                    1000
-
-                                ( Nothing, Just theirViews ) ->
-                                    -1000
-
-                                ( Nothing, Nothing ) ->
-                                    -5000
-
-                    betterThanThemColor =
-                        percentageBetterThanThem
-                            |> Maybe.map
-                                (\percentageBetterThanThem_ ->
-                                    let
-                                        positiveOffset =
-                                            -(percentageBetterThanThem_ / 300 * 255) |> max 255 |> min 0
-
-                                        negativeOffset =
-                                            -(1 - percentageBetterThanThem_ / 100 * 255) |> max 255 |> min 0
-                                    in
-                                    if percentageBetterThanThem_ >= 0 then
-                                        rgb positiveOffset 255 positiveOffset
-
-                                    else
-                                        rgb 255 negativeOffset negativeOffset
-                                )
-
-                    percentageBetterThanThemStr =
-                        percentageBetterThanThem
-                            |> Maybe.map
-                                (\percentageBetterThanThem_ ->
-                                    if percentageBetterThanThem_ >= 10000 then
-                                        "∞%"
-
-                                    else
-                                        (String.fromFloat percentageBetterThanThem_ |> String.left 5) ++ "%"
-                                )
-                in
-                percentageBetterThanThemStr
-                    |> Maybe.withDefault "..."
-                    |> wrappedText
-             -- firstCompetitorVideo
-             --     |> Maybe.map .title
-             --     |> Maybe.withDefault "...."
-             --     |> wrappedText
-             --|> el [ Element.Background.color betterThanThemColor ]
-            )
-        |> Maybe.withDefault (wrappedText "...")
-
-
-competitorVideoColums : Model -> (Model -> String -> Video -> Element Msg) -> List (Column Video Msg)
-competitorVideoColums model vFunc =
-    model.competitorVideos
-        |> Debug.log "competitorVideoss"
-        |> Dict.values
-        |> List.map Dict.values
-        |> List.concat
-
-        |> MoreDict.groupBy (\g -> (g.videoOwnerChannelId, g.videoOwnerChannelTitle))
-        |> Dict.keys
-        |> List.map
-            (\(competitorId, competitorHandle) ->
-                Column
-                    (columnHeader competitorHandle)
-                    (px 100)
-                    (vFunc model competitorId)
-            )
 
 
 viewSparkLine dataList =

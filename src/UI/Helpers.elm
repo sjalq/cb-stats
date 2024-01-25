@@ -20,8 +20,8 @@ wrappedCell : Element.Element msg -> Element.Element msg
 wrappedCell =
     enlist
         >> Element.paragraph
-            [ Element.width <| Element.px 200
-            , Element.Font.size 15
+            [ Element.width <| Element.px 175
+            , Element.Font.size 13
             , Element.Border.width 1
             , Element.Border.widthEach
                 { bottom = 1
@@ -65,7 +65,7 @@ columnHeader =
     let
         columnHeaderStyle =
             [ Element.Font.bold
-            , Element.Font.size 15
+            , Element.Font.size 14
             , Element.Border.width 1
             , Element.Border.color grey
             , Element.Border.rounded 3
