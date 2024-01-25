@@ -1991,8 +1991,8 @@ video_lookupCompetingVideo model video =
                         case ourLiveVideoDetails of
                             Just ourLiveVideoDetails_ ->
                                 timespansOverlap
-                                    ((video_actualStartTime model ourLiveVideoDetails_) - (3 * hour))
-                                    ((video_actualEndTime model ourLiveVideoDetails_) + (3 * hour))
+                                    (video_actualStartTime model ourLiveVideoDetails_ - (3 * hour))
+                                    (video_actualEndTime model ourLiveVideoDetails_ + (3 * hour))
                                     (video_actualStartTime model competitorLiveVideoDetails)
                                     (video_actualEndTime model competitorLiveVideoDetails)
 
@@ -2283,7 +2283,8 @@ tabulateVideoData model videoResults =
                          , -- "Watch %"
                            case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
-                                reportAfter24Hours_.averageViewPercentage / 100
+                                reportAfter24Hours_.averageViewPercentage
+                                    / 100
                                     |> String.fromFloat
 
                             _ ->
@@ -2390,15 +2391,14 @@ calculateCompetingViewsPercentage model videoId competingChannelId =
             case ( ours, theirs ) of
                 ( Just ours_, Just theirs_ ) ->
                     -- if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis) <= (currentTime - day)) then
-                        if theirs_.viewCount >= 0 then
-                            1 - ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat)) |> Just
+                    if theirs_.viewCount >= 0 then
+                        ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat)) -1 |> Just
 
-                        else
-                            Nothing
+                    else
+                        Nothing
 
-                    -- else
-                    --     Nothing
-
+                -- else
+                --     Nothing
                 _ ->
                     Nothing
     in
