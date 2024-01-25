@@ -458,7 +458,7 @@ get24HrCompetitorStats model competitorChannelTitle ourVideo =
                             |> Maybe.andThen .statsAfter24Hours
                             |> Maybe.map .viewCount
                             |> Debug.log "competitor24HrViews"
-                
+
                     competitor24HrStats =
                         model.videoStats
                             |> Dict.filter (\_ s -> s.videoId == (firstCompetitorVideo |> Maybe.map .id |> Maybe.withDefault ""))
@@ -468,18 +468,34 @@ get24HrCompetitorStats model competitorChannelTitle ourVideo =
                             |> Maybe.map .viewCount
 
                     percentageBetterThanThem =
-                        Maybe.map2
-                            (\ourViews theirViews ->
-                                case ( ourViews, theirViews ) of
-                                    ( _, 0 ) ->
+                        -- Maybe.map2
+                        --     (\ourViews theirViews ->
+                        --         case ( ourViews, theirViews ) of
+                        --             ( _, 0 ) ->
+                        --                 10000
+                        --             _ ->
+                        --                 (toFloat ourViews / toFloat theirViews - 1) * 100
+                        --     )
+                        --     our24HrStats
+                        --     competitor24HrStats
+                        -- |> Maybe.withDefault -1000 |> Just
+                        Just <|
+                            case ( our24HrStats, competitor24HrStats ) of
+                                ( Just ourViews, Just theirViews ) ->
+                                    if theirViews == 0 then
                                         10000
 
-                                    _ ->
+                                    else
                                         (toFloat ourViews / toFloat theirViews - 1) * 100
-                            )
-                            our24HrStats
-                            competitor24HrStats
-                        |> Maybe.withDefault -1000 |> Just
+
+                                ( Just ourViews, Nothing ) ->
+                                    1000
+
+                                ( Nothing, Just theirViews ) ->
+                                    -1000
+
+                                ( Nothing, Nothing ) ->
+                                    -5000
 
                     betterThanThemColor =
                         percentageBetterThanThem
@@ -513,10 +529,10 @@ get24HrCompetitorStats model competitorChannelTitle ourVideo =
                 percentageBetterThanThemStr
                     |> Maybe.withDefault "..."
                     |> wrappedText
-                -- firstCompetitorVideo
-                --     |> Maybe.map .title
-                --     |> Maybe.withDefault "...."
-                --     |> wrappedText
+             -- firstCompetitorVideo
+             --     |> Maybe.map .title
+             --     |> Maybe.withDefault "...."
+             --     |> wrappedText
              --|> el [ Element.Background.color betterThanThemColor ]
             )
         |> Maybe.withDefault (wrappedText "...")
