@@ -574,11 +574,11 @@ competitorVideoColums model vFunc =
         |> MoreDict.groupBy (\g -> (g.videoOwnerChannelId, g.videoOwnerChannelTitle))
         |> Dict.keys
         |> List.map
-            (\(id, title) ->
+            (\(competitorId, competitorHandle) ->
                 Column
-                    (columnHeader title)
+                    (columnHeader competitorHandle)
                     (px 100)
-                    (vFunc model id)
+                    (vFunc model competitorId)
             )
 
 
