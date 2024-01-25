@@ -468,6 +468,17 @@ alt_competitorVideoColums model vFunc =
                 )
 
 
+floatToDecimalStr : Float -> String
+floatToDecimalStr f =
+    case String.fromFloat f |> String.split "." of
+        [ a, b ] ->
+            a ++ "." ++ String.left 2 b
+
+        [ a ] ->
+            a ++ ".00"
+
+        _ ->
+            "0.00"
 
 --alt_get24HrCompetitorStats : Model -> String -> Video -> Element Msg
 alt_get24HrCompetitorStats model competitorChannelId ourVideo  = 
@@ -476,7 +487,7 @@ alt_get24HrCompetitorStats model competitorChannelId ourVideo  =
         |> List.filter (\c -> c.competitorId == competitorChannelId && c.videoId == ourVideo.id)
         |> List.head
         |> Maybe.map (\i -> i.percentage * 100)
-        |> Maybe.map (String.fromFloat >> String.left 5)
+        |> Maybe.map floatToDecimalStr
         |> Maybe.withDefault "..."
         |> wrappedText
 
