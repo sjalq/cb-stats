@@ -2392,7 +2392,7 @@ calculateCompetingViewsPercentage model videoId competingChannelId =
                 ( Just ours_, Just theirs_ ) ->
                     -- if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis) <= (currentTime - day)) then
                     if theirs_.viewCount >= 0 then
-                        ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat)) -1 |> Just
+                        ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat)) - 1 |> Just
 
                     else
                         Nothing
