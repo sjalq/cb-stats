@@ -393,7 +393,7 @@ view model =
                                             }
                                     )
                                ]
-                            ++ competitorVideoColums model.competitorVideos get24HrCompetitorStats
+                            ++ competitorVideoColums model get24HrCompetitorStats
                             ++ [ Column
                                     (columnHeader "Details")
                                     (px 90)
@@ -427,9 +427,9 @@ view model =
     }
 
 
-get24HrCompetitorStats : Dict String (Dict String Video) -> String -> Video -> Element Msg
-get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
-    competitorVideos
+get24HrCompetitorStats : Model -> String -> Video -> Element Msg
+get24HrCompetitorStats model competitorChannelTitle ourVideo =
+    model.competitorVideos
         |> Dict.get ourVideo.id
         |> Debug.log "finding v.id"
         |> Maybe.map
@@ -439,7 +439,15 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
                         ourVideo.statsAfter24Hours
                             |> Maybe.map .viewCount
 
-                    firstCompetitorVideo = 
+                    our24HrStats =
+                        model.videoStats
+                            |> Dict.filter (\_ s -> s.videoId == ourVideo.id)
+                            |> Dict.values
+                            |> List.sortBy (.timestamp >> Time.posixToMillis)
+                            |> List.head
+                            |> Maybe.map .viewCount
+
+                    firstCompetitorVideo =
                         competitorsVideosForOurVideo
                             |> Dict.filter (\k v_ -> v_.videoOwnerChannelTitle == competitorChannelTitle)
                             |> Dict.values
@@ -450,6 +458,14 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
                             |> Maybe.andThen .statsAfter24Hours
                             |> Maybe.map .viewCount
                             |> Debug.log "competitor24HrViews"
+                
+                    competitor24HrStats =
+                        model.videoStats
+                            |> Dict.filter (\_ s -> s.videoId == (firstCompetitorVideo |> Maybe.map .id |> Maybe.withDefault ""))
+                            |> Dict.values
+                            |> List.sortBy (.timestamp >> Time.posixToMillis)
+                            |> List.head
+                            |> Maybe.map .viewCount
 
                     percentageBetterThanThem =
                         Maybe.map2
@@ -461,8 +477,8 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
                                     _ ->
                                         (toFloat ourViews / toFloat theirViews - 1) * 100
                             )
-                            our24HrViews
-                            competitor24HrViews
+                            our24HrStats
+                            competitor24HrStats
 
                     betterThanThemColor =
                         percentageBetterThanThem
@@ -493,23 +509,21 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
                                         (String.fromFloat percentageBetterThanThem_ |> String.left 5) ++ "%"
                                 )
                 in
-                -- percentageBetterThanThemStr
-                --     |> Maybe.withDefault "..."
-                --     |> wrappedText
-                firstCompetitorVideo 
-                    |> Maybe.map .title 
-                    |> Maybe.withDefault "...."
+                percentageBetterThanThemStr
+                    |> Maybe.withDefault "..."
                     |> wrappedText
+                -- firstCompetitorVideo
+                --     |> Maybe.map .title
+                --     |> Maybe.withDefault "...."
+                --     |> wrappedText
              --|> el [ Element.Background.color betterThanThemColor ]
             )
         |> Maybe.withDefault (wrappedText "...")
 
 
-
-
-competitorVideoColums : Dict String (Dict String Video) -> (Dict String (Dict String Video) -> String -> Video -> Element Msg) -> List (Column Video Msg)
-competitorVideoColums competitorVideos vFunc =
-    competitorVideos
+competitorVideoColums : Model -> (Model -> String -> Video -> Element Msg) -> List (Column Video Msg)
+competitorVideoColums model vFunc =
+    model.competitorVideos
         |> Debug.log "competitorVideoss"
         |> Dict.values
         |> List.map Dict.values
@@ -540,7 +554,7 @@ competitorVideoColums competitorVideos vFunc =
                 Column
                     (columnHeader title)
                     (px 100)
-                    (vFunc competitorVideos title)
+                    (vFunc model title)
             )
 
 
