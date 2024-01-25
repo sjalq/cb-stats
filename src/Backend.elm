@@ -1753,9 +1753,15 @@ updateFromFrontend sessionId clientId msg2 model =
                                 calculateCompetingViewsPercentage model videoId competitorId
                                     |> Maybe.map
                                         (\percentage_ ->
+                                            let
+                                                competitorTitle = model.videos 
+                                                    |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
+                                                    |> Dict.map (\_ v -> v.videoOwnerChannelTitle) |> Dict.get videoId |> Maybe.withDefault ""
+                                            in
+
                                             { videoId = videoId 
                                             , competitorId = competitorId
-                                            , competitorTitle = ""
+                                            , competitorTitle = competitorTitle
                                             , percentage = percentage_
                                             }
                                         )
