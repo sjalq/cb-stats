@@ -740,10 +740,13 @@ update msg model =
                         |> Dict.filter
                             (\_ v ->
                                 case ( v.liveStatus, v.statsAfter24Hours ) of
-                                    ( Api.YoutubeModel.Ended endTimeStr, Just _ ) ->
+                                    ( Api.YoutubeModel.Ended endTimeStr, Nothing ) ->
                                         let
                                             endTime =
-                                                endTimeStr |> Iso8601.toTime |> Result.map Time.posixToMillis |> Result.withDefault 0
+                                                endTimeStr
+                                                    |> Iso8601.toTime
+                                                    |> Result.map Time.posixToMillis
+                                                    |> Result.withDefault 0
 
                                             now =
                                                 time |> Time.posixToMillis
@@ -2031,6 +2034,7 @@ competitorHandle_getAccessToken model handle =
 timespansOverlap aStart aEnd bStart bEnd =
     (aStart <= bEnd) && (bStart <= aEnd)
 
+
 groupByComparable toComparable list =
     list
         |> List.sortBy toComparable
@@ -2341,8 +2345,8 @@ findCompetingVideoStats model videoId competitorId =
                         case ourVideoLiveVideoDetails of
                             Just ourVideoLiveVideoDetails_ ->
                                 timespansOverlap
-                                    ((video_actualStartTime model ourVideoLiveVideoDetails_) - 3 * hour)
-                                    ((video_actualEndTime model ourVideoLiveVideoDetails_) + 3 * hour)
+                                    (video_actualStartTime model ourVideoLiveVideoDetails_ - 3 * hour)
+                                    (video_actualEndTime model ourVideoLiveVideoDetails_ + 3 * hour)
                                     (video_actualStartTime model lvd)
                                     (video_actualEndTime model lvd)
 
