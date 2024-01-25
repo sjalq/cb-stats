@@ -2128,7 +2128,7 @@ getVideos model playlistId =
 
         competitorVideoStats : Dict.Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
         competitorVideoStats =
-            videoStats
+            model.videoStatisticsAtTime
                 |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId competitorVideos)
                 |> Dict.values
                 |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
@@ -2136,7 +2136,7 @@ getVideos model playlistId =
                 |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
                 |> Dict.fromList
 
-        allStats = Dict.union videoStats competitorVideoStats
+        allStats = Dict.union competitorVideoStats videoStats
 
 
         uniqueCompetitorIds =
