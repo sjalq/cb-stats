@@ -2111,6 +2111,8 @@ getVideos model playlistId =
                 |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
                 |> Dict.fromList
 
+        
+
         videoChannels : Dict.Dict String String
         videoChannels =
             model.videos
@@ -2123,6 +2125,19 @@ getVideos model playlistId =
             videos
                 |> Dict.map (\_ v -> video_lookupCompetingVideo model v)
                 |> Dict.filter (\_ v -> Dict.size v > 0)
+
+        competitorVideoStats : Dict.Dict ( String, Int ) Api.YoutubeModel.VideoStatisticsAtTime
+        competitorVideoStats =
+            videoStats
+                |> Dict.filter (\( videoId, _ ) _ -> Dict.member videoId competitorVideos)
+                |> Dict.values
+                |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                --|> List.take 24
+                |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
+                |> Dict.fromList
+
+        allStats = Dict.union videoStats competitorVideoStats
+
 
         uniqueCompetitorIds =
             competitorVideos
@@ -2153,7 +2168,7 @@ getVideos model playlistId =
     , liveVideoDetails = liveVideoDetails
     , currentViewers = currentViewers
     , videoChannels = videoChannels
-    , videoStats = videoStats
+    , videoStats = allStats
     , competitorVideos = competitorVideos
     , competitorsVsUs = competitorsVsUs
     }
