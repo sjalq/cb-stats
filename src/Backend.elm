@@ -2394,12 +2394,12 @@ calculateCompetingViewsPercentage model videoId competingChannelId =
                             Just ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat))
 
                         else
-                            Nothing
+                            Just -7
 
                     -- else
                     --     Nothing
 
                 _ ->
-                    Nothing
+                    Just -8
     in
     percentage
