@@ -1790,6 +1790,7 @@ updateFromFrontend sessionId clientId msg2 model =
                 Gen.Msg.Playlist__Id_ <|
                     Pages.Playlist.Id_.GotCompetingPercentages competingPercentages
             )
+                |> log ("Got competing percentages for " ++ (requests |> List.map Tuple.first |> String.join ",")) Info
 
 
 randomSalt : Random.Generator String
