@@ -498,7 +498,7 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
                 --     |> wrappedText
                 firstCompetitorVideo 
                     |> Maybe.map .title 
-                    |> Maybe.withDefault "???"
+                    |> Maybe.withDefault "...."
                     |> wrappedText
              --|> el [ Element.Background.color betterThanThemColor ]
             )

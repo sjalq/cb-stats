@@ -2209,7 +2209,7 @@ tabulateVideoData model videoResults =
             , "Live Likes"
             , "24hr views"
             , "Subs gained"
-            , "Watch %"
+            , "Watch Proportion"
             , "Details"
             ]
                 ++ uniqueCompetitorTitles
@@ -2283,7 +2283,7 @@ tabulateVideoData model videoResults =
                          , -- "Watch %"
                            case video.reportAfter24Hours of
                             Just reportAfter24Hours_ ->
-                                reportAfter24Hours_.averageViewPercentage
+                                reportAfter24Hours_.averageViewPercentage / 100
                                     |> String.fromFloat
 
                             _ ->
@@ -2391,15 +2391,15 @@ calculateCompetingViewsPercentage model videoId competingChannelId =
                 ( Just ours_, Just theirs_ ) ->
                     -- if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis) <= (currentTime - day)) then
                         if theirs_.viewCount >= 0 then
-                            Just ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat))
+                            1 - ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat)) |> Just
 
                         else
-                            Just -7
+                            Nothing
 
                     -- else
                     --     Nothing
 
                 _ ->
-                    Just -8
+                    Nothing
     in
     percentage
