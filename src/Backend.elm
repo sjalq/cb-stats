@@ -2345,8 +2345,8 @@ findCompetingVideoStats model videoId competitorId =
                         case ourVideoLiveVideoDetails of
                             Just ourVideoLiveVideoDetails_ ->
                                 timespansOverlap
-                                    (video_actualStartTime model ourVideoLiveVideoDetails_)
-                                    (video_actualEndTime model ourVideoLiveVideoDetails_)
+                                    ((video_actualStartTime model ourVideoLiveVideoDetails_) + 3 * hour)
+                                    ((video_actualEndTime model ourVideoLiveVideoDetails_) + 3 * hour)
                                     (video_actualStartTime model lvd)
                                     (video_actualEndTime model lvd)
 

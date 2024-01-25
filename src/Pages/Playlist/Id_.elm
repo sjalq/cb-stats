@@ -505,6 +505,8 @@ get24HrCompetitorStats competitorVideos competitorChannelTitle ourVideo =
         |> Maybe.withDefault (wrappedText "...")
 
 
+
+
 competitorVideoColums : Dict String (Dict String Video) -> (Dict String (Dict String Video) -> String -> Video -> Element Msg) -> List (Column Video Msg)
 competitorVideoColums competitorVideos vFunc =
     competitorVideos
