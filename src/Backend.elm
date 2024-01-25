@@ -2029,11 +2029,7 @@ competitorHandle_getAccessToken model handle =
 
 
 timespansOverlap aStart aEnd bStart bEnd =
-    (aStart <= bStart && bStart <= aEnd)
-        || (aStart <= bEnd && bEnd <= aEnd)
-        || (bStart <= aStart && aStart <= bEnd)
-        || (bStart <= aEnd && aEnd <= bEnd)
-
+    (aStart <= bEnd) && (bStart <= aEnd)
 
 groupByComparable toComparable list =
     list
@@ -2345,7 +2341,7 @@ findCompetingVideoStats model videoId competitorId =
                         case ourVideoLiveVideoDetails of
                             Just ourVideoLiveVideoDetails_ ->
                                 timespansOverlap
-                                    ((video_actualStartTime model ourVideoLiveVideoDetails_) + 3 * hour)
+                                    ((video_actualStartTime model ourVideoLiveVideoDetails_) - 3 * hour)
                                     ((video_actualEndTime model ourVideoLiveVideoDetails_) + 3 * hour)
                                     (video_actualStartTime model lvd)
                                     (video_actualEndTime model lvd)
