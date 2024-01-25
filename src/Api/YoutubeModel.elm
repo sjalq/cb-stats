@@ -310,3 +310,106 @@ liveStatusToString liveStatus =
 
         Impossibru ->
             "Impossibru"
+
+
+--findCompetingVideoStats : Model -> String -> String -> { ours : Maybe VideoStatisticsAtTime, theirs : Maybe VideoStatisticsAtTime }
+findCompetingVideoStats model videoId competitorId =
+    let
+        -- goal:
+        -- * for one video and one competitor video find the competing video that was live at the same time
+        competitorVideos =
+            model.videos
+                |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
+
+        competitorLiveVideoDetails =
+            model.liveVideoDetails
+                |> Dict.filter (\_ lvd -> Dict.member lvd.videoId competitorVideos)
+
+        -- big O n
+        ourVideoLiveVideoDetails =
+            model.liveVideoDetails
+                |> Dict.get videoId
+
+        -- big O n log n
+        competitorVideosThatOverlap =
+            competitorLiveVideoDetails
+                |> Dict.filter
+                    (\_ lvd ->
+                        case ourVideoLiveVideoDetails of
+                            Just ourVideoLiveVideoDetails_ ->
+                                timespansOverlap
+                                    (video_actualStartTime model ourVideoLiveVideoDetails_ - 3 * hour)
+                                    (video_actualEndTime model ourVideoLiveVideoDetails_ + 3 * hour)
+                                    (video_actualStartTime model lvd)
+                                    (video_actualEndTime model lvd)
+
+                            Nothing ->
+                                False
+                    )
+
+        latestCompetitorVideoThatOverlaps =
+            competitorVideosThatOverlap
+                |> Dict.values
+                |> List.sortBy (.actualEndTime >> Maybe.map strToIntTime >> Maybe.withDefault 0 >> (*) -1)
+                |> List.head
+
+        latestCompetitorVideoThatOverlapsStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> s.videoId == (latestCompetitorVideoThatOverlaps |> Maybe.map .videoId |> Maybe.withDefault "Nope"))
+                |> Dict.values
+                |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                |> List.head
+
+        ourLatestVideoStats =
+            model.videoStatisticsAtTime
+                |> Dict.filter (\_ s -> s.videoId == videoId)
+                |> Dict.values
+                |> List.sortBy (.timestamp >> Time.posixToMillis >> (*) -1)
+                |> List.head
+    in
+    { ours = ourLatestVideoStats, theirs = latestCompetitorVideoThatOverlapsStats }
+
+
+--calculateCompetingViewsPercentage : Model -> String -> String -> Maybe Float
+calculateCompetingViewsPercentage model videoId competingChannelId =
+    let
+        { ours, theirs } =
+            findCompetingVideoStats model videoId competingChannelId
+
+        percentage =
+            case ( ours, theirs ) of
+                ( Just ours_, Just theirs_ ) ->
+                    -- if ((ours_.timestamp |> Time.posixToMillis) <= (currentTime - day)) && ((theirs_.timestamp |> Time.posixToMillis) <= (currentTime - day)) then
+                    if theirs_.viewCount >= 0 then
+                        ((ours_.viewCount |> toFloat) / (theirs_.viewCount |> toFloat)) - 1 |> Just
+
+                    else
+                        Nothing
+
+                -- else
+                --     Nothing
+                _ ->
+                    Nothing
+    in
+    percentage
+
+
+timespansOverlap aStart aEnd bStart bEnd =
+    (aStart <= bEnd) && (bStart <= aEnd)
+
+
+
+video_actualStartTime model liveVideoDetails =
+    model.liveVideoDetails
+        |> Dict.get liveVideoDetails.videoId
+        |> Maybe.andThen .actualStartTime
+        |> Maybe.map strToIntTime
+        |> Maybe.withDefault 0
+
+
+video_actualEndTime model liveVideoDetails =
+    model.liveVideoDetails
+        |> Dict.get liveVideoDetails.videoId
+        |> Maybe.andThen .actualEndTime
+        |> Maybe.map strToIntTime
+        |> Maybe.withDefault 0
