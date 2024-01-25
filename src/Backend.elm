@@ -1991,8 +1991,8 @@ video_lookupCompetingVideo model video =
                         case ourLiveVideoDetails of
                             Just ourLiveVideoDetails_ ->
                                 timespansOverlap
-                                    (video_actualStartTime model ourLiveVideoDetails_)
-                                    (video_actualEndTime model ourLiveVideoDetails_)
+                                    ((video_actualStartTime model ourLiveVideoDetails_) - (3 * hour))
+                                    ((video_actualEndTime model ourLiveVideoDetails_) + (3 * hour))
                                     (video_actualStartTime model competitorLiveVideoDetails)
                                     (video_actualEndTime model competitorLiveVideoDetails)
 
