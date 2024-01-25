@@ -1744,6 +1744,29 @@ updateFromFrontend sessionId clientId msg2 model =
             , Cmd.none
             )
 
+        AttemptGetCompetingPercentages requests ->
+            let
+                competingPercentages =
+                    requests
+                        |> List.map
+                            (\( competitorId, videoId ) ->
+                                calculateCompetingViewsPercentage model videoId competitorId
+                                    |> Maybe.map
+                                        (\percentage_ ->
+                                            { videoId = videoId 
+                                            , competitorId = competitorId
+                                            , competitorTitle = ""
+                                            , percentage = percentage_
+                                            }
+                                        )
+                            )
+            in
+            ( model
+            , sendToPage clientId <|
+                Gen.Msg.Playlist__Id_ <|
+                    Pages.Playlist.Id_.GotCompetingPercentages competingPercentages
+            )
+
 
 randomSalt : Random.Generator String
 randomSalt =
@@ -2007,17 +2030,12 @@ video_lookupCompetingVideo model video =
     competitorVideoToReturn
 
 
-
-
-
 competitorHandle_getAccessToken model handle =
     model.playlists
         |> Dict.filter (\_ p -> Set.member handle p.competitorHandles)
         |> Dict.values
         |> List.head
         |> Maybe.andThen (\p -> playlist_getAccessToken model p.id)
-
-
 
 
 groupByComparable toComparable list =
@@ -2096,8 +2114,6 @@ getVideos model playlistId =
                 |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
                 |> Dict.fromList
 
-        
-
         videoChannels : Dict.Dict String String
         videoChannels =
             model.videos
@@ -2121,8 +2137,8 @@ getVideos model playlistId =
                 |> List.map (\s -> ( ( s.videoId, s.timestamp |> Time.posixToMillis ), s ))
                 |> Dict.fromList
 
-        allStats = Dict.union competitorVideoStats videoStats
-
+        allStats =
+            Dict.union competitorVideoStats videoStats
 
         uniqueCompetitorIds =
             competitorVideos
@@ -2318,5 +2334,3 @@ escapeStringForJson str =
         |> String.replace "\t" " "
         |> String.replace "[" "("
         |> String.replace "]" ")"
-
-

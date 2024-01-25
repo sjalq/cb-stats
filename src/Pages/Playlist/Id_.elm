@@ -25,6 +25,8 @@ import Time exposing (posixToMillis)
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
+import Evergreen.V35.Types exposing (BackendMsg(..))
+import Api.PerformNow exposing (performNow)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -54,6 +56,7 @@ type alias Model =
     , currentIntTime : Int
     , tmpCtrs : Dict String String
     , tmpLiveViews : Dict String String
+    , competingPercentages : (List (Maybe CompetitorResult))
     }
 
 
@@ -71,6 +74,7 @@ init { params } =
       , currentIntTime = 0
       , tmpCtrs = Dict.empty
       , tmpLiveViews = Dict.empty
+      , competingPercentages = []
       }
     , Effect.fromCmd <| sendToBackend <| AttemptGetVideos params.id
     )
@@ -86,6 +90,7 @@ type Msg
     | UpdateVideoCTR String String
     | UpdateVideoLiveViews String String
     | Tick Time.Posix
+    | GotCompetingPercentages (List (Maybe CompetitorResult))
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -109,7 +114,24 @@ update msg model =
                 , tmpCtrs = results.videos |> Dict.map (\_ v -> v.ctr |> Maybe.map String.fromFloat |> Maybe.withDefault "")
                 , tmpLiveViews = results.videos |> Dict.map (\_ v -> v.liveViews |> Maybe.map String.fromInt |> Maybe.withDefault "")
               }
-            , Effect.none
+            , 
+            let
+                uniqueCompetitors = model.competitorVideos
+                    |> Dict.values
+                    |> List.map Dict.values
+                    |> List.concat
+                    |> MoreDict.groupBy .videoOwnerChannelId
+                    |> Dict.keys
+
+                videoIds = 
+                    model.videos 
+                    |> Dict.keys
+
+                crossProduct : List (String, String)
+                crossProduct = uniqueCompetitors |> List.concatMap (\competitorId -> videoIds |> List.map (\videoId -> (competitorId, videoId)))
+
+            in
+            Effect.fromCmd <| sendToBackend (AttemptGetCompetingPercentages crossProduct)
             )
 
         GetVideos ->
@@ -172,6 +194,11 @@ update msg model =
 
                     else
                         ( model, Effect.none )
+
+        GotCompetingPercentages percentages ->
+            ( { model | competingPercentages = percentages }
+            , Effect.none
+            )
 
 
 
@@ -393,7 +420,7 @@ view model =
                                             }
                                     )
                                ]
-                            ++ competitorVideoColums model alt_get24HrCompetitorStats
+                            ++ alt_competitorVideoColums model alt_get24HrCompetitorStats
                             ++ [ Column
                                     (columnHeader "Details")
                                     (px 90)
@@ -426,10 +453,30 @@ view model =
             )
     }
 
+
+alt_competitorVideoColums model vFunc =
+        model.competingPercentages
+            |> List.filterMap identity
+            |> MoreDict.groupBy (\g -> (g.competitorId, g.competitorTitle))
+            |> Dict.keys
+            |> List.map
+                (\(competitorId, competitorTitle) ->
+                    Column
+                        (columnHeader competitorTitle)
+                        (px 100)
+                        (vFunc model competitorId)
+                )
+
+
+
 --alt_get24HrCompetitorStats : Model -> String -> Video -> Element Msg
 alt_get24HrCompetitorStats model competitorChannelId ourVideo  = 
-    calculateCompetingViewsPercentage model ourVideo.id competitorChannelId
-        |> Maybe.map (\percentage -> String.fromFloat percentage |> String.left 5)
+    model.competingPercentages 
+        |> List.filterMap identity
+        |> List.filter (\c -> c.competitorId == competitorChannelId && c.videoId == ourVideo.id)
+        |> List.head
+        |> Maybe.map .percentage
+        |> Maybe.map String.fromFloat
         |> Maybe.withDefault "..."
         |> wrappedText
 
@@ -552,25 +599,7 @@ competitorVideoColums model vFunc =
         |> Dict.values
         |> List.map Dict.values
         |> List.concat
-        -- |> MoreDict.groupBy .videoOwnerChannelTitle
-        -- |> Dict.map
-        --     (\k v ->
-        --         ( k
-        --         , v
-        --             |> List.map .id
-        --             |> Debug.log "ids"
-        --             |> List.head
-        --             |> Maybe.withDefault ""
-        --         )
-        --     )
-        -- |> Dict.values
-        -- |> List.map
-        --     (\( title, id ) ->
-        --         Column
-        --             (columnHeader title)
-        --             (px 100)
-        --             (vFunc competitorVideos id)
-        --     )
+
         |> MoreDict.groupBy (\g -> (g.videoOwnerChannelId, g.videoOwnerChannelTitle))
         |> Dict.keys
         |> List.map

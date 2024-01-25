@@ -145,6 +145,14 @@ type alias VideoResults =
     }
 
 
+type alias CompetitorResult =
+    { videoId : String
+    , competitorId : String
+    , competitorTitle : String
+    , percentage : Float
+    }
+
+
 
 -- competitors
 -- competitors are playlists that contain the videos of other creators
@@ -312,7 +320,10 @@ liveStatusToString liveStatus =
             "Impossibru"
 
 
+
 --findCompetingVideoStats : Model -> String -> String -> { ours : Maybe VideoStatisticsAtTime, theirs : Maybe VideoStatisticsAtTime }
+
+
 findCompetingVideoStats model videoId competitorId =
     let
         -- goal:
@@ -370,7 +381,10 @@ findCompetingVideoStats model videoId competitorId =
     { ours = ourLatestVideoStats, theirs = latestCompetitorVideoThatOverlapsStats }
 
 
+
 --calculateCompetingViewsPercentage : Model -> String -> String -> Maybe Float
+
+
 calculateCompetingViewsPercentage model videoId competingChannelId =
     let
         { ours, theirs } =
@@ -385,26 +399,22 @@ calculateCompetingViewsPercentage model videoId competingChannelId =
 
                     else
                         Nothing
-                
+
                 _ ->
                     Nothing
 
-                -- ( Just ours_, Nothing ) ->
-                --     Just 1000
-
-                -- ( Nothing, Just theirs_ ) ->
-                --     Just -1000
-
-                -- ( Nothing, Nothing ) ->
-                --     Just -5000
-
+        -- ( Just ours_, Nothing ) ->
+        --     Just 1000
+        -- ( Nothing, Just theirs_ ) ->
+        --     Just -1000
+        -- ( Nothing, Nothing ) ->
+        --     Just -5000
     in
     percentage
 
 
 timespansOverlap aStart aEnd bStart bEnd =
     (aStart <= bEnd) && (bStart <= aEnd)
-
 
 
 video_actualStartTime model liveVideoDetails =

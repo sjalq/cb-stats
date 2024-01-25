@@ -24,6 +24,7 @@ type ToBackend
     | FetchVideosFromYoutube String
     | AttemptUpdateVideoCtr String (Maybe Float)
     | AttemptUpdateVideoLiveViews String (Maybe Int)
+    | AttemptGetCompetingPercentages (List (String, String))
       -- normal fetches from backend to frontend
     | AttemptGetChannelAndPlaylists String
     | AttemptGetLogs Int Int
