@@ -479,6 +479,7 @@ get24HrCompetitorStats model competitorChannelTitle ourVideo =
                             )
                             our24HrStats
                             competitor24HrStats
+                        |> Maybe.withDefault -1000 |> Just
 
                     betterThanThemColor =
                         percentageBetterThanThem
