@@ -1746,47 +1746,47 @@ updateFromFrontend sessionId clientId msg2 model =
 
         AttemptGetCompetingPercentages requests ->
             let
-                -- competingPercentages =
-                --     requests
-                --         |> List.map
-                --             (\( competitorId, videoId ) ->
-                --                 calculateCompetingViewsPercentage model videoId competitorId
-                --                     |> Maybe.map
-                --                         (\percentage_ ->
-                --                             let
-                --                                 competitorTitle = model.videos 
-                --                                     |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
-                --                                     |> Dict.map (\_ v -> v.videoOwnerChannelTitle) |> Dict.get videoId |> Maybe.withDefault ""
-                --                             in
-
-                --                             { videoId = videoId 
-                --                             , competitorId = competitorId
-                --                             , competitorTitle = competitorTitle
-                --                             , percentage = percentage_
-                --                             }
-                --                         )
-                --             )
-
                 competingPercentages =
                     requests
                         |> List.map
                             (\( competitorId, videoId ) ->
-                                let
-                                    competitorTitle = model.videos 
-                                        |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
-                                        |> Dict.map (\_ v -> v.videoOwnerChannelTitle) 
-                                        |> Dict.values
-                                        |> List.head
-                                        |> Maybe.withDefault ""
-                                in
+                                calculateCompetingViewsPercentage model videoId competitorId
+                                    |> Maybe.map
+                                        (\percentage_ ->
+                                            let
+                                                competitorTitle = model.videos 
+                                                    |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
+                                                    |> Dict.map (\_ v -> v.videoOwnerChannelTitle) |> Dict.get videoId |> Maybe.withDefault ""
+                                            in
 
-                                { videoId = videoId 
-                                , competitorId = competitorId
-                                , competitorTitle = competitorTitle
-                                , percentage = calculateCompetingViewsPercentage model videoId competitorId |> Maybe.withDefault 0
-                                } |> Just
-                            
+                                            { videoId = videoId 
+                                            , competitorId = competitorId
+                                            , competitorTitle = competitorTitle
+                                            , percentage = percentage_
+                                            }
+                                        )
                             )
+
+                -- competingPercentages =
+                --     requests
+                --         |> List.map
+                --             (\( competitorId, videoId ) ->
+                --                 let
+                --                     competitorTitle = model.videos 
+                --                         |> Dict.filter (\_ v -> v.videoOwnerChannelId == competitorId)
+                --                         |> Dict.map (\_ v -> v.videoOwnerChannelTitle) 
+                --                         |> Dict.values
+                --                         |> List.head
+                --                         |> Maybe.withDefault ""
+                --                 in
+
+                --                 { videoId = videoId 
+                --                 , competitorId = competitorId
+                --                 , competitorTitle = competitorTitle
+                --                 , percentage = calculateCompetingViewsPercentage model videoId competitorId |> Maybe.withDefault 0
+                --                 } |> Just
+                            
+                --             )
 
                 -- uniqueCompetitors = 
                 --     model.videos

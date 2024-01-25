@@ -475,8 +475,8 @@ alt_get24HrCompetitorStats model competitorChannelId ourVideo  =
         |> List.filterMap identity
         |> List.filter (\c -> c.competitorId == competitorChannelId && c.videoId == ourVideo.id)
         |> List.head
-        |> Maybe.map .percentage
-        |> Maybe.map String.fromFloat
+        |> Maybe.map (\i -> i.percentage * 100)
+        |> Maybe.map (String.fromFloat >> String.left 5)
         |> Maybe.withDefault "..."
         |> wrappedText
 
