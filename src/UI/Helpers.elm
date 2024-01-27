@@ -3,7 +3,7 @@ module UI.Helpers exposing (..)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border
-import Element.Font 
+import Element.Font
 import Element.Input
 import Gen.Route as Route
 import Html.Attributes
@@ -47,16 +47,14 @@ pulsingText text =
         , htmlAttribute <| Html.Attributes.style "animation" "pulse 0.5s infinite alternate"
         ]
         (Element.text text)
-    
+
 
 tableStyle : List (Element.Attribute msg)
 tableStyle =
-    [ Element.centerX
-    , Element.centerY
-    , Element.spacingXY 5 5
+    [ Element.spacingXY 5 5
     , Element.paddingXY 10 20
     , Element.Border.width 2
-    , Element.Border.rounded 5
+    , Element.Border.rounded 5 
     ]
 
 
@@ -106,9 +104,6 @@ rowStyle =
 titleStyle =
     [ Element.Font.size 36
     , Element.Font.bold
-    , Element.Font.center
-    , Element.centerX
-    , Element.centerY
     , paddingXY 10 10
     ]
 

@@ -121,9 +121,9 @@ view req { page, toMsg } model =
                         ( message, "show" )
         in
         Element.column
-            [ Element.width (Element.fill |> Element.maximum 1280), Element.centerX, Element.paddingXY 30 30 ]
+            [ Element.centerX, Element.paddingXY 30 30 ]
             [ Components.Navbar.view
-            , Element.el [ Region.mainContent, Element.width Element.fill ] page.body
+            , Element.el [ Element.width Element.fill ] page.body
             , Element.html <|
                 Html.div
                     [ Html.Attributes.id "snackbar"
