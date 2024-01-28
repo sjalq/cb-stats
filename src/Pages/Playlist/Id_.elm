@@ -13,7 +13,9 @@ import Element.Input
 import Evergreen.V35.Types exposing (BackendMsg(..))
 import Gen.Params.Playlist.Id_ exposing (Params)
 import Gen.Route as Route
-import Html exposing (label)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import List.Extra exposing (unique)
 import Maybe exposing (withDefault)
 import MoreDict
 import Page
@@ -211,37 +213,233 @@ subscriptions _ =
 
 
 
--- VIEW
+-- HTML VIEW
 
 
 view : Model -> View Msg
 view model =
+    let
+        uniqueCompetitors =
+            model.competitorVideos
+                |> Dict.values
+                |> List.map Dict.values
+                |> List.concat
+                |> MoreDict.groupBy .videoOwnerChannelTitle
+                |> Dict.keys
+    in
+    { title = "Videos for " ++ model.playlistId
+    , body =
+        Element.html <|
+            div []
+                [ h1 [] [ Html.text <| "Videos associated to playlist: " ++ model.playlistTitle ]
+                , h2 [ style "color" "skyblue" ] [ Html.text <| "Playlist: " ++ model.playlistTitle ]
+                , Html.table [ style "width" "100%" ]
+                    [ thead []
+                        [ tr []
+                            ([ th [] [ Html.text "Published at" ]
+                             , th [] [ Html.text "Link" ]
+                             , th [] [ Html.text "Channel" ]
+                             , th [] [ Html.text "Title" ]
+                             , th [] [ Html.text "Status" ]
+                             , th [] [ Html.text "Lobby" ]
+                             , th [] [ Html.text "Peak" ]
+                             , th [] [ Html.text "Live views" ]
+                             , th [] [ Html.text "Live Likes" ]
+                             , th [] [ Html.text "24hr views" ]
+                             , th [] [ Html.text "Subs gained" ]
+                             , th [] [ Html.text "Watch %" ]
+                             , th [] [ Html.text "CTR" ]
+                             , th [] [ Html.text "Details" ]
+                             ]
+                                ++ (uniqueCompetitors |> List.map (\title -> th [] [ Html.text <| title ]))
+                            )
+                        ]
+                    , tbody []
+                        (model.videos
+                            |> Dict.values
+                            |> List.sortBy (.publishedAt >> strToIntTime)
+                            |> List.reverse
+                            |> List.map
+                                (\video ->
+                                    tr []
+                                        ([ td []
+                                            [ video.publishedAt
+                                                |> String.left 16
+                                                |> String.right 14
+                                                |> (++) "\""
+                                                |> Html.text
+                                            ]
+                                         , td []
+                                            [ Html.a
+                                                [ href <| "https://www.youtube.com/watch?v=" ++ video.id ]
+                                                [ Html.img
+                                                    [ Html.Attributes.width 120
+                                                    , video.thumbnailUrl |> Maybe.withDefault "https://media1.tenor.com/m/7COT1LIbwt8AAAAC/elmo-shrug.gif" |> src
+                                                    ]
+                                                    []
+                                                ]
+                                            ]
+                                         , td []
+                                            [ model.videoChannels |> Dict.get video.id |> Maybe.withDefault "Unknown" |> Html.text ]
+                                         , td []
+                                            [ Html.text video.title ]
+                                         , td []
+                                            [ case video.liveStatus of
+                                                Live ->
+                                                    Html.text "Live now"
+
+                                                Ended strIme ->
+                                                    Html.text <| "Ended at " ++ strIme
+
+                                                Scheduled strTime ->
+                                                    Html.text <| "Scheduled for " ++ strTime
+
+                                                Old ->
+                                                    Html.text "Old..."
+
+                                                Uploaded ->
+                                                    Html.text "Uploaded"
+
+                                                Impossibru ->
+                                                    Html.text "iMpOssIbRu!"
+
+                                                Unknown ->
+                                                    Html.text "Checking..."
+
+                                                Expired ->
+                                                    Html.text "Expired"
+                                            ]
+                                         , td []
+                                            [ Api.YoutubeModel.video_lobbyEstimate model.liveVideoDetails model.currentViewers video.id
+                                                |> Maybe.map (String.fromInt >> Html.text)
+                                                |> Maybe.withDefault (Html.text "Unknown")
+                                            ]
+                                         , td []
+                                            [ video_peakViewers model.currentViewers video.id
+                                                |> Maybe.map (String.fromInt >> Html.text)
+                                                |> Maybe.withDefault (Html.text "Unknown")
+                                            ]
+                                         , td []
+                                            [ Element.layout [] <|
+                                                Element.Input.multiline
+                                                    [ Element.height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                                    { onChange = UpdateVideoLiveViews video.id
+                                                    , text = model.tmpLiveViews |> Dict.get video.id |> Maybe.withDefault ""
+                                                    , placeholder = Nothing
+                                                    , label = Element.Input.labelHidden "Live views"
+                                                    , spellcheck = False
+                                                    }
+                                            ]
+                                         , td []
+                                            [ video.statsOnConclusion
+                                                |> Maybe.map (\stats -> stats.likeCount |> String.fromInt |> Html.text)
+                                                |> Maybe.withDefault (Html.text "...")
+                                            ]
+                                         , td []
+                                            [ let
+                                                stats =
+                                                    model.videoStatisticsAtTime
+                                                        |> Dict.filter (\_ s -> s.videoId == video.id)
+                                                        |> Dict.map (\_ s -> s.viewCount)
+                                                        |> Dict.values
+
+                                                stillFetching =
+                                                    case video.liveStatus of
+                                                        Ended strTime ->
+                                                            strToIntTime strTime + day > model.currentIntTime
+
+                                                        Uploaded ->
+                                                            strToIntTime video.publishedAt + day > model.currentIntTime
+
+                                                        _ ->
+                                                            False
+
+                                                max =
+                                                    stats
+                                                        |> List.maximum
+                                                        |> Maybe.map String.fromInt
+                                                        |> Maybe.withDefault ""
+                                              in
+                                              if stillFetching then
+                                                Html.text "..."
+
+                                              else
+                                                Html.text max
+                                            ]
+                                         , td []
+                                            [ video.reportAfter24Hours
+                                                |> Maybe.map (\r -> r.subscribersGained - r.subscribersLost |> String.fromInt |> Html.text)
+                                                |> Maybe.withDefault (Html.text "...")
+                                            ]
+                                         , td []
+                                            [ video.reportAfter24Hours
+                                                |> Maybe.map (.averageViewPercentage >> floatToDecimalStr >> Html.text)
+                                                |> Maybe.withDefault (Html.text "...")
+                                            ]
+                                         , td []
+                                            [ Element.layout [] <|
+                                                Element.Input.multiline
+                                                    [ Element.height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                                    { onChange = UpdateVideoCTR video.id
+                                                    , text = model.tmpCtrs |> Dict.get video.id |> Maybe.withDefault ""
+                                                    , placeholder = Nothing
+                                                    , label = Element.Input.labelHidden "CTR"
+                                                    , spellcheck = False
+                                                    }
+                                            ]
+                                        , td 
+                                         ]
+                                            ++ (uniqueCompetitors
+                                                    |> List.map
+                                                        (\competitorId ->
+                                                            model.competingPercentages
+                                                                |> List.filterMap identity
+                                                                |> List.filter (\c -> c.competitorId == competitorId && c.videoId == video.id)
+                                                                |> List.head
+                                                                |> Maybe.map (\i -> i.percentage * 100)
+                                                                |> Maybe.map floatToDecimalStr
+                                                                |> Maybe.withDefault "..."
+                                                                |> Html.text
+                                                        )
+                                               )
+                                        )
+                                )
+                        )
+                    ]
+                ]
+    }
+
+
+
+-- VIEW
+
+
+view_old : Model -> View Msg
+view_old model =
     { title = "Videos for " ++ model.playlistId
     , body =
         el
-            [ width fill ]
+            [ Element.width fill ]
             (Element.column
                 [ alignRight ]
                 [ Element.el titleStyle (Element.text <| "Videos associated to playlist:")
                 , Element.el (titleStyle ++ [ Element.Font.color Styles.Colors.skyBlue ]) (Element.text <| model.playlistTitle)
-
                 , Element.table
                     tableStyle
                     { data = model.videos |> Dict.values |> List.sortBy (.publishedAt >> strToIntTime) |> List.reverse
                     , columns =
-                        [ 
-                        --Column (columnHeader "") (fill) (\_ -> text "")
-                        --, Column (columnHeader "Id") (px 290) (.id >> wrappedText)
-                         Column (columnHeader "Published at") (px 120) (.publishedAt >> String.left 16 >> String.right 14 >> (++) "\"" >> wrappedText)
+                        [ --Column (columnHeader "") (fill) (\_ -> text "")
+                          --, Column (columnHeader "Id") (px 290) (.id >> wrappedText)
+                          Column (columnHeader "Published at") (px 120) (.publishedAt >> String.left 16 >> String.right 14 >> (++) "\"" >> wrappedText)
                         , Column
                             (columnHeader "Link")
-                            (fill)
+                            fill
                             (\v ->
                                 Element.link [ Element.Font.underline, Element.centerY ]
                                     { url = "https://www.youtube.com/watch?v=" ++ v.id
                                     , label =
                                         Element.image
-                                            [ Element.width (px 120 )
+                                            [ Element.width (px 120)
                                             , Element.height fill
                                             , Element.Border.solid
                                             , Element.Border.width 1
@@ -250,9 +448,9 @@ view model =
                                             , description = "Thumbnail"
                                             }
                                     }
-                                    --|> wrappedCell
+                             --|> wrappedCell
                             )
-                        , Column (columnHeader "Channel") (fill) (\v -> model.videoChannels |> Dict.get v.id |> Maybe.withDefault "Unknown" |> wrappedText)
+                        , Column (columnHeader "Channel") fill (\v -> model.videoChannels |> Dict.get v.id |> Maybe.withDefault "Unknown" |> wrappedText)
                         ]
                             ++ (if model.playlistId == "*" then
                                     [ Column
@@ -266,10 +464,11 @@ view model =
                                                 |> wrappedText
                                         )
                                     ]
+
                                 else
                                     []
                                )
-                            ++ [ Column (columnHeader "Title") (fill) (.title >> wrappedText)
+                            ++ [ Column (columnHeader "Title") fill (.title >> wrappedText)
                                , Column
                                     (columnHeader "Status")
                                     (px 150)
@@ -278,18 +477,25 @@ view model =
                                             case v.liveStatus of
                                                 Live ->
                                                     "Live now"
+
                                                 Ended strIme ->
                                                     "Ended at " ++ strIme
+
                                                 Scheduled strTime ->
                                                     "Scheduled for " ++ strTime
+
                                                 Old ->
                                                     "Old..."
+
                                                 Uploaded ->
                                                     "Uploaded"
+
                                                 Impossibru ->
                                                     "iMpOssIbRu!"
+
                                                 Unknown ->
                                                     "Checking..."
+
                                                 Expired ->
                                                     "Expired"
                                     )
@@ -303,12 +509,13 @@ view model =
                                     )
                                , Column
                                     (columnHeader "Peak")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         video_peakViewers model.currentViewers v.id
                                             |> Maybe.map (String.fromInt >> wrappedText)
                                             |> Maybe.withDefault (wrappedText "Unknown")
                                     )
+
                                --    , Column
                                --         (columnHeader "Live views±")
                                --         (px 95)
@@ -320,10 +527,10 @@ view model =
                                --         )
                                , Column
                                     (columnHeader "Live views")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         Element.Input.multiline
-                                            [ height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                            [ Element.height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
                                             { onChange = UpdateVideoLiveViews v.id
                                             , text = model.tmpLiveViews |> Dict.get v.id |> Maybe.withDefault ""
                                             , placeholder = Nothing
@@ -333,7 +540,7 @@ view model =
                                     )
                                , Column
                                     (columnHeader "Live Likes")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         v.statsOnConclusion
                                             |> Maybe.map (\stats -> stats.likeCount |> String.fromInt)
@@ -342,7 +549,7 @@ view model =
                                     )
                                , Column
                                     (columnHeader "24hr views")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         let
                                             stats =
@@ -350,14 +557,18 @@ view model =
                                                     |> Dict.filter (\_ s -> s.videoId == v.id)
                                                     |> Dict.map (\_ s -> s.viewCount)
                                                     |> Dict.values
+
                                             stillFetching =
                                                 case v.liveStatus of
                                                     Ended strTime ->
                                                         strToIntTime strTime + day > model.currentIntTime
+
                                                     Uploaded ->
                                                         strToIntTime v.publishedAt + day > model.currentIntTime
+
                                                     _ ->
                                                         False
+
                                             max =
                                                 stats
                                                     |> List.maximum
@@ -366,12 +577,13 @@ view model =
                                         in
                                         if stillFetching then
                                             wrappedText "..."
+
                                         else
                                             wrappedText max
                                     )
                                , Column
                                     (columnHeader "Subs gained")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         v.reportAfter24Hours
                                             |> Maybe.map (\r -> r.subscribersGained - r.subscribersLost |> String.fromInt)
@@ -380,7 +592,7 @@ view model =
                                     )
                                , Column
                                     (columnHeader "Watch %")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         v.reportAfter24Hours
                                             |> Maybe.map (.averageViewPercentage >> floatToDecimalStr)
@@ -389,10 +601,10 @@ view model =
                                     )
                                , Column
                                     (columnHeader "CTR")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         Element.Input.multiline
-                                            [ height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                            [ Element.height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
                                             { onChange = UpdateVideoCTR v.id
                                             , text = model.tmpCtrs |> Dict.get v.id |> Maybe.withDefault ""
                                             , placeholder = Nothing
@@ -404,7 +616,7 @@ view model =
                             ++ alt_competitorVideoColums model alt_get24HrCompetitorStats
                             ++ [ Column
                                     (columnHeader "Details")
-                                    (fill)
+                                    fill
                                     (\v ->
                                         linkButton
                                             "Details"
@@ -413,6 +625,7 @@ view model =
                                                 Route.Video__Id_
                                                     { id = v.id }
                                     )
+
                                --    , Column
                                --         (columnHeader "Sparkline")
                                --         (px 100)
@@ -443,7 +656,7 @@ alt_competitorVideoColums model vFunc =
             (\( competitorId, competitorTitle ) ->
                 Column
                     (columnHeader competitorTitle)
-                    (fill)
+                    fill
                     (vFunc model competitorId)
             )
 

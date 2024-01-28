@@ -121,7 +121,7 @@ view req { page, toMsg } model =
                         ( message, "show" )
         in
         Element.column
-            [ Element.centerX, Element.paddingXY 30 30 ]
+            [ Element.paddingXY 30 30 ]
             [ Components.Navbar.view
             , Element.el [ Element.width Element.fill ] page.body
             , Element.html <|
