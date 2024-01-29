@@ -164,7 +164,7 @@ drawMultilineFieldWithScrollbar label value =
 
 draw24HourViews liveViews videoStatisticsAtTime =
     let
-        initialDelta = liveViews - (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
+        initialDelta = liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
     in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
