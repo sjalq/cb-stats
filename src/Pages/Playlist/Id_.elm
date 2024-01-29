@@ -216,8 +216,8 @@ subscriptions _ =
 -- HTML VIEW
 
 
-view : Model -> View Msg
-view model =
+viewHtml : Model -> View Msg
+viewHtml model =
     let
         uniqueCompetitors =
             model.competitorVideos
@@ -230,7 +230,7 @@ view model =
     { title = "Videos for " ++ model.playlistId
     , body =
         Element.html <|
-            div []
+            div [ Html.Attributes.align "center" ]
                 [ h1 [] [ Html.text <| "Videos associated to playlist: " ++ model.playlistTitle ]
                 , h2 [ style "color" "skyblue" ] [ Html.text <| "Playlist: " ++ model.playlistTitle ]
                 , Html.table [ style "width" "100%" ]
@@ -248,10 +248,10 @@ view model =
                              , th [] [ Html.text "24hr views" ]
                              , th [] [ Html.text "Subs gained" ]
                              , th [] [ Html.text "Watch %" ]
-                             , th [] [ Html.text "CTR" ]
-                             , th [] [ Html.text "Details" ]
+                             , th [ style "min-width" "90px" ] [ Html.text "CTR" ]
                              ]
                                 ++ (uniqueCompetitors |> List.map (\title -> th [] [ Html.text <| title ]))
+                                ++ [ th [ style "min-width" "200px" ] [ Html.text "Details" ] ]
                             )
                         ]
                     , tbody []
@@ -319,10 +319,14 @@ view model =
                                                 |> Maybe.map (String.fromInt >> Html.text)
                                                 |> Maybe.withDefault (Html.text "Unknown")
                                             ]
-                                         , td []
-                                            [ Element.layout [] <|
+                                         , td [ style "padding" "1px" ]
+                                            [ Element.layout [ Element.height fill ] <|
                                                 Element.Input.multiline
-                                                    [ Element.height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
+                                                    [ Element.height fill
+                                                    , paddingXY 3 3
+                                                    , Element.Font.size 17
+                                                    , Element.Background.color (rgb 0.95 0.95 1)
+                                                    ]
                                                     { onChange = UpdateVideoLiveViews video.id
                                                     , text = model.tmpLiveViews |> Dict.get video.id |> Maybe.withDefault ""
                                                     , placeholder = Nothing
@@ -376,7 +380,7 @@ view model =
                                                 |> Maybe.map (.averageViewPercentage >> floatToDecimalStr >> Html.text)
                                                 |> Maybe.withDefault (Html.text "...")
                                             ]
-                                         , td []
+                                         , td [ style "padding" "1px" ]
                                             [ Element.layout [] <|
                                                 Element.Input.multiline
                                                     [ Element.height fill, paddingXY 3 3, Element.Font.size 17, Element.Background.color (rgb 0.95 0.95 1) ]
@@ -387,7 +391,6 @@ view model =
                                                     , spellcheck = False
                                                     }
                                             ]
-                                        , td 
                                          ]
                                             ++ (uniqueCompetitors
                                                     |> List.map
@@ -400,8 +403,17 @@ view model =
                                                                 |> Maybe.map floatToDecimalStr
                                                                 |> Maybe.withDefault "..."
                                                                 |> Html.text
+                                                                |> List.singleton
+                                                                |> Html.td []
                                                         )
                                                )
+                                            ++ [ td [ style "padding" "1px", style "min-width" "100px" ]
+                                                    [ Element.layout [] <|
+                                                        linkButton
+                                                            "Details"
+                                                            (Route.toHref <| Route.Video__Id_ { id = video.id })
+                                                    ]
+                                               ]
                                         )
                                 )
                         )
@@ -414,8 +426,8 @@ view model =
 -- VIEW
 
 
-view_old : Model -> View Msg
-view_old model =
+view : Model -> View Msg
+view model =
     { title = "Videos for " ++ model.playlistId
     , body =
         el
@@ -659,19 +671,6 @@ alt_competitorVideoColums model vFunc =
                     fill
                     (vFunc model competitorId)
             )
-
-
-floatToDecimalStr : Float -> String
-floatToDecimalStr f =
-    case String.fromFloat f |> String.split "." of
-        [ a, b ] ->
-            a ++ "." ++ String.left 2 b
-
-        [ a ] ->
-            a ++ ".00"
-
-        _ ->
-            "0.00"
 
 
 

@@ -163,6 +163,9 @@ drawMultilineFieldWithScrollbar label value =
 
 
 draw24HourViews liveViews videoStatisticsAtTime =
+    let
+        initialDelta = liveViews - (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
+    in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
         , Element.table tableStyle
@@ -176,7 +179,7 @@ draw24HourViews liveViews videoStatisticsAtTime =
                 [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> wrappedText)
                 , Column (columnHeader "Views") (px 100) (.current >> .viewCount >> (+) liveViews >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views (ex live)") (px 120) (.current >> .viewCount >> String.fromInt >> wrappedText)
-                , Column (columnHeader "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
+                , Column (columnHeader "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault initialDelta >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Likes") (px 100) (.current >> .likeCount >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Dislikes") (px 100) (.current >> .dislikeCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> wrappedText)
                 , Column (columnHeader "Comments") (px 100) (.current >> .commentCount >> Maybe.map String.fromInt >> Maybe.withDefault "" >> wrappedText)

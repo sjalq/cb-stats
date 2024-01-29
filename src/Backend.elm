@@ -39,6 +39,7 @@ import Time.Extra as Time
 import Types exposing (BackendModel, BackendMsg(..), FrontendMsg(..), NextAction(..), ToFrontend(..), hasExpired)
 import Utils.Time exposing (..)
 import YouTubeApi
+import UI.Helpers exposing (floatToDecimalStr)
 
 
 
@@ -2285,6 +2286,7 @@ tabulateVideoData model videoResults =
             , "24hr views"
             , "Subs gained"
             , "Watch Proportion"
+            , "CTR"
             , "Details"
             ]
                 ++ uniqueCompetitorTitles
@@ -2364,6 +2366,13 @@ tabulateVideoData model videoResults =
 
                             _ ->
                                 ""
+                         , -- "CTR"
+                            case video.ctr of
+                             Just ctr_ ->
+                                  (ctr_ / 100)
+                                        |> floatToDecimalStr
+                             _ ->
+                                  ""
                          , "https://cb-stats.lamdera.app/video/"
                             ++ video.id
                          ]

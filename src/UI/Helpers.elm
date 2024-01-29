@@ -175,3 +175,15 @@ msgButton text msg =
         { label = Element.el centerCenter (Element.text text)
         , onPress = msg
         }
+
+floatToDecimalStr : Float -> String
+floatToDecimalStr f =
+    case String.fromFloat f |> String.split "." of
+        [ a, b ] ->
+            a ++ "." ++ String.left 2 b
+
+        [ a ] ->
+            a ++ ".00"
+
+        _ ->
+            "0.00"
