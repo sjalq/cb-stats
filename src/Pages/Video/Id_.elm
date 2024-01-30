@@ -9,6 +9,7 @@ import Element.Background
 import Element.Border
 import Element.Input as Input
 import Gen.Params.Video.Id_ exposing (Params)
+import Html exposing (col)
 import Iso8601
 import Lamdera exposing (sendToBackend)
 import Lamdera.Debug exposing (posixToMillis)
@@ -20,7 +21,6 @@ import Time
 import UI.Helpers exposing (..)
 import Utils.Time exposing (..)
 import View exposing (View)
-import Html exposing (col)
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -164,7 +164,8 @@ drawMultilineFieldWithScrollbar label value =
 
 draw24HourViews liveViews videoStatisticsAtTime =
     let
-        initialDelta = liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
+        initialDelta =
+            liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
     in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
@@ -189,22 +190,27 @@ draw24HourViews liveViews videoStatisticsAtTime =
 
 
 drawLiveViewers currentViewers =
-    column [ paddingTop ]
-        [ labelOnly "Live Viewers"
-        , Element.table tableStyle
-            { data =
-                currentViewers
-                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 19)
-                    |> Dict.values
-                    |> List.filterMap (List.sortBy .value >> List.head)
-                    |> viewsDiff
-            , columns =
-                [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 19 >> wrappedText)
-                , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
-                , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
+    case currentViewers of
+        [] ->
+            Element.none
+
+        _ -> 
+            column [ paddingTop ]
+                [ labelOnly "Live Viewers"
+                , Element.table tableStyle
+                    { data =
+                        currentViewers
+                            |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 19)
+                            |> Dict.values
+                            |> List.filterMap (List.sortBy .value >> List.head)
+                            |> viewsDiff
+                    , columns =
+                        [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 19 >> wrappedText)
+                        , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
+                        , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
+                        ]
+                    }
                 ]
-            }
-        ]
 
 
 view : Model -> View Msg
@@ -260,7 +266,7 @@ view model =
                     draw24HourViews value model.videoStatisticsAtTime
 
                 _ ->
-                    drawField "Live Viewers" "unknown"
+                    drawField "Impossibru?" "Impossibru!"
             , drawLiveViewers
                 (model.currentViewers
                     |> List.filter

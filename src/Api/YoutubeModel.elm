@@ -185,15 +185,18 @@ video_liveViewsEstimate video currentViewers =
 
 
 video_liveViews video currentViewers =
-    case video.liveViews of
-        Nothing ->
+    case ( video.liveStatus, video.liveViews ) of
+        ( Uploaded, _ ) ->
+            Actual 0
+
+        ( _, Nothing ) ->
             video_liveViewsEstimate
                 video
                 (currentViewers |> currentViewers_ListToDict)
                 |> Maybe.map (\liveViews_ -> Estimate liveViews_)
                 |> Maybe.withDefault Unknown_
 
-        Just liveViews_ ->
+        ( _, Just liveViews_ ) ->
             Actual liveViews_
 
 
