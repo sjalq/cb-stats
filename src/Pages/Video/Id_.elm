@@ -224,6 +224,8 @@ drawLiveViewers currentViewers actualStartTime =
                                     [ Element.Font.underline
                                     , Element.centerY
                                     , Element.centerX
+                                    , Element.width fill 
+                                    , Element.Font.color <| rgb 0.1 0.1 0.8
                                     ]
                                     { url =
                                         "https://www.youtube.com/watch?v="
