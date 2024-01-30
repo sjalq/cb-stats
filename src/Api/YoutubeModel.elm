@@ -248,15 +248,15 @@ video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark v
                 |> Dict.filter (\( videoId_, _ ) _ -> videoId_ == videoId)
                 |> Dict.values
 
-        viewersAtMinuteOffset =
+        viewersAtSecondOffset =
             listViewers
-                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) < secondOffset)
+                |> List.filter (\cv -> (cv.timestamp |> Time.posixToMillis) <= secondOffset)
                 |> List.sortBy (\cv -> cv.timestamp |> Time.posixToMillis)
                 |> List.reverse
                 |> List.head
                 |> Maybe.map .value
     in
-    viewersAtMinuteOffset
+    viewersAtSecondOffset
 
 
 video_viewersAtXminuteMark liveStreamingDetails listViewers minuteMark =
