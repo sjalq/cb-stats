@@ -216,34 +216,27 @@ drawLiveViewers currentViewers actualStartTime =
                             |> List.filterMap (List.sortBy .value >> List.head)
                             |> viewsDiff
                     , columns =
-                        [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 19 >> wrappedText)
+                        [ Column
+                            (columnHeader "Time (click to watch)")
+                            (px 300)
+                            (\c ->
+                                Element.link
+                                    [ Element.Font.underline
+                                    , Element.centerY
+                                    , Element.centerX
+                                    ]
+                                    { url =
+                                        "https://www.youtube.com/watch?v="
+                                            ++ c.current.videoId
+                                            ++ (c.prev
+                                                    |> Maybe.map (\prev -> "&t=" ++ pointInTimeStr prev)
+                                                    |> Maybe.withDefault ""
+                                               )
+                                    , label = c.current |> .timestamp |> Iso8601.fromTime |> String.left 19 |> wrappedText
+                                    }
+                            )
                         , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
                         , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
-                        , Column
-                            (columnHeader "Watch")
-                            (px 200)
-                            (\c ->
-                                c.prev
-                                    |> Maybe.map
-                                        (\prev ->
-                                            Element.link
-                                                [ Element.Font.underline
-                                                , Element.centerY
-                                                , Element.centerX
-                                                ]
-                                                { url = "https://www.youtube.com/watch?v=" ++ prev.videoId ++ "&t=" ++ pointInTimeStr prev
-                                                , label = "Watch from " ++ pointInTimeStr prev ++ "s in" |> wrappedText
-                                                }
-                                        )
-                                    |> Maybe.withDefault (Element.link
-                                                [ Element.Font.underline
-                                                , Element.centerY
-                                                , Element.centerX
-                                                ]
-                                                { url = "https://www.youtube.com/watch?v=" ++ c.current.videoId ++ "&t=0"
-                                                , label = "Watch from 0s in" |> wrappedText
-                                                })
-                            )
                         ]
                     }
                 ]
