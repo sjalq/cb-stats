@@ -218,7 +218,7 @@ drawLiveViewers currentViewers actualStartTime =
                     , columns =
                         [ Column
                             (columnHeader "Time (click to watch)")
-                            (px 300)
+                            (px 160)
                             (\c ->
                                 Element.link
                                     [ Element.Font.underline
