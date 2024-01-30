@@ -7,6 +7,7 @@ import Effect exposing (Effect)
 import Element exposing (..)
 import Element.Background
 import Element.Border
+import Element.Font
 import Element.Input as Input
 import Gen.Params.Video.Id_ exposing (Params)
 import Html exposing (col)
@@ -189,12 +190,22 @@ draw24HourViews liveViews videoStatisticsAtTime =
         ]
 
 
-drawLiveViewers currentViewers =
+drawLiveViewers currentViewers actualStartTime =
     case currentViewers of
         [] ->
             Element.none
 
-        _ -> 
+        _ ->
+            let
+                actualStart =
+                    actualStartTime |> Maybe.map strToIntTime |> Maybe.withDefault 0
+
+                offset currentViewerRecord =
+                    ((currentViewerRecord.timestamp |> Time.posixToMillis) - actualStart) // second
+
+                pointInTimeStr currentViewerRecord =
+                    offset currentViewerRecord |> String.fromInt
+            in
             column [ paddingTop ]
                 [ labelOnly "Live Viewers"
                 , Element.table tableStyle
@@ -208,6 +219,20 @@ drawLiveViewers currentViewers =
                         [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 19 >> wrappedText)
                         , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
                         , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
+                        , Column
+                            (columnHeader "Link to video at time")
+                            (px 100)
+                            (\c ->
+                                Element.link
+                                    [ Element.Font.underline
+                                    , Element.centerY
+                                    , Element.centerX
+                                    , Element.Font.size 13
+                                    ]
+                                    { url = "https://www.youtube.com/watch?v=" ++ c.current.videoId ++ "&t=" ++ pointInTimeStr c.current
+                                    , label = pointInTimeStr c.current |> text
+                                    }
+                            )
                         ]
                     }
                 ]
@@ -279,6 +304,7 @@ view model =
                                    )
                         )
                 )
+                (model.liveVideoDetails |> Maybe.andThen .actualStartTime)
             ]
     }
 
