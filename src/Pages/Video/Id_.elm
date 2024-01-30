@@ -230,9 +230,10 @@ drawLiveViewers currentViewers actualStartTime =
                                     { url =
                                         "https://www.youtube.com/watch?v="
                                             ++ c.current.videoId
+                                            ++ "&t="
                                             ++ (c.prev
-                                                    |> Maybe.map (\prev -> "&t=" ++ pointInTimeStr prev)
-                                                    |> Maybe.withDefault ""
+                                                    |> Maybe.map pointInTimeStr
+                                                    |> Maybe.withDefault "0"
                                                )
                                     , label = c.current |> .timestamp |> Iso8601.fromTime |> String.left 19 |> text
                                     }
