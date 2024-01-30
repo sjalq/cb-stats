@@ -224,7 +224,7 @@ drawLiveViewers currentViewers actualStartTime =
                                     [ Element.Font.underline
                                     , Element.centerY
                                     , Element.centerX
-                                    , Element.width fill 
+                                    , Element.width fill
                                     , Element.Font.color <| rgb 0.1 0.1 0.8
                                     ]
                                     { url =
@@ -234,8 +234,9 @@ drawLiveViewers currentViewers actualStartTime =
                                                     |> Maybe.map (\prev -> "&t=" ++ pointInTimeStr prev)
                                                     |> Maybe.withDefault ""
                                                )
-                                    , label = c.current |> .timestamp |> Iso8601.fromTime |> String.left 19 |> wrappedText
+                                    , label = c.current |> .timestamp |> Iso8601.fromTime |> String.left 19 |> text
                                     }
+                                    |> wrappedCell
                             )
                         , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
                         , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
