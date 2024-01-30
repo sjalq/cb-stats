@@ -21,16 +21,32 @@ second =
     1000
 
 
+seconds =
+    second
+
+
 minute =
     60 * second
+
+
+minutes =
+    minute
 
 
 hour =
     60 * minute
 
 
+hours =
+    hour
+
+
 day =
     24 * hour
+
+
+days =
+    day
 
 
 strToIntTime =
@@ -39,6 +55,7 @@ strToIntTime =
 
 intTimeToStr =
     Time.millisToPosix >> Iso8601.fromTime
+
 
 timeToStr =
     Iso8601.fromTime

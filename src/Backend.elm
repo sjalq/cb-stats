@@ -108,7 +108,7 @@ subscriptions model =
         , Time.every (8 * hour) Batch_GetCompetitorVideos
 
         --, Time.every (10 * second) Batch_GetChatMessages
-        , Time.every (10 * minute) Batch_GetVideoStatisticsAtTime
+        , Time.every (30 * second) Batch_GetVideoStatisticsAtTime
         , Time.every (10 * minute) Batch_ExportToSheet
         , onConnect OnConnect
         ]
@@ -740,8 +740,8 @@ update msg model =
                     model.videos
                         |> Dict.filter
                             (\_ v ->
-                                case ( v.liveStatus, v.statsAfter24Hours ) of
-                                    ( Api.YoutubeModel.Ended endTimeStr, Nothing ) ->
+                                case ( v.liveStatus, v.statsAfter24Hours, v.publishedAt ) of
+                                    ( Api.YoutubeModel.Ended endTimeStr, Nothing, _ ) ->
                                         let
                                             endTime =
                                                 endTimeStr
@@ -753,6 +753,19 @@ update msg model =
                                                 time |> Time.posixToMillis
                                         in
                                         (now - endTime) >= (24 * hour)
+
+                                    ( Api.YoutubeModel.Uploaded, Nothing, publishedAtStr ) ->
+                                        let
+                                            publishedAt =
+                                                publishedAtStr
+                                                    |> Iso8601.toTime
+                                                    |> Result.map Time.posixToMillis
+                                                    |> Result.withDefault 0
+
+                                            now =
+                                                time |> Time.posixToMillis
+                                        in
+                                        (now - publishedAt) >= (24 * hour)
 
                                     _ ->
                                         False
@@ -1055,6 +1068,9 @@ update msg model =
                             )
                         |> Dict.filter (\_ v -> video_isNew v)
 
+                isLastMinute =
+                    (time |> Time.toMinute Time.utc) == 59
+
                 videosWithNoStatsInPastHour =
                     model.videoStatisticsAtTime
                         |> Dict.filter (\_ s -> Dict.member s.videoId videosThatConcludedInPast24Hrs)
@@ -1068,6 +1084,7 @@ update msg model =
                             )
                         |> List.filterMap identity
                         |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour <= (time |> Time.posixToMillis))
+                        |> List.filter (\_ -> isLastMinute) 
                         |> List.map .videoId
 
                 videosWithNoStatsAtAll =
@@ -1081,6 +1098,7 @@ update msg model =
                                     |> List.member videoId
                                     |> not
                             )
+                        |> List.filter (\_ -> isLastMinute)
 
                 videosToFetch =
                     videosWithNoStatsInPastHour

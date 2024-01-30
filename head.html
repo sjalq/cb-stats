@@ -1,79 +1,12 @@
 <link rel="stylesheet" href="/style.css">
-<style>
-    /* Basic reset for table spacing */
-    table {
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 13px;
-    }
-
-    th,
-    td {
-        border: 1px solid #ddd;
-        /* Light grey border */
-        text-align: left;
-        padding: 8px;
-    }
-
-    th {
+<!-- <style>
+    .gp:nth-child(odd) {
         background-color: #f2f2f2;
-        /* Light grey background for headers */
-        color: black;
+        /* Light grey color for odd rows */
     }
 
-    td:nth-child(4) {
-        white-space: normal;
-        /* Allow wrapping */
-        word-wrap: break-word;
-        /* Break words to wrap onto the next line */
-        max-width: 300px;
+    .gp:nth-child(even) {
+        background-color: #ffffff;
+        /* White color for even rows */
     }
-
-    /* Responsive design for smaller screens */
-    @media screen and (max-width: 600px) {
-
-        table,
-        thead,
-        tbody,
-        th,
-        td,
-        tr {
-            display: block;
-        }
-
-        thead tr {
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
-        }
-
-        tr {
-            border: 1px solid #ccc;
-        }
-
-        td {
-            /* Each cell is now a row */
-            border: none;
-            border-bottom: 1px solid #eee;
-            position: relative;
-            padding-left: 50%;
-        }
-
-        td:before {
-            /* Adding a pseudo-element for labels */
-            position: absolute;
-            top: 6px;
-            left: 6px;
-            width: 45%;
-            padding-right: 10px;
-            white-space: nowrap;
-            content: attr(data-label);
-            /* Using data-label attribute from the table cells */
-        }
-    }
-
-    /* Zebra striping for rows */
-    tr:nth-child(odd) {
-        background-color: #f9f9f9;
-    }
-</style>
+</style> -->
