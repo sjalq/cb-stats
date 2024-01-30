@@ -240,7 +240,7 @@ video_viewersAtXminuteMarkFromDicts liveVideoDetails currentViewers secondMark v
 
         secondOffset =
             actualStartTime
-                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (secondMark * second))
+                |> Maybe.map (\actualStartTimePosix_ -> actualStartTimePosix_ + (secondMark * second) + (1 * second))
                 |> Maybe.withDefault 0
 
         listViewers =
