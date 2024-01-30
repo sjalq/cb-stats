@@ -130,7 +130,13 @@ view model =
                 --     { url = Env.googleOauthUrl
                 --     , label = Element.text "🦄 Google Auth Yerself! ✨"
                 --     }
-                [ linkButton "🦄 Google Auth Yerself! ✨" Env.googleOauthUrl
+                [ linkButton "🦄 Google Auth Yerself! ✨" (Env.googleOauthUrl ++ "/youtube")
+                , el [ paddingXY 0 5, width fill ] <|
+                    if model.noAccessKeysIncluded then
+                        Element.none
+
+                    else
+                        linkButton "🦞 Auth Yerself wif Google Sheets! 🌚" (Env.googleOauthUrl ++ "/wifsheets")
                 , el [ paddingXY 0 10 ] <|
                     Element.table
                         tableStyle
