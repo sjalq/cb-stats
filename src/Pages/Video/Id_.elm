@@ -220,18 +220,29 @@ drawLiveViewers currentViewers actualStartTime =
                         , Column (columnHeader "Viewers") (px 100) (.current >> .value >> String.fromInt >> wrappedText)
                         , Column (columnHeader "Delta") (px 100) (.diff >> Maybe.map .valueDelta >> Maybe.withDefault 0 >> String.fromInt >> wrappedText)
                         , Column
-                            (columnHeader "Link to video at time")
-                            (px 100)
+                            (columnHeader "Watch")
+                            (px 200)
                             (\c ->
-                                Element.link
-                                    [ Element.Font.underline
-                                    , Element.centerY
-                                    , Element.centerX
-                                    , Element.Font.size 13
-                                    ]
-                                    { url = "https://www.youtube.com/watch?v=" ++ c.current.videoId ++ "&t=" ++ pointInTimeStr c.current
-                                    , label = pointInTimeStr c.current |> text
-                                    }
+                                c.prev
+                                    |> Maybe.map
+                                        (\prev ->
+                                            Element.link
+                                                [ Element.Font.underline
+                                                , Element.centerY
+                                                , Element.centerX
+                                                ]
+                                                { url = "https://www.youtube.com/watch?v=" ++ prev.videoId ++ "&t=" ++ pointInTimeStr prev
+                                                , label = "Watch from " ++ pointInTimeStr prev ++ "s in" |> wrappedText
+                                                }
+                                        )
+                                    |> Maybe.withDefault (Element.link
+                                                [ Element.Font.underline
+                                                , Element.centerY
+                                                , Element.centerX
+                                                ]
+                                                { url = "https://www.youtube.com/watch?v=" ++ c.current.videoId ++ "&t=0"
+                                                , label = "Watch from 0s in" |> wrappedText
+                                                })
                             )
                         ]
                     }
