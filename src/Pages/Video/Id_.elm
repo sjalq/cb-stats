@@ -178,14 +178,17 @@ draw24HourViews liveViews actualStartTimeStr videoStatisticsAtTime =
         initialFromToStr =
             (actualStartTimeStr |> String.left 13 |> String.right 2)
                 ++ ":00 - "
-                ++ (data
-                        |> List.tail
-                        |> Maybe.andThen List.head
-                        |> Maybe.map .current
-                        |> Maybe.map .timestamp
-                        |> Maybe.map (Time.toHour Time.utc)
-                        |> Maybe.map format10
-                        |> Maybe.withDefault "??:??"
+                ++ (case data of
+                        first :: [] ->
+                            first.current.timestamp
+                                |> Time.toHour Time.utc
+                                |> format10
+
+                        _ :: _ :: _ ->
+                            "a"
+
+                        _ ->
+                            "b"
                    )
     in
     column [ paddingTop ]
