@@ -175,21 +175,25 @@ draw24HourViews liveViews actualStartTimeStr videoStatisticsAtTime =
                 |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
                 |> statsDiff
 
-        initialFromToStr =
-            (actualStartTimeStr |> String.left 13 |> String.right 2)
-                ++ ":00 - "
-                ++ (case data of
-                        first :: [] ->
-                            first.current.timestamp
-                                |> Time.toHour Time.utc
-                                |> format10
+        initialFromStr =
+            (actualStartTimeStr |> String.left 13 |> String.right 2) ++ ":00"
 
-                        _ :: _ :: _ ->
-                            "a"
+        initialToStr =
+            case data of
+                first :: [] ->
+                    first.current.timestamp
+                        |> Time.toHour Time.utc
+                        |> format10
 
-                        _ ->
-                            "b"
-                   )
+                _ :: second :: _ ->
+                    second.current.timestamp
+                        |> Time.toHour Time.utc
+                        |> format10
+
+                _ ->
+                    "??:??"
+
+        initialFromToStr = initialFromStr ++ " - " ++ initialToStr
     in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
@@ -379,8 +383,8 @@ statsDiff list =
                 , dislikeCount = Maybe.map2 (-) thisHr.dislikeCount prev_.dislikeCount
                 , favoriteCount = Maybe.map2 (-) thisHr.favoriteCount prev_.favoriteCount
                 , commentCount = Maybe.map2 (-) thisHr.commentCount prev_.commentCount
-                , fromHourStr = format10 (prev_.timestamp |> Time.toHour Time.utc)
-                , toHourStr = format10 (thisHr.timestamp |> Time.toHour Time.utc)
+                , fromHourStr = format10 ((prev_.timestamp |> Time.toHour Time.utc) + 1)
+                , toHourStr = format10 ((thisHr.timestamp |> Time.toHour Time.utc) + 1)
                 }
             )
 
