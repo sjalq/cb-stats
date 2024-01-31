@@ -179,7 +179,8 @@ draw24HourViews liveViews actualStartTimeStr videoStatisticsAtTime =
             (actualStartTimeStr |> String.left 13 |> String.right 2)
                 ++ ":00 - "
                 ++ (data
-                        |> List.head
+                        |> List.tail
+                        |> Maybe.andThen List.head
                         |> Maybe.map .current
                         |> Maybe.map .timestamp
                         |> Maybe.map (Time.toHour Time.utc)
