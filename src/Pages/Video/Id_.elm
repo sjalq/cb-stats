@@ -168,16 +168,24 @@ draw24HourViews liveViews videoStatisticsAtTime =
         initialDelta =
             liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
 
-    in
-    column [ paddingTop ]
-        [ labelOnly "24hr Statistics"
-        , Element.table tableStyle
-            { data =
-                videoStatisticsAtTime
+        data = videoStatisticsAtTime
                     |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
                     |> Dict.values
                     |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
                     |> statsDiff
+
+        initialFromToStr =
+            case data of
+                first :: second :: _ ->
+                    format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (second.current.timestamp |> Time.toHour Time.utc)
+                
+                _ -> "impossibru!"
+
+    in
+    column [ paddingTop ]
+        [ labelOnly "24hr Statistics"
+        , Element.table tableStyle
+            { data = data
             , columns =
                 [ Column 
                     (columnHeader "Time") 
@@ -336,15 +344,14 @@ diffWithPrev diffFn list =
             )
 
 
-statsDiff list =
-    let
-        format10 val = 
-            (if (val < 10) then
-                "0" ++ (val |> String.fromInt)
+format10 val = 
+    (if (val < 10) then
+        "0" ++ (val |> String.fromInt)
 
-            else
-                (val |> String.fromInt)) ++ ":00"
-    in
+    else
+        (val |> String.fromInt)) ++ ":00"
+
+statsDiff list =
     list
         |> diffWithPrev
             (\thisHr prev_ ->
