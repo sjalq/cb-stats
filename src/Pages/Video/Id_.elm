@@ -168,23 +168,6 @@ draw24HourViews liveViews videoStatisticsAtTime =
         initialDelta =
             liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
 
-        hourRange timestamp = 
-            let 
-                format10 val = 
-                    if (val < 10) then
-                        "0" ++ (val |> String.fromInt)
-
-                    else
-                        (val |> String.fromInt)
-
-                first = 
-                    (timestamp |> Time.toHour Time.utc)
-
-                last =
-                    (first + 1) |> modBy 24
-            in
-                (format10 first) ++ ":00 - " ++ (format10 last) ++ ":00"
-
     in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
@@ -199,7 +182,7 @@ draw24HourViews liveViews videoStatisticsAtTime =
                 [ Column 
                     (columnHeader "Time") 
                     (px 300) 
-                    (\c -> (c.current.timestamp |> hourRange) |> wrappedText)
+                    (\c -> (c.diff |> Maybe.map (\diff -> diff.fromHourStr ++ " - " ++ diff.toHourStr)) |> Maybe.withDefault "" |> wrappedText)
                 , Column (columnHeader "Views") (px 100) (.current >> .viewCount >> (+) liveViews >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views (ex live)") (px 120) (.current >> .viewCount >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault initialDelta >> String.fromInt >> wrappedText)
@@ -354,6 +337,14 @@ diffWithPrev diffFn list =
 
 
 statsDiff list =
+    let
+        format10 val = 
+            (if (val < 10) then
+                "0" ++ (val |> String.fromInt)
+
+            else
+                (val |> String.fromInt)) ++ ":00"
+    in
     list
         |> diffWithPrev
             (\thisHr prev_ ->
@@ -364,6 +355,8 @@ statsDiff list =
                 , dislikeCount = Maybe.map2 (-) thisHr.dislikeCount prev_.dislikeCount
                 , favoriteCount = Maybe.map2 (-) thisHr.favoriteCount prev_.favoriteCount
                 , commentCount = Maybe.map2 (-) thisHr.commentCount prev_.commentCount
+                , fromHourStr = format10 (prev_.timestamp |> Time.toHour Time.utc)
+                , toHourStr = format10 (thisHr.timestamp |> Time.toHour Time.utc) 
                 }
             )
 
