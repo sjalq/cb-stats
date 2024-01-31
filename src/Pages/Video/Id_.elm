@@ -178,7 +178,10 @@ draw24HourViews liveViews videoStatisticsAtTime =
                     |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
                     |> statsDiff
             , columns =
-                [ Column (columnHeader "Time") (px 300) (.current >> .timestamp >> Iso8601.fromTime >> String.left 16 >> wrappedText)
+                [ Column 
+                    (columnHeader "Time") 
+                    (px 300) 
+                    (\c -> (c.current.timestamp |> Iso8601.fromTime |> String.left 14) ++ "00" |> wrappedText)
                 , Column (columnHeader "Views") (px 100) (.current >> .viewCount >> (+) liveViews >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views (ex live)") (px 120) (.current >> .viewCount >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault initialDelta >> String.fromInt >> wrappedText)
