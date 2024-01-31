@@ -329,7 +329,7 @@ view model =
                     draw24HourViews value actualStartTimeStr model.videoStatisticsAtTime
 
                 _ ->
-                    drawField "Impossibru?" "Impossibru!"
+                    drawField "24 hr views" "pending..."
             , drawLiveViewers
                 (model.currentViewers
                     |> List.filter
