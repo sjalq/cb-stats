@@ -163,7 +163,7 @@ drawMultilineFieldWithScrollbar label value =
         ]
 
 
-draw24HourViews liveViews videoStatisticsAtTime =
+draw24HourViews liveViews actualStartTimeStr videoStatisticsAtTime =
     let
         initialDelta =
             liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
@@ -176,20 +176,15 @@ draw24HourViews liveViews videoStatisticsAtTime =
                 |> statsDiff
 
         initialFromToStr =
-            (case videoStatisticsAtTime of
-                first :: _ ->
-                    format10 (first.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (first.timestamp |> Time.toHour Time.utc)
-
-                _ ->
-                    "??:??"
-            )
-                ++ " - "
-                ++ (case data of
-                        first :: _ ->
-                            format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (first.current.timestamp |> Time.toHour Time.utc)
-
-                        _ ->
-                            "??:??"
+            (actualStartTimeStr |> String.left 13 |> String.right 2)
+                ++ ":00 - "
+                ++ (data
+                        |> List.head
+                        |> Maybe.andThen .prev
+                        |> Maybe.map .timestamp
+                        |> Maybe.map (Time.toHour Time.utc)
+                        |> Maybe.map format10
+                        |> Maybe.withDefault "??:??"
                    )
     in
     column [ paddingTop ]
@@ -273,6 +268,11 @@ view model =
     let
         liveViews =
             model.video |> Maybe.map (\v -> video_liveViews v model.currentViewers) |> Maybe.withDefault Unknown_
+
+        actualStartTimeStr =
+            model.liveVideoDetails
+                |> Maybe.andThen .actualStartTime
+                |> Maybe.withDefault "??:??"
     in
     { title = "Video"
     , body =
@@ -315,10 +315,10 @@ view model =
             --     |> drawField "1 Min Mark Viewers"
             , case liveViews of
                 Actual value ->
-                    draw24HourViews value model.videoStatisticsAtTime
+                    draw24HourViews value actualStartTimeStr model.videoStatisticsAtTime
 
                 Estimate value ->
-                    draw24HourViews value model.videoStatisticsAtTime
+                    draw24HourViews value actualStartTimeStr model.videoStatisticsAtTime
 
                 _ ->
                     drawField "Impossibru?" "Impossibru!"
