@@ -367,7 +367,7 @@ format10 val =
         "0" ++ (val |> String.fromInt)
 
      else
-        val |> String.fromInt
+        val |> modBy 24 |> String.fromInt
     )
         ++ ":00"
 
