@@ -168,32 +168,38 @@ draw24HourViews liveViews videoStatisticsAtTime =
         initialDelta =
             liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
 
-        data = videoStatisticsAtTime
-                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
-                    |> Dict.values
-                    |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
-                    |> statsDiff
+        data =
+            videoStatisticsAtTime
+                |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+                |> Dict.values
+                |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
+                |> statsDiff
 
         initialFromToStr =
-            case data of
-                first :: second :: _ ->
-                    format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (second.current.timestamp |> Time.toHour Time.utc)
-                
-                first :: [] ->
-                    format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - now" 
+            (case videoStatisticsAtTime of
+                first :: _ ->
+                    format10 (first.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (first.timestamp |> Time.toHour Time.utc)
 
-                [] ->
-                    "impossibru!"
+                _ ->
+                    "??:??"
+            )
+                ++ " - "
+                ++ (case data of
+                        first :: _ ->
+                            format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (first.current.timestamp |> Time.toHour Time.utc)
 
+                        _ ->
+                            "??:??"
+                   )
     in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
         , Element.table tableStyle
             { data = data
             , columns =
-                [ Column 
-                    (columnHeader "Time") 
-                    (px 300) 
+                [ Column
+                    (columnHeader "Time")
+                    (px 300)
                     (\c -> (c.diff |> Maybe.map (\diff -> diff.fromHourStr ++ " - " ++ diff.toHourStr)) |> Maybe.withDefault initialFromToStr |> wrappedText)
                 , Column (columnHeader "Views") (px 100) (.current >> .viewCount >> (+) liveViews >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views (ex live)") (px 120) (.current >> .viewCount >> String.fromInt >> wrappedText)
@@ -348,12 +354,15 @@ diffWithPrev diffFn list =
             )
 
 
-format10 val = 
-    (if (val < 10) then
+format10 val =
+    (if val < 10 then
         "0" ++ (val |> String.fromInt)
 
-    else
-        (val |> String.fromInt)) ++ ":00"
+     else
+        val |> String.fromInt
+    )
+        ++ ":00"
+
 
 statsDiff list =
     list
@@ -367,7 +376,7 @@ statsDiff list =
                 , favoriteCount = Maybe.map2 (-) thisHr.favoriteCount prev_.favoriteCount
                 , commentCount = Maybe.map2 (-) thisHr.commentCount prev_.commentCount
                 , fromHourStr = format10 (prev_.timestamp |> Time.toHour Time.utc)
-                , toHourStr = format10 (thisHr.timestamp |> Time.toHour Time.utc) 
+                , toHourStr = format10 (thisHr.timestamp |> Time.toHour Time.utc)
                 }
             )
 
