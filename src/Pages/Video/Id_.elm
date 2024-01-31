@@ -179,7 +179,11 @@ draw24HourViews liveViews videoStatisticsAtTime =
                 first :: second :: _ ->
                     format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - " ++ format10 (second.current.timestamp |> Time.toHour Time.utc)
                 
-                _ -> "impossibru!"
+                first :: [] ->
+                    format10 (first.current.timestamp |> Time.toHour Time.utc) ++ " - now" 
+
+                [] ->
+                    "impossibru!"
 
     in
     column [ paddingTop ]
