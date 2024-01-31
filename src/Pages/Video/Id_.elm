@@ -167,13 +167,31 @@ draw24HourViews liveViews videoStatisticsAtTime =
     let
         initialDelta =
             liveViews + (videoStatisticsAtTime |> List.head |> Maybe.map .viewCount |> Maybe.withDefault 0)
+
+        hourRange timestamp = 
+            let 
+                format10 val = 
+                    if (val < 10) then
+                        "0" ++ (val |> String.fromInt)
+
+                    else
+                        (val |> String.fromInt)
+
+                first = 
+                    (timestamp |> Time.toHour Time.utc)
+
+                last =
+                    (first + 1) |> modBy 24
+            in
+                (format10 first) ++ ":00 - " ++ (format10 last) ++ ":00"
+
     in
     column [ paddingTop ]
         [ labelOnly "24hr Statistics"
         , Element.table tableStyle
             { data =
                 videoStatisticsAtTime
-                    |> groupBy (.timestamp >> Iso8601.fromTime >> String.left 16)
+                    |> groupBy (.timestamp >> hourRange)
                     |> Dict.values
                     |> List.filterMap (List.sortBy (.timestamp >> posixToMillis) >> List.head)
                     |> statsDiff
