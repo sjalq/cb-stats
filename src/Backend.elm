@@ -79,6 +79,7 @@ init =
       , channelHandleMap = []
       , apiCallCount = 0
       , time = Time.millisToPosix 0
+      , greetingStr = "Hello julle"
       }
     , Cmd.none
     )

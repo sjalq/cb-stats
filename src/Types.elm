@@ -54,6 +54,7 @@ type alias BackendModel =
     , channelHandleMap : List ( String, String )
     , apiCallCount : Int
     , time : Time.Posix
+    , greetingStr : String
     }
 
 
