@@ -1083,7 +1083,7 @@ update msg model =
                                     |> List.head
                             )
                         |> List.filterMap identity
-                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour <= (time |> Time.posixToMillis))
+                        |> List.filter (\s -> (s.timestamp |> Time.posixToMillis) + hour - second <= (time |> Time.posixToMillis))
                         |> List.filter (\_ -> isLastMinute) 
                         |> List.map .videoId
 
