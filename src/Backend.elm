@@ -754,18 +754,18 @@ update msg model =
                                         in
                                         (now - endTime) >= (24 * hour)
 
-                                    ( Api.YoutubeModel.Uploaded, Nothing, publishedAtStr ) ->
-                                        let
-                                            publishedAt =
-                                                publishedAtStr
-                                                    |> Iso8601.toTime
-                                                    |> Result.map Time.posixToMillis
-                                                    |> Result.withDefault 0
+                                    -- ( Api.YoutubeModel.Uploaded, Nothing, publishedAtStr ) ->
+                                    --     let
+                                    --         publishedAt =
+                                    --             publishedAtStr
+                                    --                 |> Iso8601.toTime
+                                    --                 |> Result.map Time.posixToMillis
+                                    --                 |> Result.withDefault 0
 
-                                            now =
-                                                time |> Time.posixToMillis
-                                        in
-                                        (now - publishedAt) >= (24 * hour)
+                                    --         now =
+                                    --             time |> Time.posixToMillis
+                                    --     in
+                                    --     (now - publishedAt) >= (24 * hour)
 
                                     _ ->
                                         False
