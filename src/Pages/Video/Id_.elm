@@ -199,7 +199,7 @@ draw24HourViews liveViews videoStatisticsAtTime =
                 [ Column 
                     (columnHeader "Time") 
                     (px 300) 
-                    (\c -> (c.current.timestamp |> hourRange) ++ "00" |> wrappedText)
+                    (\c -> (c.current.timestamp |> hourRange) |> wrappedText)
                 , Column (columnHeader "Views") (px 100) (.current >> .viewCount >> (+) liveViews >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views (ex live)") (px 120) (.current >> .viewCount >> String.fromInt >> wrappedText)
                 , Column (columnHeader "Views Delta") (px 120) (.diff >> Maybe.map .viewCountDelta >> Maybe.withDefault initialDelta >> String.fromInt >> wrappedText)
